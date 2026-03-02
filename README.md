@@ -1,1 +1,0 @@
-# oficial-bom-pastor
