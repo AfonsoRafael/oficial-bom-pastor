@@ -1,0 +1,328 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Administrador {
+  id                  String   @id @default(cuid())
+  email               String   @unique
+  nome                String
+  telefone            String?
+  senha               String
+  firstAccessComplete Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relações
+  turmasCriadas          Turma[]        @relation("createdBy")
+  preMatriculasDecididas PreMatricula[]
+
+  @@map("administrador")
+}
+
+model Responsavel {
+  id                  String         @id @default(cuid())
+  email               String         @unique
+  nome                String
+  telefone            String?
+  senha               String
+  firstAccessComplete Boolean        @default(false)
+  catequizandos       Catequizando[]
+  inscricoes          Inscricao[]
+  pagamentos          Pagamento[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@map("responsaveis")
+}
+
+// Turma (classe)
+model Turma {
+  id              String         @id @default(cuid())
+  nome            String
+  ano             Int
+  horario         String? // Ex: "Sexta 19:00"
+  sala            String?
+  administradorId String
+  administrador   Administrador  @relation("createdBy", fields: [administradorId], references: [id])
+  catequistaId    String?
+  catequista      Catequista?    @relation(fields: [catequistaId], references: [id], onDelete: SetNull)
+  catequizandos   Catequizando[]
+  inscricoes      Inscricao[]
+  eventos         Evento[]
+  materiais       Material[]
+  documentos      Documento[]    @relation("DocumentosTurma")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@map("turmas")
+}
+
+// Catequizando (criança)
+model Catequizando {
+  id             String                  @id @default(cuid())
+  nome           String
+  dataNascimento DateTime
+  dataBatismo    DateTime?
+  cpf            String?
+  email          String?
+  telefone       String?
+  endereco       String?
+  turmaId        String?
+  turma          Turma?                  @relation(fields: [turmaId], references: [id], onDelete: SetNull)
+  responsavelId  String
+  responsavel    Responsavel             @relation(fields: [responsavelId], references: [id], onDelete: Cascade)
+  inscricoes     Inscricao[]
+  documentos     CatequizandoDocumento[]
+  observacoes    String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@map("catequizandos")
+}
+
+enum PreMatriculaStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model PreMatricula {
+  id                     String             @id @default(cuid())
+  status                 PreMatriculaStatus @default(PENDING)
+  nomeCatequizando       String
+  alergiasProblemasSaude String?
+  dataNascimento         DateTime
+  nomePais               String
+  email                  String
+  telefone               String
+  sacramentosPais        String?
+  CertificadoBatismo     String?
+  ComprovanteEndereco    String?
+  CertidaoDeNascimento   String?
+  decisaoEm              DateTime?
+  decisaoPorId           String?
+  decisaoPor             Administrador?     @relation(fields: [decisaoPorId], references: [id], onDelete: SetNull)
+  observacoesAdmin       String?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  @@map("pre_matriculas")
+}
+
+// Inscrição
+enum InscricaoStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum TipoDocumentoCatequizando {
+  CERTIDAO_NASCIMENTO
+  CPF
+  CARTEIRA_VACINA
+}
+
+model CatequizandoDocumento {
+  id             String                    @id @default(cuid())
+  catequizandoId String
+  catequizando   Catequizando              @relation(fields: [catequizandoId], references: [id], onDelete: Cascade)
+  tipo           TipoDocumentoCatequizando
+  status         Boolean                   @default(false)
+  uploadDate     DateTime?
+  fileUrl        String?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  @@unique([catequizandoId, tipo])
+  @@map("catequizando_documentos")
+}
+
+model Inscricao {
+  id             String          @id @default(cuid())
+  catequizandoId String
+  catequizando   Catequizando    @relation(fields: [catequizandoId], references: [id], onDelete: Cascade)
+  turmaId        String
+  turma          Turma           @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  responsavelId  String
+  responsavel    Responsavel     @relation(fields: [responsavelId], references: [id], onDelete: Cascade)
+  status         InscricaoStatus @default(SUBMITTED)
+  documentosUrl  String[] // JSON array de URLs de documentos
+  observacoes    String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  pagamentos     Pagamento[]
+
+  @@unique([catequizandoId, turmaId])
+  @@map("inscricoes")
+}
+
+// Pagamento
+enum PaymentMethod {
+  CASH
+  PIX
+  CARD
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  RECEIVED
+  CANCELLED
+}
+
+model Pagamento {
+  id            String        @id @default(cuid())
+  inscricaoId   String?
+  inscricao     Inscricao?    @relation(fields: [inscricaoId], references: [id], onDelete: SetNull)
+  responsavelId String?
+  responsavel   Responsavel?  @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+  valor         Float
+  metodo        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  receiptUrl    String?
+  dataPagamento DateTime?
+  descricao     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("pagamentos")
+}
+
+// Material (apostilas, videos, etc)
+model Material {
+  id           String   @id @default(cuid())
+  titulo       String
+  descricao    String?
+  fileUrl      String
+  turmaId      String? // NULL = material geral
+  turma        Turma?   @relation(fields: [turmaId], references: [id], onDelete: SetNull)
+  visibilidade String   @default("geral") // "geral" ou "turma"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("materiais")
+}
+
+model Catequista {
+  id                  String   @id @default(cuid())
+  nome                String
+  email               String   @unique
+  senha               String
+  telefone            String?
+  endereco            String?
+  bio                 String?
+  firstAccessComplete Boolean  @default(false)
+  turmas              Turma[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("catequistas")
+}
+
+// Documento
+model Documento {
+  id           String   @id @default(cuid())
+  titulo       String
+  descricao    String?
+  fileUrl      String
+  visibilidade String   @default("parent") // "parent", "turma", "geral"
+  turmaId      String?
+  turma        Turma?   @relation("DocumentosTurma", fields: [turmaId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("documentos")
+}
+
+// Evento (cronograma/calendário)
+enum TipoEvento {
+  TURMA
+  GERAL
+}
+
+model Evento {
+  id        String     @id @default(cuid())
+  titulo    String
+  descricao String?
+  data      DateTime
+  tipo      TipoEvento @default(GERAL)
+  turmaId   String?
+  turma     Turma?     @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("eventos")
+}
+
+// Galeria de Imagens
+model Galeria {
+  id           String   @id @default(cuid())
+  titulo       String
+  descricao    String?
+  visibilidade String   @default("geral")
+  imagens      Imagem[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("galerias")
+}
+
+model Imagem {
+  id        String   @id @default(cuid())
+  galeiraId String
+  galeria   Galeria  @relation(fields: [galeiraId], references: [id], onDelete: Cascade)
+  fileUrl   String
+  titulo    String?
+  createdAt DateTime @default(now())
+
+  @@map("imagens")
+}
+
+// Música
+model Musica {
+  id          String   @id @default(cuid())
+  titulo      String
+  autor       String?
+  linkExterno String? // YouTube, Drive, etc
+  notas       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("musicas")
+}
+
+// Loja
+model LojaItem {
+  id        String      @id @default(cuid())
+  nome      String
+  descricao String?
+  preco     Float
+  estoque   Int
+  imagemUrl String?
+  ordens    OrdemLoja[] @relation("ItensOrdem")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@map("loja_items")
+}
+
+model OrdemLoja {
+  id            String     @id @default(cuid())
+  responsavelId String
+  itens         LojaItem[] @relation("ItensOrdem")
+  total         Float
+  status        String     @default("pending") // "pending", "paid", "shipped", "delivered"
+  pagamentoId   String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@map("ordem_loja")
+}

@@ -1,0 +1,240 @@
+@import '@fontsource/playfair-display/400.css';
+@import '@fontsource/playfair-display/500.css';
+@import '@fontsource/playfair-display/600.css';
+@import '@fontsource/playfair-display/700.css';
+@import '@fontsource/dm-sans/400.css';
+@import '@fontsource/dm-sans/500.css';
+@import '@fontsource/dm-sans/600.css';
+@import '@fontsource/dm-sans/700.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+@layer base {
+  :root {
+    /* Catequese Portal - Warm & Spiritual Theme */
+    --background: 45 33% 97%;
+    --foreground: 220 30% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 30% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 30% 15%;
+
+    /* Deep Blue - Faith & Trust */
+    --primary: 215 65% 30%;
+    --primary-foreground: 45 33% 97%;
+
+    /* Sage Green - Growth & Peace */
+    --secondary: 145 25% 88%;
+    --secondary-foreground: 145 35% 25%;
+
+    --muted: 45 20% 92%;
+    --muted-foreground: 220 15% 45%;
+
+    /* Gold/Amber - Spirituality & Warmth */
+    --accent: 40 85% 55%;
+    --accent-foreground: 40 90% 15%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 45 20% 88%;
+    --input: 45 20% 88%;
+    --ring: 215 65% 30%;
+
+    --radius: 0.75rem;
+
+    /* Custom Colors */
+    --gold: 40 85% 55%;
+    --gold-light: 40 75% 75%;
+    --gold-dark: 40 90% 35%;
+    
+    --sage: 145 25% 65%;
+    --sage-light: 145 25% 88%;
+    --sage-dark: 145 35% 25%;
+    
+    --navy: 215 65% 30%;
+    --navy-light: 215 45% 50%;
+    --navy-dark: 215 75% 18%;
+    
+    --cream: 45 33% 97%;
+    --cream-dark: 45 25% 90%;
+
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(215 65% 30%) 0%, hsl(215 75% 18%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(40 85% 55%) 0%, hsl(40 90% 35%) 100%);
+    --gradient-sage: linear-gradient(135deg, hsl(145 25% 88%) 0%, hsl(145 25% 65%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(45 33% 97%) 100%);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(220 30% 15% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(220 30% 15% / 0.1), 0 2px 4px -2px hsl(220 30% 15% / 0.1);
+    --shadow-lg: 0 10px 15px -3px hsl(220 30% 15% / 0.1), 0 4px 6px -4px hsl(220 30% 15% / 0.1);
+    --shadow-xl: 0 20px 25px -5px hsl(220 30% 15% / 0.1), 0 8px 10px -6px hsl(220 30% 15% / 0.1);
+    --shadow-glow: 0 0 20px hsl(40 85% 55% / 0.3);
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 30% 15%;
+    --sidebar-primary: 215 65% 30%;
+    --sidebar-primary-foreground: 45 33% 97%;
+    --sidebar-accent: 145 25% 88%;
+    --sidebar-accent-foreground: 145 35% 25%;
+    --sidebar-border: 45 20% 88%;
+    --sidebar-ring: 215 65% 30%;
+
+    /* Typography */
+    --font-display: 'Playfair Display', serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  .dark {
+    --background: 220 30% 10%;
+    --foreground: 45 33% 97%;
+
+    --card: 220 25% 14%;
+    --card-foreground: 45 33% 97%;
+
+    --popover: 220 25% 14%;
+    --popover-foreground: 45 33% 97%;
+
+    --primary: 40 85% 55%;
+    --primary-foreground: 220 30% 10%;
+
+    --secondary: 215 35% 25%;
+    --secondary-foreground: 45 33% 97%;
+
+    --muted: 220 20% 18%;
+    --muted-foreground: 45 20% 65%;
+
+    --accent: 145 25% 40%;
+    --accent-foreground: 45 33% 97%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 20% 22%;
+    --input: 220 20% 22%;
+    --ring: 40 85% 55%;
+
+    --sidebar-background: 220 25% 12%;
+    --sidebar-foreground: 45 33% 97%;
+    --sidebar-primary: 40 85% 55%;
+    --sidebar-primary-foreground: 220 30% 10%;
+    --sidebar-accent: 215 35% 25%;
+    --sidebar-accent-foreground: 45 33% 97%;
+    --sidebar-border: 220 20% 22%;
+    --sidebar-ring: 40 85% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-body {
+    font-family: var(--font-body);
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-gold);
+  }
+
+  .bg-gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .bg-gradient-gold {
+    background: var(--gradient-gold);
+  }
+
+  .bg-gradient-sage {
+    background: var(--gradient-sage);
+  }
+
+  .bg-gradient-card {
+    background: var(--gradient-card);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.6s ease-out forwards;
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 0.5s ease-out forwards;
+  }
+
+  .animate-pulse-soft {
+    animation: pulseSoft 2s ease-in-out infinite;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes slideInRight {
+  from { 
+    opacity: 0; 
+    transform: translateX(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateX(0); 
+  }
+}
+
+@keyframes pulseSoft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
