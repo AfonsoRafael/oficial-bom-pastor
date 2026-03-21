@@ -44,9 +44,9 @@ interface Catequizando {
   id: string;
   nome: string;
   dataNascimento: string;
-  cpf: string;
   email?: string;
   telefone?: string;
+  responsavelNome?: string;
   turmaId?: string;
   turmaNome?: string;
 }
@@ -55,6 +55,7 @@ interface Turma {
   id: string;
   nome: string;
   nivel: number;
+  catequistaNome?: string;
   catequizandos?: Catequizando[];
 }
 
@@ -111,9 +112,9 @@ export default function AddCatequizando() {
         id: catequizando.id,
         nome: catequizando.nome,
         dataNascimento: catequizando.dataNascimento,
-        cpf: catequizando.cpf || "",
         email: catequizando.email || catequizando.responsavel?.email,
         telefone: catequizando.telefone || catequizando.responsavel?.telefone,
+        responsavelNome: catequizando.responsavel?.nome,
         turmaId: catequizando.turmaId ?? undefined,
         turmaNome: catequizando.turma?.nome,
       });
@@ -139,6 +140,7 @@ export default function AddCatequizando() {
             id: turma.id,
             nome: turma.nome,
             nivel: turma.ano,
+            catequistaNome: turma.catequista?.nome,
             catequizandos: Array.isArray(turma.catequizandos)
               ? turma.catequizandos.map(mapCatequizando)
               : [],
@@ -149,7 +151,7 @@ export default function AddCatequizando() {
       }
 
       // Carregar pre-matriculas
-      const preMatriculasResponse = await fetchWithAuth(`${API_ROUTES.preMatriculas}?limit=1000&offset=0`);
+      const preMatriculasResponse = await fetchWithAuth(`${API_ROUTES.preMatriculas}?status=PENDING&limit=1000&offset=0`);
       if (preMatriculasResponse.ok) {
         const preMatriculasData = await preMatriculasResponse.json();
         const preMatriculasList = Array.isArray(preMatriculasData?.preMatriculas)
@@ -195,14 +197,6 @@ export default function AddCatequizando() {
     setSelectedCatequizando(catequizando);
     setSelectedTurmaId(catequizando.turmaId?.toString() || "");
     setDialogOpen(true);
-  };
-
-  const getCatequizandoPendenteFromPreMatricula = (preMatricula: PreMatricula) => {
-    return catequizandosSemTurma.find((catequizando) => {
-      const sameName = catequizando.nome?.trim().toLowerCase() === preMatricula.nomeCatequizando?.trim().toLowerCase();
-      const sameBirthDate = new Date(catequizando.dataNascimento).toDateString() === new Date(preMatricula.dataNascimento).toDateString();
-      return sameName && sameBirthDate;
-    });
   };
 
   const handleAprovarPreMatricula = async (preMatricula: PreMatricula) => {
@@ -335,8 +329,6 @@ export default function AddCatequizando() {
     }
     return idade;
   };
-
-  const preMatriculasPendentes = preMatriculas.filter((preMatricula) => preMatricula.status === "PENDING");
 
   const getStatusBadge = (status: PreMatriculaStatus) => {
     if (status === "APPROVED") {
@@ -522,7 +514,7 @@ export default function AddCatequizando() {
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="pendentes" className="gap-2">
                   <AlertCircle className="h-4 w-4" />
-                  Pendentes ({preMatriculasPendentes.length})
+                  Pendentes ({preMatriculas.length})
                 </TabsTrigger>
                 <TabsTrigger value="turmas" className="gap-2">
                   <Users className="h-4 w-4" />
@@ -539,7 +531,7 @@ export default function AddCatequizando() {
                       Pré-matrículas
                     </CardTitle>
                     <CardDescription>
-                      Aceite ou não aceite pré-matrículas. Ao aceitar, o catequizando fica pronto para alocação em turma.
+                      Aceite ou não aceite pré-matrículas pendentes. Após aceitar, a alocação fica disponível apenas na seção abaixo.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pt-6">
@@ -547,7 +539,7 @@ export default function AddCatequizando() {
                       <div className="text-center py-12">
                         <UserPlus className="h-12 w-12 text-slate-300 mx-auto mb-3" />
                         <p className="text-slate-600 font-medium">
-                          Nenhuma pré-matrícula encontrada
+                          Nenhuma pré-matrícula pendente
                         </p>
                         <p className="text-slate-500 text-sm mt-1">
                           Quando houver novas pré-matrículas, elas aparecerão aqui
@@ -567,7 +559,6 @@ export default function AddCatequizando() {
                         </TableHeader>
                         <TableBody>
                           {preMatriculas.map((preMatricula) => {
-                            const catequizandoPendente = getCatequizandoPendenteFromPreMatricula(preMatricula);
                             const loadingAction = actionLoadingId === preMatricula.id;
 
                             return (
@@ -602,61 +593,38 @@ export default function AddCatequizando() {
                                 {getStatusBadge(preMatricula.status)}
                               </TableCell>
                               <TableCell className="text-right">
-                                {preMatricula.status === "PENDING" && (
-                                  <div className="flex justify-end gap-2">
-                                    <Button
-                                      size="sm"
-                                      onClick={() => handleAprovarPreMatricula(preMatricula)}
-                                      disabled={loadingAction}
-                                      className="bg-green-600 hover:bg-green-700"
-                                    >
-                                      {loadingAction ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <>
-                                          <Check className="h-4 w-4 mr-2" />
-                                          Aceitar
-                                        </>
-                                      )}
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={() => handleReprovarPreMatricula(preMatricula)}
-                                      disabled={loadingAction}
-                                    >
-                                      {loadingAction ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <>
-                                          <XCircle className="h-4 w-4 mr-2" />
-                                          Não aceitar
-                                        </>
-                                      )}
-                                    </Button>
-                                  </div>
-                                )}
-
-                                {preMatricula.status === "APPROVED" && (
-                                  <>
-                                    {catequizandoPendente ? (
-                                      <Button
-                                        size="sm"
-                                        onClick={() => handleAlocarCatequizando(catequizandoPendente)}
-                                        className="bg-orange-600 hover:bg-orange-700"
-                                      >
-                                        <UserPlus className="h-4 w-4 mr-2" />
-                                        Alocar em turma
-                                      </Button>
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleAprovarPreMatricula(preMatricula)}
+                                    disabled={loadingAction}
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    {loadingAction ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
                                     ) : (
-                                      <Badge className="bg-slate-600">Já integrado</Badge>
+                                      <>
+                                        <Check className="h-4 w-4 mr-2" />
+                                        Aceitar
+                                      </>
                                     )}
-                                  </>
-                                )}
-
-                                {preMatricula.status === "REJECTED" && (
-                                  <Badge variant="outline">Sem ação</Badge>
-                                )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleReprovarPreMatricula(preMatricula)}
+                                    disabled={loadingAction}
+                                  >
+                                    {loadingAction ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <XCircle className="h-4 w-4 mr-2" />
+                                        Não aceitar
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                             );
@@ -744,6 +712,10 @@ export default function AddCatequizando() {
                               {turma.catequizandos?.length || 0} catequizando(s)
                             </CardDescription>
                           </div>
+                          <div className="text-right text-sm text-slate-600">
+                            <p className="font-medium text-slate-700">Catequista</p>
+                            <p>{turma.catequistaNome || "Não definido"}</p>
+                          </div>
                         </div>
                       </CardHeader>
                       <CardContent className="pt-6">
@@ -759,7 +731,7 @@ export default function AddCatequizando() {
                               <TableRow>
                                 <TableHead>Catequizando</TableHead>
                                 <TableHead>Idade</TableHead>
-                                <TableHead>CPF</TableHead>
+                                <TableHead>Responsável</TableHead>
                                 <TableHead>Contato</TableHead>
                                 <TableHead className="text-right">Ação</TableHead>
                               </TableRow>
@@ -788,7 +760,7 @@ export default function AddCatequizando() {
                                     </Badge>
                                   </TableCell>
                                   <TableCell className="text-slate-600">
-                                    {catequizando.cpf}
+                                    {catequizando.responsavelNome || "-"}
                                   </TableCell>
                                   <TableCell className="text-slate-600">
                                     {catequizando.telefone || catequizando.email || "-"}
