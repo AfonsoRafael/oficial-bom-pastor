@@ -1,14 +1,9 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -16,484 +11,588 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
+import { API_ROUTES } from "@/lib/routes";
 import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+
+type InscricaoCatequistaForm = {
+  nome: string;
+  dataNascimento: string;
+  dataBatismo: string;
+  email: string;
+  telefone: string;
+  casado: string;
+  casadaIgrejaCatolica: string;
+  sacramentos: string;
+  alergias: string;
+};
+
+type DocumentoUploadField = "comprovanteResidencia" | "documentoCpf";
+
+const ALLOWED_DOCUMENT_MIME_TYPES = ["application/pdf", "image/jpeg", "image/jpg", "image/png", "image/webp"];
+const MAX_DOCUMENT_SIZE_MB = 5;
+const MAX_DOCUMENT_SIZE_BYTES = MAX_DOCUMENT_SIZE_MB * 1024 * 1024;
+
+function getOnlyDigits(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+function isValidDateString(value: string): boolean {
+  if (!value) return false;
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime());
+}
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function formatBrazilianPhone(value: string): string {
+  const digits = getOnlyDigits(value).slice(0, 11);
+
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+function isValidBrazilianPhone(value: string): boolean {
+  const digits = getOnlyDigits(value);
+  return digits.length === 10 || digits.length === 11;
+}
+
+function parseApiErrorMessage(payload: unknown): string {
+  if (!payload || typeof payload !== "object") {
+    return "Nao foi possivel enviar a inscricao agora. Tente novamente.";
+  }
+
+  const maybeMessage = (payload as { message?: unknown }).message;
+  if (Array.isArray(maybeMessage)) {
+    return maybeMessage.map((item) => String(item)).join("\n");
+  }
+
+  if (typeof maybeMessage === "string" && maybeMessage.trim()) {
+    return maybeMessage;
+  }
+
+  return "Nao foi possivel enviar a inscricao agora. Tente novamente.";
+}
 
 export default function Inscricao() {
   const { toast } = useToast();
-  const [formData, setFormData] = useState({
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState<InscricaoCatequistaForm>({
     nome: "",
+    dataNascimento: "",
+    dataBatismo: "",
     email: "",
     telefone: "",
-    dataNascimento: "",
-    sexo: "",
-    perfil: "",
-    endereco: "",
-    cidade: "",
-    estado: "",
-    cep: "",
-    nivelEstudo: "",
-    experienciaPrevia: "",
-    motivacao: "",
-    disponibilidade: "",
-    conhecimentoFe: "",
-    sacramentoBatismo: false,
-    sacramentoEucaristia: false,
-    sacramentoConfirmacao: false,
-    sacramentoMatrimonio: false,
+    casado: "",
+    casadaIgrejaCatolica: "",
+    sacramentos: "",
+    alergias: "",
+  });
+  const [errors, setErrors] = useState<Partial<Record<keyof InscricaoCatequistaForm, string>>>({});
+  const [documentosError, setDocumentosError] = useState("");
+  const [documentoNomes, setDocumentoNomes] = useState<Record<DocumentoUploadField, string>>({
+    comprovanteResidencia: "",
+    documentoCpf: "",
+  });
+  const [documentoTamanhoErrors, setDocumentoTamanhoErrors] = useState<Record<DocumentoUploadField, string>>({
+    comprovanteResidencia: "",
+    documentoCpf: "",
+  });
+  const [documentosFiles, setDocumentosFiles] = useState<Record<DocumentoUploadField, File | null>>({
+    comprovanteResidencia: null,
+    documentoCpf: null,
   });
 
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  const documentosConfig: Array<{ field: DocumentoUploadField; inputId: string; titulo: string; descricao: string }> = [
+    {
+      field: "comprovanteResidencia",
+      inputId: "comprovanteResidenciaFile",
+      titulo: "Comprovante de residencia *",
+      descricao: `Obrigatorio. PDF, PNG, JPG ou WEBP (max. ${MAX_DOCUMENT_SIZE_MB}MB).`,
+    },
+    {
+      field: "documentoCpf",
+      inputId: "documentoCpfFile",
+      titulo: "Documento de CPF *",
+      descricao: `Obrigatorio. PDF, PNG, JPG ou WEBP (max. ${MAX_DOCUMENT_SIZE_MB}MB).`,
+    },
+  ];
+
+  const isValid = useMemo(() => {
+    return (
+      formData.nome.trim().length > 0 &&
+      formData.dataNascimento.trim().length > 0 &&
+      isValidDateString(formData.dataNascimento) &&
+      formData.email.trim().length > 0 &&
+      isValidEmail(formData.email.trim()) &&
+      formData.telefone.trim().length > 0 &&
+      isValidBrazilianPhone(formData.telefone) &&
+      formData.casado.trim().length > 0 &&
+      (formData.casado !== "SIM" || formData.casadaIgrejaCatolica.trim().length > 0) &&
+      Boolean(documentosFiles.comprovanteResidencia) &&
+      Boolean(documentosFiles.documentoCpf)
+    );
+  }, [formData, documentosFiles]);
+
+  const setField = <K extends keyof InscricaoCatequistaForm>(field: K, value: InscricaoCatequistaForm[K]) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field in errors) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
   };
 
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  const validateForm = (): boolean => {
+    const nextErrors: Partial<Record<keyof InscricaoCatequistaForm, string>> = {};
+
+    if (!formData.nome.trim()) {
+      nextErrors.nome = "Informe o nome completo.";
+    }
+
+    if (!formData.dataNascimento.trim()) {
+      nextErrors.dataNascimento = "Informe a data de nascimento.";
+    } else if (!isValidDateString(formData.dataNascimento)) {
+      nextErrors.dataNascimento = "Informe uma data valida.";
+    }
+
+    if (formData.dataBatismo.trim() && !isValidDateString(formData.dataBatismo)) {
+      nextErrors.dataBatismo = "Informe uma data de batismo valida.";
+    }
+
+    if (!formData.email.trim()) {
+      nextErrors.email = "Informe o e-mail.";
+    } else if (!isValidEmail(formData.email.trim())) {
+      nextErrors.email = "Informe um e-mail valido.";
+    }
+
+    if (!formData.telefone.trim()) {
+      nextErrors.telefone = "Informe o celular.";
+    } else if (!isValidBrazilianPhone(formData.telefone)) {
+      nextErrors.telefone = "Informe um celular valido com DDD.";
+    }
+
+    if (!formData.casado.trim()) {
+      nextErrors.casado = "Informe se e casada(o).";
+    }
+
+    if (formData.casado === "SIM" && !formData.casadaIgrejaCatolica.trim()) {
+      nextErrors.casadaIgrejaCatolica = "Informe se e casada(o) na Igreja Catolica.";
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: DocumentoUploadField) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setDocumentosFiles((prev) => ({ ...prev, [field]: null }));
+      setDocumentoNomes((prev) => ({ ...prev, [field]: "" }));
+      setDocumentoTamanhoErrors((prev) => ({ ...prev, [field]: "" }));
+      return;
+    }
+
+    if (!ALLOWED_DOCUMENT_MIME_TYPES.includes(file.type)) {
+      toast({
+        title: "Formato nao permitido",
+        description: "Envie apenas PDF ou imagem (JPG, PNG, WEBP).",
+        variant: "destructive",
+      });
+      e.currentTarget.value = "";
+      return;
+    }
+
+    if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
+      setDocumentosFiles((prev) => ({ ...prev, [field]: null }));
+      setDocumentoTamanhoErrors((prev) => ({
+        ...prev,
+        [field]: `Arquivo muito grande. Limite de ${MAX_DOCUMENT_SIZE_MB}MB por documento.`,
+      }));
+      toast({
+        title: "Arquivo muito grande",
+        description: `Cada documento deve ter no maximo ${MAX_DOCUMENT_SIZE_MB}MB.`,
+        variant: "destructive",
+      });
+      e.currentTarget.value = "";
+      return;
+    }
+
+    setDocumentosFiles((prev) => ({ ...prev, [field]: file }));
+    setDocumentoNomes((prev) => ({ ...prev, [field]: file.name }));
+    setDocumentoTamanhoErrors((prev) => ({ ...prev, [field]: "" }));
+    setDocumentosError("");
+  };
+
+  const handleRemoveFile = (field: DocumentoUploadField, inputId: string) => {
+    setDocumentosFiles((prev) => ({ ...prev, [field]: null }));
+    setDocumentoNomes((prev) => ({ ...prev, [field]: "" }));
+    setDocumentoTamanhoErrors((prev) => ({ ...prev, [field]: "" }));
+    const input = document.getElementById(inputId) as HTMLInputElement | null;
+    if (input) {
+      input.value = "";
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validação básica
-    if (
-      !formData.nome ||
-      !formData.email ||
-      !formData.telefone ||
-      !formData.dataNascimento ||
-      !formData.perfil
-    ) {
+    const isFormValid = validateForm();
+    const documentosValidos =
+      Boolean(documentosFiles.comprovanteResidencia) &&
+      Boolean(documentosFiles.documentoCpf);
+
+    setDocumentosError(documentosValidos ? "" : "Os 2 documentos sao obrigatorios para concluir a inscricao.");
+
+    if (!isFormValid || !documentosValidos) {
       toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos obrigatórios",
+        title: "Revise os dados",
+        description: "Preencha os campos obrigatorios e anexe os 2 documentos para enviar.",
         variant: "destructive",
       });
       return;
     }
 
-    // Aqui você enviaria os dados para a API
-    console.log("Dados do formulário:", formData);
+    const payload = {
+      nome: formData.nome.trim(),
+      dataNascimento: formData.dataNascimento,
+      dataBatismo: formData.dataBatismo,
+      email: formData.email.trim(),
+      telefone: formatBrazilianPhone(formData.telefone),
+      casado: formData.casado,
+      casadaIgrejaCatolica: formData.casadaIgrejaCatolica,
+      sacramentos: formData.sacramentos.trim(),
+      alergias: formData.alergias.trim(),
+    };
 
-    toast({
-      title: "Solicitação enviada",
-      description:
-        "Sua solicitação foi enviada para a coordenação e será avaliada.",
-    });
+    const requestData = new FormData();
+    requestData.append("nome", payload.nome);
+    requestData.append("dataNascimento", payload.dataNascimento);
+    if (payload.dataBatismo) {
+      requestData.append("dataBatismo", payload.dataBatismo);
+    }
+    requestData.append("email", payload.email);
+    requestData.append("telefone", payload.telefone);
+    requestData.append("casado", payload.casado);
+    if (payload.casado === "SIM") {
+      requestData.append("casadaIgrejaCatolica", payload.casadaIgrejaCatolica);
+    }
 
-    // Resetar formulário
-    setFormData({
-      nome: "",
-      email: "",
-      telefone: "",
-      dataNascimento: "",
-      sexo: "",
-      perfil: "",
-      endereco: "",
-      cidade: "",
-      estado: "",
-      cep: "",
-      nivelEstudo: "",
-      experienciaPrevia: "",
-      motivacao: "",
-      disponibilidade: "",
-      conhecimentoFe: "",
-      sacramentoBatismo: false,
-      sacramentoEucaristia: false,
-      sacramentoConfirmacao: false,
-      sacramentoMatrimonio: false,
-    });
+    if (payload.sacramentos) {
+      requestData.append("sacramentos", payload.sacramentos);
+    }
+    if (payload.alergias) {
+      requestData.append("alergias", payload.alergias);
+    }
+
+    requestData.append("comprovanteResidencia", documentosFiles.comprovanteResidencia!);
+    requestData.append("documentoCpf", documentosFiles.documentoCpf!);
+
+    setIsSubmitting(true);
+    try {
+      const response = await api.postPublic(API_ROUTES.catequistasInscricao, requestData);
+
+      if (!response.ok) {
+        let apiError: unknown = null;
+        try {
+          apiError = await response.json();
+        } catch {
+          apiError = null;
+        }
+
+        toast({
+          title: "Erro ao enviar",
+          description: parseApiErrorMessage(apiError),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Inscricao enviada",
+        description: "Recebemos seus dados. Em breve entraremos em contato.",
+      });
+
+      setFormData({
+        nome: "",
+        dataNascimento: "",
+        dataBatismo: "",
+        email: "",
+        telefone: "",
+        casado: "",
+        casadaIgrejaCatolica: "",
+        sacramentos: "",
+        alergias: "",
+      });
+      setErrors({});
+      setDocumentosError("");
+      setDocumentoNomes({
+        comprovanteResidencia: "",
+        documentoCpf: "",
+      });
+      setDocumentoTamanhoErrors({
+        comprovanteResidencia: "",
+        documentoCpf: "",
+      });
+      setDocumentosFiles({
+        comprovanteResidencia: null,
+        documentoCpf: null,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-12 px-4">
-        <div className="container max-w-2xl mx-auto">
-          {/* Header com botão voltar */}
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-12">
+        <div className="container mx-auto max-w-2xl">
           <div className="mb-8">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 text-gold hover:text-gold/80 transition-colors"
+              className="inline-flex items-center gap-2 text-gold transition-colors hover:text-gold/80"
             >
               <ArrowLeft className="h-4 w-4" />
               Voltar
             </Link>
           </div>
 
-          {/* Card principal */}
           <Card className="border-2 border-blue-200 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
-              <CardTitle className="text-3xl">Novo Catequista</CardTitle>
+            <CardHeader className="rounded-t-lg bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+              <CardTitle className="text-3xl">Seja Catequista</CardTitle>
               <CardDescription className="text-blue-100">
-                Bem-vindo! Preencha o formulário abaixo para se inscrever em
-                nosso programa de catequese
+                Preencha seus dados para iniciar sua inscricao como catequista.
               </CardDescription>
             </CardHeader>
 
             <CardContent className="pt-8">
               <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Seção 1: Dados Pessoais */}
                 <div className="space-y-6">
                   <div className="border-b pb-4">
-                    <h3 className="text-xl font-semibold text-blue-900">
-                      1. Dados Pessoais
-                    </h3>
+                    <h3 className="text-xl font-semibold text-blue-900">Dados Cadastrais</h3>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="perfil" className="font-semibold">
-                        Você é pai/mãe ou catequista? *
-                      </Label>
-                      <Select
-                        value={formData.perfil}
-                        onValueChange={(value) => handleSelectChange("perfil", value)}
-                      >
-                        <SelectTrigger className="border-blue-200">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pai">Pai/Mãe</SelectItem>
-                          <SelectItem value="catequista">Catequista</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="nome" className="font-semibold">
-                        Nome Completo *
+                        Nome completo *
                       </Label>
                       <Input
                         id="nome"
-                        name="nome"
                         value={formData.nome}
-                        onChange={handleChange}
+                        onChange={(e) => setField("nome", e.target.value)}
                         placeholder="Seu nome completo"
                         className="border-blue-200"
                         required
                       />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="font-semibold">
-                        Email *
-                      </Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        placeholder="seu.email@exemplo.com"
-                        className="border-blue-200"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="telefone" className="font-semibold">
-                        Telefone/WhatsApp *
-                      </Label>
-                      <Input
-                        id="telefone"
-                        name="telefone"
-                        value={formData.telefone}
-                        onChange={handleChange}
-                        placeholder="(11) 98765-4321"
-                        className="border-blue-200"
-                        required
-                      />
+                      {errors.nome && <p className="text-sm text-red-600">{errors.nome}</p>}
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="dataNascimento" className="font-semibold">
-                        Data de Nascimento *
+                        Data de nascimento *
                       </Label>
                       <Input
                         id="dataNascimento"
-                        name="dataNascimento"
                         type="date"
                         value={formData.dataNascimento}
-                        onChange={handleChange}
+                        onChange={(e) => setField("dataNascimento", e.target.value)}
                         className="border-blue-200"
                         required
                       />
+                      {errors.dataNascimento && <p className="text-sm text-red-600">{errors.dataNascimento}</p>}
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="sexo" className="font-semibold">
-                        Sexo
+                      <Label htmlFor="dataBatismo" className="font-semibold">
+                        Data de batismo
+                      </Label>
+                      <Input
+                        id="dataBatismo"
+                        type="date"
+                        value={formData.dataBatismo}
+                        onChange={(e) => setField("dataBatismo", e.target.value)}
+                        className="border-blue-200"
+                      />
+                      {errors.dataBatismo && <p className="text-sm text-red-600">{errors.dataBatismo}</p>}
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="email" className="font-semibold">
+                        E-mail *
+                      </Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setField("email", e.target.value)}
+                        placeholder="seu.email@exemplo.com"
+                        className="border-blue-200"
+                        required
+                      />
+                      {errors.email && <p className="text-sm text-red-600">{errors.email}</p>}
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="telefone" className="font-semibold">
+                        Celular *
+                      </Label>
+                      <Input
+                        id="telefone"
+                        value={formData.telefone}
+                        onChange={(e) => setField("telefone", formatBrazilianPhone(e.target.value))}
+                        placeholder="(11) 99999-9999"
+                        className="border-blue-200"
+                        required
+                      />
+                      {errors.telefone && <p className="text-sm text-red-600">{errors.telefone}</p>}
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="casado" className="font-semibold">
+                        E casado(a)? *
                       </Label>
                       <Select
-                        value={formData.sexo}
-                        onValueChange={(value) =>
-                          handleSelectChange("sexo", value)
-                        }
+                        value={formData.casado}
+                        onValueChange={(value) => {
+                          setField("casado", value);
+                          if (value !== "SIM") {
+                            setField("casadaIgrejaCatolica", "");
+                          }
+                        }}
                       >
-                        <SelectTrigger className="border-blue-200">
+                        <SelectTrigger id="casado" className="border-blue-200">
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="masculino">Masculino</SelectItem>
-                          <SelectItem value="feminino">Feminino</SelectItem>
+                          <SelectItem value="SIM">Sim</SelectItem>
+                          <SelectItem value="NAO">Nao</SelectItem>
                         </SelectContent>
                       </Select>
+                      {errors.casado && <p className="text-sm text-red-600">{errors.casado}</p>}
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="font-semibold">Quais sacramentos você já recebeu?</Label>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <Label htmlFor="sacramentoBatismo" className="flex items-center gap-2 text-sm text-blue-900">
-                          <Checkbox
-                            id="sacramentoBatismo"
-                            checked={formData.sacramentoBatismo}
-                            onCheckedChange={(v) =>
-                              setFormData((prev) => ({ ...prev, sacramentoBatismo: Boolean(v) }))
-                            }
-                          />
-                          Batismo
+                    {formData.casado === "SIM" && (
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="casadaIgrejaCatolica" className="font-semibold">
+                          Casado(a) na Igreja Catolica? *
                         </Label>
-                        <Label htmlFor="sacramentoEucaristia" className="flex items-center gap-2 text-sm text-blue-900">
-                          <Checkbox
-                            id="sacramentoEucaristia"
-                            checked={formData.sacramentoEucaristia}
-                            onCheckedChange={(v) =>
-                              setFormData((prev) => ({ ...prev, sacramentoEucaristia: Boolean(v) }))
-                            }
-                          />
-                          Eucaristia
-                        </Label>
-                        <Label htmlFor="sacramentoConfirmacao" className="flex items-center gap-2 text-sm text-blue-900">
-                          <Checkbox
-                            id="sacramentoConfirmacao"
-                            checked={formData.sacramentoConfirmacao}
-                            onCheckedChange={(v) =>
-                              setFormData((prev) => ({ ...prev, sacramentoConfirmacao: Boolean(v) }))
-                            }
-                          />
-                          Confirmação
-                        </Label>
-                        <Label htmlFor="sacramentoMatrimonio" className="flex items-center gap-2 text-sm text-blue-900">
-                          <Checkbox
-                            id="sacramentoMatrimonio"
-                            checked={formData.sacramentoMatrimonio}
-                            onCheckedChange={(v) =>
-                              setFormData((prev) => ({ ...prev, sacramentoMatrimonio: Boolean(v) }))
-                            }
-                          />
-                          Matrimônio
-                        </Label>
+                        <Select
+                          value={formData.casadaIgrejaCatolica}
+                          onValueChange={(value) => setField("casadaIgrejaCatolica", value)}
+                        >
+                          <SelectTrigger id="casadaIgrejaCatolica" className="border-blue-200">
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="SIM">Sim</SelectItem>
+                            <SelectItem value="NAO">Nao</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {errors.casadaIgrejaCatolica && (
+                          <p className="text-sm text-red-600">{errors.casadaIgrejaCatolica}</p>
+                        )}
                       </div>
-                    </div>
+                    )}
 
-                    <div className="space-y-2">
-                      <Label htmlFor="nivelEstudo" className="font-semibold">
-                        Nível de Escolaridade
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="sacramentos" className="font-semibold">
+                        Sacramentos
                       </Label>
-                      <Select
-                        value={formData.nivelEstudo}
-                        onValueChange={(value) =>
-                          handleSelectChange("nivelEstudo", value)
-                        }
-                      >
-                        <SelectTrigger className="border-blue-200">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="fundamental">
-                            Ensino Fundamental
-                          </SelectItem>
-                          <SelectItem value="medio">Ensino Médio</SelectItem>
-                          <SelectItem value="superior">
-                            Ensino Superior
-                          </SelectItem>
-                          <SelectItem value="pos-graduacao">
-                            Pós-Graduação
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Seção 2: Endereço */}
-                <div className="space-y-6">
-                  <div className="border-b pb-4">
-                    <h3 className="text-xl font-semibold text-blue-900">
-                      2. Endereço
-                    </h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2 space-y-2">
-                      <Label htmlFor="endereco" className="font-semibold">
-                        Endereço
-                      </Label>
-                      <Input
-                        id="endereco"
-                        name="endereco"
-                        value={formData.endereco}
-                        onChange={handleChange}
-                        placeholder="Rua, número e complemento"
-                        className="border-blue-200"
+                      <Textarea
+                        id="sacramentos"
+                        value={formData.sacramentos}
+                        onChange={(e) => setField("sacramentos", e.target.value)}
+                        placeholder="Ex.: Batismo, Eucaristia e Crisma"
+                        className="resize-none border-blue-200"
+                        rows={3}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="cidade" className="font-semibold">
-                        Cidade
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="alergias" className="font-semibold">
+                        Alergias / observacoes de saude
                       </Label>
-                      <Input
-                        id="cidade"
-                        name="cidade"
-                        value={formData.cidade}
-                        onChange={handleChange}
-                        placeholder="Sua cidade"
-                        className="border-blue-200"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="estado" className="font-semibold">
-                        Estado
-                      </Label>
-                      <Input
-                        id="estado"
-                        name="estado"
-                        value={formData.estado}
-                        onChange={handleChange}
-                        placeholder="UF"
-                        maxLength={2}
-                        className="border-blue-200"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="cep" className="font-semibold">
-                        CEP
-                      </Label>
-                      <Input
-                        id="cep"
-                        name="cep"
-                        value={formData.cep}
-                        onChange={handleChange}
-                        placeholder="00000-000"
-                        className="border-blue-200"
+                      <Textarea
+                        id="alergias"
+                        value={formData.alergias}
+                        onChange={(e) => setField("alergias", e.target.value)}
+                        placeholder="Informe alergias ou deixe em branco"
+                        className="resize-none border-blue-200"
+                        rows={3}
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Seção 3: Experiência e Motivação */}
                 <div className="space-y-6">
                   <div className="border-b pb-4">
-                    <h3 className="text-xl font-semibold text-blue-900">
-                      3. Formação Religiosa
-                    </h3>
+                    <h3 className="text-xl font-semibold text-blue-900">Documentos</h3>
                   </div>
 
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="experienciaPrevia"
-                        className="font-semibold"
-                      >
-                        Tem experiência anterior com educação religiosa ou
-                        voluntariado?
-                      </Label>
-                      <Textarea
-                        id="experienciaPrevia"
-                        name="experienciaPrevia"
-                        value={formData.experienciaPrevia}
-                        onChange={handleChange}
-                        placeholder="Conte-nos sobre sua experiência (opcional)"
-                        className="border-blue-200 resize-none"
-                        rows={4}
-                      />
-                    </div>
+                    {documentosConfig.map((doc) => (
+                      <div key={doc.field} className="rounded-lg border border-blue-100 p-4">
+                        <Label htmlFor={doc.inputId} className="font-semibold">
+                          {doc.titulo}
+                        </Label>
+                        <p className="mt-1 text-xs text-slate-500">{doc.descricao}</p>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="motivacao" className="font-semibold">
-                        O que o motivou a se inscrever como catequista?
-                      </Label>
-                      <Textarea
-                        id="motivacao"
-                        name="motivacao"
-                        value={formData.motivacao}
-                        onChange={handleChange}
-                        placeholder="Compartilhe suas motivações"
-                        className="border-blue-200 resize-none"
-                        rows={4}
-                      />
-                    </div>
+                        <Input
+                          id={doc.inputId}
+                          type="file"
+                          accept=".pdf,.png,.jpg,.jpeg,.webp"
+                          className="mt-3 border-blue-200"
+                          onChange={(e) => handleFileChange(e, doc.field)}
+                        />
 
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="disponibilidade"
-                        className="font-semibold"
-                      >
-                        Qual sua disponibilidade?
-                      </Label>
-                      <Select
-                        value={formData.disponibilidade}
-                        onValueChange={(value) =>
-                          handleSelectChange("disponibilidade", value)
-                        }
-                      >
-                        <SelectTrigger className="border-blue-200">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sabados">
-                            Sábados pela manhã (9h às 11h)
-                          </SelectItem>
-                          <SelectItem value="sabados-tarde">
-                            Sábados à tarde (14h às 16h)
-                          </SelectItem>
-                          <SelectItem value="semana">Entre semana</SelectItem>
-                          <SelectItem value="flexivel">
-                            Horário flexível
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                        {documentoNomes[doc.field] && (
+                          <div className="mt-2 flex items-center justify-between gap-3 text-sm">
+                            <span className="text-slate-700">{documentoNomes[doc.field]}</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRemoveFile(doc.field, doc.inputId)}
+                            >
+                              Remover
+                            </Button>
+                          </div>
+                        )}
+
+                        {documentoTamanhoErrors[doc.field] && (
+                          <p className="mt-2 text-sm text-red-600">{documentoTamanhoErrors[doc.field]}</p>
+                        )}
+                      </div>
+                    ))}
+
+                    {documentosError && <p className="text-sm text-red-600">{documentosError}</p>}
                   </div>
                 </div>
 
-                {/* Botões */}
-                <div className="flex gap-4 pt-6">
+                <div className="flex gap-4 pt-2">
                   <Button
                     type="submit"
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 h-auto"
+                    className="h-auto flex-1 bg-blue-600 py-2 font-semibold text-white hover:bg-blue-700"
+                    disabled={isSubmitting || !isValid}
                   >
-                    Enviar Solicitação
+                    {isSubmitting ? "Enviando..." : "Enviar inscricao"}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    asChild
-                  >
+                  <Button type="button" variant="outline" className="flex-1" asChild>
                     <Link to="/">Cancelar</Link>
                   </Button>
                 </div>
 
-                {/* Nota */}
-                <p className="text-sm text-gray-600 text-center pt-4 border-t">
-                  Os campos marcados com * são obrigatórios. Após a análise de
-                  sua inscrição, entraremos em contato para os próximos passos.
+                <p className="border-t pt-4 text-center text-sm text-gray-600">
+                  Campos com * sao obrigatorios. Sua inscricao sera analisada pela coordenacao.
                 </p>
               </form>
             </CardContent>

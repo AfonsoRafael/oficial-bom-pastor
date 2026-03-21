@@ -94,6 +94,12 @@ enum PreMatriculaStatus {
   REJECTED
 }
 
+enum InscricaoCatequistaStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model PreMatricula {
   id                     String             @id @default(cuid())
   status                 PreMatriculaStatus @default(PENDING)
@@ -115,6 +121,26 @@ model PreMatricula {
   updatedAt              DateTime           @updatedAt
 
   @@map("pre_matriculas")
+}
+
+model InscricaoCatequista {
+  id                     String                   @id @default(cuid())
+  status                 InscricaoCatequistaStatus @default(PENDING)
+  nome                   String
+  dataNascimento         DateTime
+  dataBatismo            DateTime?
+  email                  String
+  telefone               String
+  casado                 String
+  casadaIgrejaCatolica   String?
+  sacramentos            String?
+  alergias               String?
+  ComprovanteResidencia  String?
+  DocumentoCpf           String?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+
+  @@map("inscricoes_catequistas")
 }
 
 // Inscrição
