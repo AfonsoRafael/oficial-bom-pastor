@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -129,7 +130,7 @@ const uploadedDocuments = [
 ];
 
 export default function ParentDocumentos() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
   const [selectedChild, setSelectedChild] = useState<string>(
     children[0].id.toString()
   );
@@ -204,10 +205,9 @@ export default function ParentDocumentos() {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(false)}
+              onClick={toggleSidebar}
             >
-              <X className="h-5 w-5" />
+              <Menu className="h-5 w-5" />
             </Button>
           </div>
 
@@ -277,11 +277,12 @@ export default function ParentDocumentos() {
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
         {/* Mobile Header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4 lg:hidden">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSidebarOpen(true)}
+            className={sidebarOpen ? "lg:hidden" : ""}
+            onClick={toggleSidebar}
           >
             <Menu className="h-5 w-5" />
           </Button>

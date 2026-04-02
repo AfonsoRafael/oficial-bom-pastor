@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
 import {
   Dialog,
   DialogContent,
@@ -139,7 +140,7 @@ export default function AdminDashboard() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith("/admin");
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [catequistas, setCatequistas] = useState<Catequista[]>([]);
   const [selectedLevel, setSelectedLevel] = useState<string>("all");
@@ -515,12 +516,12 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background lg:pl-64">
+    <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>
       {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-card transition-transform duration-300 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:translate-x-0`}
+        } `}
       >
         <div className="flex h-full flex-col">
           {/* Sidebar Header */}
@@ -536,10 +537,9 @@ export default function AdminDashboard() {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(false)}
+              onClick={toggleSidebar}
             >
-              <X className="h-5 w-5" />
+              <Menu className="h-5 w-5" />
             </Button>
           </div>
 
@@ -640,8 +640,8 @@ export default function AdminDashboard() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden"
-                onClick={() => setSidebarOpen(true)}
+                className={sidebarOpen ? "lg:hidden" : ""}
+                onClick={toggleSidebar}
               >
                 <Menu className="h-5 w-5" />
               </Button>

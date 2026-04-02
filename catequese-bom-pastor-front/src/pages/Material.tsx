@@ -35,6 +35,7 @@ import {
   X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
 import { Link, useLocation } from "react-router-dom";
 
 interface Aula {
@@ -187,7 +188,7 @@ const niveis: NivelData[] = [
 ];
 
 export default function Materiais() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
   const [isAdmin, setIsAdmin] = useState(false);
   const location = useLocation();
   
@@ -203,11 +204,11 @@ export default function Materiais() {
     location.pathname === path ? "navActive" : "nav";
 
   return (
-    <div className="flex min-h-screen bg-background lg:pl-64">
+    <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-card transition-transform duration-300 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:translate-x-0`}
+        } `}
       >
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center justify-between border-b px-4">
@@ -222,10 +223,9 @@ export default function Materiais() {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(false)}
+              onClick={toggleSidebar}
             >
-              <X className="h-5 w-5" />
+              <Menu className="h-5 w-5" />
             </Button>
           </div>
 
@@ -356,11 +356,12 @@ export default function Materiais() {
       )}
 
       <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4 lg:hidden">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSidebarOpen(true)}
+            className={sidebarOpen ? "lg:hidden" : ""}
+            onClick={toggleSidebar}
           >
             <Menu className="h-5 w-5" />
           </Button>

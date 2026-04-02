@@ -6,9 +6,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
 import { fetchWithAuth } from "@/lib/api";
 import { API_ROUTES } from "@/lib/routes";
-import { Check, ChevronLeft, Loader2, RefreshCw, XCircle, Users, ShieldCheck } from "lucide-react";
+import {
+  BookOpen,
+  Calendar,
+  Check,
+  ChevronLeft,
+  ClipboardList,
+  Cross,
+  DollarSign,
+  Loader2,
+  LogOut,
+  Menu,
+  Music,
+  RefreshCw,
+  ShieldCheck,
+  UserPlus,
+  Users,
+  X,
+  XCircle,
+} from "lucide-react";
 
 type InscricaoStatus = "PENDING" | "APPROVED" | "REJECTED";
 
@@ -44,6 +63,7 @@ export default function AdminInscricoesCatequistas() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
 
   const [loading, setLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
@@ -51,6 +71,8 @@ export default function AdminInscricoesCatequistas() {
   const [selectedStatus, setSelectedStatus] = useState<InscricaoStatus | "ALL">("PENDING");
 
   const isAdminRoute = location.pathname.startsWith("/admin");
+  const navVariant = (path: string) =>
+    location.pathname === path ? "navActive" : "nav";
 
   useEffect(() => {
     if (!isAdminRoute) {
@@ -301,9 +323,149 @@ export default function AdminInscricoesCatequistas() {
     </div>
   );
 
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("role");
+    } catch {}
+    window.location.href = "/login";
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100">
-      <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 lg:px-8">
+    <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-card transition-transform duration-300 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex h-full flex-col">
+          <div className="flex h-16 items-center justify-between border-b px-4">
+            <Link to="/" className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
+                <Cross className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <span className="font-display text-lg font-semibold">Catequese</span>
+            </Link>
+            <Button variant="ghost" size="icon" onClick={toggleSidebar}>
+              <Menu className="h-5 w-5" />
+            </Button>
+          </div>
+
+          <div className="border-b p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
+                <ShieldCheck className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <p className="font-medium">Área do Admin</p>
+            </div>
+          </div>
+
+          <nav className="flex-1 space-y-1 p-4">
+            <Button variant={navVariant("/admin")} className="w-full justify-start" asChild>
+              <Link to="/admin">
+                <Users className="mr-3 h-4 w-4" />
+                Gerenciar Turmas
+              </Link>
+            </Button>
+            <Button variant={navVariant("/admin/add-catequizando")} className="w-full justify-start" asChild>
+              <Link to="/admin/add-catequizando">
+                <UserPlus className="mr-3 h-4 w-4" />
+                Adicionar Catequizando
+              </Link>
+            </Button>
+            <Button variant={navVariant("/admin/inscricoes-catequistas")} className="w-full justify-start" asChild>
+              <Link to="/admin/inscricoes-catequistas">
+                <Check className="mr-3 h-4 w-4" />
+                Inscrições de Catequista
+              </Link>
+            </Button>
+            <Button variant={navVariant("/admin/chamada")} className="w-full justify-start" asChild>
+              <Link to="/admin/chamada">
+                <ClipboardList className="mr-3 h-4 w-4" />
+                Chamada
+              </Link>
+            </Button>
+            <Button variant={navVariant("/admin/minhas-turmas")} className="w-full justify-start" asChild>
+              <Link to="/admin/minhas-turmas">
+                <Users className="mr-3 h-4 w-4" />
+                Minhas Turmas
+              </Link>
+            </Button>
+            <Button variant={navVariant("/admin/cronograma")} className="w-full justify-start" asChild>
+              <Link to="/admin/cronograma">
+                <Calendar className="mr-3 h-4 w-4" />
+                Cronograma
+              </Link>
+            </Button>
+            <Button variant={navVariant("/admin/material")} className="w-full justify-start" asChild>
+              <Link to="/admin/material">
+                <BookOpen className="mr-3 h-4 w-4" />
+                Material
+              </Link>
+            </Button>
+            <Button variant={navVariant("/admin/musicas")} className="w-full justify-start" asChild>
+              <Link to="/admin/musicas">
+                <Music className="mr-3 h-4 w-4" />
+                Músicas
+              </Link>
+            </Button>
+            <Button variant={navVariant("/admin/contabilidade")} className="w-full justify-start" asChild>
+              <Link to="/admin/contabilidade">
+                <DollarSign className="mr-3 h-4 w-4" />
+                Contabilidade
+              </Link>
+            </Button>
+            <Button variant={navVariant("/admin/historico")} className="w-full justify-start" asChild>
+              <Link to="/admin/historico">
+                <Calendar className="mr-3 h-4 w-4" />
+                Histórico
+              </Link>
+            </Button>
+          </nav>
+
+          <div className="border-t p-4">
+            <Button
+              variant="nav"
+              className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-3 h-4 w-4" />
+              Sair
+            </Button>
+          </div>
+        </div>
+      </aside>
+
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-foreground/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <div className="flex-1">
+        <header className="sticky top-0 z-40 border-b bg-card">
+          <div className="flex h-16 items-center justify-between px-4">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={sidebarOpen ? "lg:hidden" : ""}
+                onClick={toggleSidebar}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-xl font-semibold">Inscrições de Catequista</h1>
+                <p className="text-sm text-muted-foreground">
+                  Revisão separada com aprovação e reprovação administrativas
+                </p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="p-4 md:p-6 lg:p-8">
+          <div className="mx-auto max-w-7xl space-y-6">
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
@@ -314,25 +476,6 @@ export default function AdminInscricoesCatequistas() {
             <p className="mt-2 text-muted-foreground">
               Revisão separada das inscrições públicas de catequista, com aprovação e reprovação próprias.
             </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" asChild>
-              <Link to="/admin" className="gap-2">
-                <ChevronLeft className="h-4 w-4" />
-                Voltar ao painel
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/admin/add-catequizando" className="gap-2">
-                <Users className="h-4 w-4" />
-                Ver pré-matrículas
-              </Link>
-            </Button>
-            <Button variant="outline" onClick={carregarDados} disabled={loading} className="gap-2">
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              Atualizar
-            </Button>
           </div>
         </div>
 
@@ -391,6 +534,8 @@ export default function AdminInscricoesCatequistas() {
             </Tabs>
           </CardContent>
         </Card>
+          </div>
+        </main>
       </div>
     </div>
   );

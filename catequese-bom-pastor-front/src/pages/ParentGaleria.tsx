@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
@@ -158,7 +159,7 @@ let albums = [
 
 export default function ParentGaleria() {
   const [albumsList, setAlbumsList] = useState(albums);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
   const [selectedAlbum, setSelectedAlbum] = useState<(typeof albumsList)[0] | null>(
     null
   );
@@ -253,10 +254,9 @@ export default function ParentGaleria() {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(false)}
+              onClick={toggleSidebar}
             >
-              <X className="h-5 w-5" />
+              <Menu className="h-5 w-5" />
             </Button>
           </div>
 
@@ -326,11 +326,12 @@ export default function ParentGaleria() {
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
         {/* Mobile Header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4 lg:hidden">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSidebarOpen(true)}
+            className={sidebarOpen ? "lg:hidden" : ""}
+            onClick={toggleSidebar}
           >
             <Menu className="h-5 w-5" />
           </Button>
