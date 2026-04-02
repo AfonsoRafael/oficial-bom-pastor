@@ -368,7 +368,7 @@ export default function AdminInscricoesCatequistas() {
             </Button>
             <Button variant={navVariant("/admin/add-catequizando")} className="w-full justify-start" asChild>
               <Link to="/admin/add-catequizando">
-                <UserPlus className="mr-3 h-4 w-4" />
+                <Users className="mr-3 h-4 w-4" />
                 Adicionar Catequizando
               </Link>
             </Button>

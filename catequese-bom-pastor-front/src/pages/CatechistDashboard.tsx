@@ -424,6 +424,14 @@ export default function CatechistDashboard() {
                 </Link>
               </Button>
             )}
+            {isAdminRoute && (
+              <Button variant={navVariant('/admin/inscricoes-catequistas')} className="w-full justify-start" asChild>
+                <Link to="/admin/inscricoes-catequistas">
+                  <ClipboardList className="mr-3 h-4 w-4" />
+                  Inscrições de Catequista
+                </Link>
+              </Button>
+            )}
             <Button 
               variant={navVariant(`${baseRoute}/chamada`)} 
               className="w-full justify-start" 
@@ -467,6 +475,18 @@ export default function CatechistDashboard() {
                 <Link to="/admin/contabilidade">
                   <DollarSign className="mr-3 h-4 w-4" />
                   Contabilidade
+                </Link>
+              </Button>
+            )}
+            {isAdminRoute && (
+              <Button
+                variant={navVariant("/admin/historico")}
+                className="w-full justify-start"
+                asChild
+              >
+                <Link to="/admin/historico">
+                  <Calendar className="mr-3 h-4 w-4" />
+                  Histórico
                 </Link>
               </Button>
             )}

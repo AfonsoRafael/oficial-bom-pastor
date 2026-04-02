@@ -681,6 +681,14 @@ export default function MinhasTurmas() {
                 </Link>
               </Button>
             )}
+            {isAdminRoute && (
+              <Button variant={navVariant('/admin/inscricoes-catequistas')} className="w-full justify-start" asChild>
+                <Link to="/admin/inscricoes-catequistas">
+                  <ClipboardList className="mr-3 h-4 w-4" />
+                  Inscrições de Catequista
+                </Link>
+              </Button>
+            )}
             <Button
               variant={navVariant(`${baseRoute}/chamada`)}
               className="w-full justify-start"

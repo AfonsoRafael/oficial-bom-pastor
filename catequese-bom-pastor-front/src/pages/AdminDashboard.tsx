@@ -563,7 +563,7 @@ export default function AdminDashboard() {
             </Button>
             <Button variant={navVariant("/admin/add-catequizando")} className="w-full justify-start" asChild>
               <Link to="/admin/add-catequizando">
-                <Plus className="mr-3 h-4 w-4" />
+                <Users className="mr-3 h-4 w-4" />
                 Adicionar Catequizando
               </Link>
             </Button>
@@ -581,7 +581,7 @@ export default function AdminDashboard() {
             </Button>
             <Button variant={navVariant("/admin/minhas-turmas")} className="w-full justify-start" asChild>
               <Link to="/admin/minhas-turmas">
-                <GraduationCap className="mr-3 h-4 w-4" />
+                <Users className="mr-3 h-4 w-4" />
                 Minhas Turmas
               </Link>
             </Button>
