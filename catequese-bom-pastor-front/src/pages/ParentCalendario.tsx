@@ -203,11 +203,7 @@ export default function ParentCronograma() {
               </div>
               <span className="font-display text-lg font-semibold">Catequese</span>
             </Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-            >
+            <Button variant="ghost" size="icon" onClick={toggleSidebar}>
               <Menu className="h-5 w-5" />
             </Button>
           </div>
@@ -279,14 +275,7 @@ export default function ParentCronograma() {
       <div className="flex flex-1 flex-col">
         {/* Mobile Header */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={sidebarOpen ? "lg:hidden" : ""}
-            onClick={toggleSidebar}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
+          <div className="w-10" />
           <span className="font-display text-lg font-semibold">Cronograma</span>
           <div className="w-10" />
         </header>

@@ -11,6 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
+import { SidebarNav } from "@/components/layout/SidebarNav";
+import { ADMIN_NAV_ITEMS } from "@/lib/sidebarNavItems";
 import {
   Dialog,
   DialogContent,
@@ -159,7 +161,7 @@ export default function AddCatequizando() {
           ? preMatriculasData.preMatriculas
           : Array.isArray(preMatriculasData)
             ? preMatriculasData
-          : [];
+            : [];
         setPreMatriculas(preMatriculasList.map(mapPreMatricula));
       } else {
         const errorBody = await preMatriculasResponse.json().catch(() => ({}));

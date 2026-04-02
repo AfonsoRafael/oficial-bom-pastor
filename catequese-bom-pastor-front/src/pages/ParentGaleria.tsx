@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { SidebarNav } from "@/components/layout/SidebarNav";
+import { PARENT_NAV_ITEMS } from "@/lib/sidebarNavItems";
 import {
   Card,
   CardContent,
@@ -160,6 +162,7 @@ let albums = [
 export default function ParentGaleria() {
   const [albumsList, setAlbumsList] = useState(albums);
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
+  const location = useLocation();
   const [selectedAlbum, setSelectedAlbum] = useState<(typeof albumsList)[0] | null>(
     null
   );
@@ -251,11 +254,7 @@ export default function ParentGaleria() {
               </div>
               <span className="font-display text-lg font-semibold">Catequese</span>
             </Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-            >
+            <Button variant="ghost" size="icon" onClick={toggleSidebar}>
               <Menu className="h-5 w-5" />
             </Button>
           </div>
@@ -273,31 +272,7 @@ export default function ParentGaleria() {
             </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 space-y-1 p-4">
-            <Button variant="nav" className="w-full justify-start" asChild>
-              <Link to="/pais">
-                <Users className="mr-3 h-4 w-4" />
-                Meus Filhos
-              </Link>
-            </Button>
-            <Button variant="nav" className="w-full justify-start" asChild>
-              <Link to="/pais/documentos">
-                <FileText className="mr-3 h-4 w-4" />
-                Documentos
-              </Link>
-            </Button>
-            <Button variant="nav" className="w-full justify-start" asChild>
-              <Link to="/pais/cronograma">
-                <Calendar className="mr-3 h-4 w-4" />
-                Cronograma
-              </Link>
-            </Button>
-            <Button variant="navActive" className="w-full justify-start">
-              <Camera className="mr-3 h-4 w-4" />
-              Galeria
-            </Button>
-          </nav>
+          <SidebarNav items={PARENT_NAV_ITEMS} pathname={location.pathname} />
 
           {/* Logout */}
           <div className="border-t p-4">
@@ -327,14 +302,7 @@ export default function ParentGaleria() {
       <div className="flex flex-1 flex-col">
         {/* Mobile Header */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={sidebarOpen ? "lg:hidden" : ""}
-            onClick={toggleSidebar}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
+          <div className="w-10" />
           <span className="font-display text-lg font-semibold">Galeria</span>
           <div className="w-10" />
         </header>

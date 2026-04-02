@@ -48,6 +48,8 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
+import { SidebarNav } from "@/components/layout/SidebarNav";
+import { getDashboardNavItems } from "@/lib/sidebarNavItems";
 import { Link, useLocation } from "react-router-dom";
 
 interface DocumentInfo {
@@ -585,8 +587,6 @@ export default function MinhasTurmas() {
   const baseRoute = location.pathname.startsWith('/admin') ? '/admin' : '/catequista';
   const isAdminRoute = baseRoute === '/admin';
   
-  const navVariant = (path: string) =>
-    location.pathname === path ? "navActive" : "nav";
   const [selectedTurma, setSelectedTurma] = useState<Turma>(mockTurmas[0]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -660,102 +660,7 @@ export default function MinhasTurmas() {
             </div>
           </div>
 
-          <nav className="flex-1 space-y-1 p-4">
-            {isAdminRoute && (
-              <Button
-                variant={navVariant('/admin')}
-                className="w-full justify-start"
-                asChild
-              >
-                <Link to="/admin">
-                  <Users className="mr-3 h-4 w-4" />
-                  Gerenciar Turmas
-                </Link>
-              </Button>
-            )}
-            {isAdminRoute && (
-              <Button variant={navVariant('/admin/add-catequizando')} className="w-full justify-start" asChild>
-                <Link to="/admin/add-catequizando">
-                  <Users className="mr-3 h-4 w-4" />
-                  Adicionar Catequizando
-                </Link>
-              </Button>
-            )}
-            {isAdminRoute && (
-              <Button variant={navVariant('/admin/inscricoes-catequistas')} className="w-full justify-start" asChild>
-                <Link to="/admin/inscricoes-catequistas">
-                  <ClipboardList className="mr-3 h-4 w-4" />
-                  Inscrições de Catequista
-                </Link>
-              </Button>
-            )}
-            <Button
-              variant={navVariant(`${baseRoute}/chamada`)}
-              className="w-full justify-start"
-              asChild
-            >
-              <Link to={`${baseRoute}/chamada`}>
-                <ClipboardList className="mr-3 h-4 w-4" />
-                Chamada
-              </Link>
-            </Button>
-            <Button
-              variant={navVariant(`${baseRoute}/minhas-turmas`)}
-              className="w-full justify-start"
-              asChild
-            >
-              <Link to={`${baseRoute}/minhas-turmas`}>
-                <Users className="mr-3 h-4 w-4" />
-                {'Minhas Turmas'}
-              </Link>
-            </Button>
-            <Button
-              variant={navVariant(`${baseRoute}/cronograma`)}
-              className="w-full justify-start"
-              asChild
-            >
-              <Link to={`${baseRoute}/cronograma`}>
-                <CalendarNav className="mr-3 h-4 w-4" />
-                Cronograma
-              </Link>
-            </Button>
-            <Button
-              variant={navVariant(`${baseRoute}/material`)}
-              className="w-full justify-start"
-              asChild
-            >
-              <Link to={`${baseRoute}/material`}>
-                <BookOpen className="mr-3 h-4 w-4" />
-                Material
-              </Link>
-            </Button>
-            <Button
-              variant={navVariant(`${baseRoute}/musicas`)}
-              className="w-full justify-start"
-              asChild
-            >
-              <Link to={`${baseRoute}/musicas`}>
-                <Music className="mr-3 h-4 w-4" />
-                Músicas
-              </Link>
-            </Button>
-            {isAdminRoute && (
-              <Button variant={navVariant("/admin/contabilidade")} className="w-full justify-start" asChild>
-                <Link to="/admin/contabilidade">
-                  <DollarSign className="mr-3 h-4 w-4" />
-                  Contabilidade
-                </Link>
-              </Button>
-            )}
-            {isAdminRoute && (
-              <Button variant={navVariant("/admin/historico")} className="w-full justify-start" asChild>
-                <Link to="/admin/historico">
-                  <Calendar className="mr-3 h-4 w-4" />
-                  Histórico
-                </Link>
-              </Button>
-            )}
-          </nav>
+          <SidebarNav items={getDashboardNavItems(isAdminRoute)} pathname={location.pathname} />
 
           <div className="border-t p-4">
             <Button

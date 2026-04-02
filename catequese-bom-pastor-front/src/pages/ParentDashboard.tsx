@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { SidebarNav } from "@/components/layout/SidebarNav";
+import { PARENT_NAV_ITEMS } from "@/lib/sidebarNavItems";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -136,6 +138,7 @@ const quickActions = [
 
 export default function ParentDashboard() {
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
+  const location = useLocation();
   const [selectedChild, setSelectedChild] = useState<(typeof children)[number] | null>(null);
   const [communicationOpen, setCommunicationOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -247,11 +250,7 @@ export default function ParentDashboard() {
               </div>
               <span className="font-display text-lg font-semibold">Catequese</span>
             </Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-            >
+            <Button variant="ghost" size="icon" onClick={toggleSidebar}>
               <Menu className="h-5 w-5" />
             </Button>
           </div>
@@ -269,31 +268,7 @@ export default function ParentDashboard() {
             </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 space-y-1 p-4">
-            <Button variant="navActive" className="w-full justify-start">
-              <Users className="mr-3 h-4 w-4" />
-              Meus Filhos
-            </Button>
-            <Button variant="nav" className="w-full justify-start" asChild>
-              <Link to="/pais/documentos">
-                <FileText className="mr-3 h-4 w-4" />
-                Documentos
-              </Link>
-            </Button>
-            <Button variant="nav" className="w-full justify-start" asChild>
-              <Link to="/pais/cronograma">
-                <Calendar className="mr-3 h-4 w-4" />
-                Cronograma
-              </Link>
-            </Button>
-            <Button variant="nav" className="w-full justify-start" asChild>
-              <Link to="/pais/galeria">
-                <Camera className="mr-3 h-4 w-4" />
-                Galeria
-              </Link>
-            </Button>
-          </nav>
+          <SidebarNav items={PARENT_NAV_ITEMS} pathname={location.pathname} />
 
           {/* Logout */}
           <div className="border-t p-4">
@@ -319,9 +294,7 @@ export default function ParentDashboard() {
       <div className="flex flex-1 flex-col">
         {/* Mobile Header */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4">
-          <Button variant="ghost" size="icon" className={sidebarOpen ? "lg:hidden" : ""} onClick={toggleSidebar}>
-            <Menu className="h-5 w-5" />
-          </Button>
+          <div className="w-10" />
           <span className="font-display text-lg font-semibold">Área dos Pais</span>
           <div className="relative">
             <Button variant="ghost" size="icon">

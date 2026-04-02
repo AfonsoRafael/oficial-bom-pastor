@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
+import { SidebarNav } from "@/components/layout/SidebarNav";
+import { ADMIN_NAV_ITEMS } from "@/lib/sidebarNavItems";
 import { fetchWithAuth } from "@/lib/api";
 import { API_ROUTES } from "@/lib/routes";
 import {
@@ -71,9 +73,6 @@ export default function AdminInscricoesCatequistas() {
   const [selectedStatus, setSelectedStatus] = useState<InscricaoStatus | "ALL">("PENDING");
 
   const isAdminRoute = location.pathname.startsWith("/admin");
-  const navVariant = (path: string) =>
-    location.pathname === path ? "navActive" : "nav";
-
   useEffect(() => {
     if (!isAdminRoute) {
       toast({
@@ -359,68 +358,7 @@ export default function AdminInscricoesCatequistas() {
             </div>
           </div>
 
-          <nav className="flex-1 space-y-1 p-4">
-            <Button variant={navVariant("/admin")} className="w-full justify-start" asChild>
-              <Link to="/admin">
-                <Users className="mr-3 h-4 w-4" />
-                Gerenciar Turmas
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/add-catequizando")} className="w-full justify-start" asChild>
-              <Link to="/admin/add-catequizando">
-                <Users className="mr-3 h-4 w-4" />
-                Adicionar Catequizando
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/inscricoes-catequistas")} className="w-full justify-start" asChild>
-              <Link to="/admin/inscricoes-catequistas">
-                <Check className="mr-3 h-4 w-4" />
-                Inscrições de Catequista
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/chamada")} className="w-full justify-start" asChild>
-              <Link to="/admin/chamada">
-                <ClipboardList className="mr-3 h-4 w-4" />
-                Chamada
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/minhas-turmas")} className="w-full justify-start" asChild>
-              <Link to="/admin/minhas-turmas">
-                <Users className="mr-3 h-4 w-4" />
-                Minhas Turmas
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/cronograma")} className="w-full justify-start" asChild>
-              <Link to="/admin/cronograma">
-                <Calendar className="mr-3 h-4 w-4" />
-                Cronograma
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/material")} className="w-full justify-start" asChild>
-              <Link to="/admin/material">
-                <BookOpen className="mr-3 h-4 w-4" />
-                Material
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/musicas")} className="w-full justify-start" asChild>
-              <Link to="/admin/musicas">
-                <Music className="mr-3 h-4 w-4" />
-                Músicas
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/contabilidade")} className="w-full justify-start" asChild>
-              <Link to="/admin/contabilidade">
-                <DollarSign className="mr-3 h-4 w-4" />
-                Contabilidade
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/historico")} className="w-full justify-start" asChild>
-              <Link to="/admin/historico">
-                <Calendar className="mr-3 h-4 w-4" />
-                Histórico
-              </Link>
-            </Button>
-          </nav>
+          <SidebarNav items={ADMIN_NAV_ITEMS} pathname={location.pathname} />
 
           <div className="border-t p-4">
             <Button

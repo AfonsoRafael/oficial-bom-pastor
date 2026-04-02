@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { SidebarNav } from "@/components/layout/SidebarNav";
+import { PARENT_NAV_ITEMS } from "@/lib/sidebarNavItems";
 import {
   Card,
   CardContent,
@@ -131,6 +133,7 @@ const uploadedDocuments = [
 
 export default function ParentDocumentos() {
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
+  const location = useLocation();
   const [selectedChild, setSelectedChild] = useState<string>(
     children[0].id.toString()
   );
@@ -202,11 +205,7 @@ export default function ParentDocumentos() {
               </div>
               <span className="font-display text-lg font-semibold">Catequese</span>
             </Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-            >
+            <Button variant="ghost" size="icon" onClick={toggleSidebar}>
               <Menu className="h-5 w-5" />
             </Button>
           </div>
@@ -224,31 +223,7 @@ export default function ParentDocumentos() {
             </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 space-y-1 p-4">
-            <Button variant="nav" className="w-full justify-start" asChild>
-              <Link to="/pais">
-                <Users className="mr-3 h-4 w-4" />
-                Meus Filhos
-              </Link>
-            </Button>
-            <Button variant="navActive" className="w-full justify-start">
-              <FileText className="mr-3 h-4 w-4" />
-              Documentos
-            </Button>
-            <Button variant="nav" className="w-full justify-start" asChild>
-              <Link to="/pais/cronograma">
-                <Calendar className="mr-3 h-4 w-4" />
-                Cronograma
-              </Link>
-            </Button>
-            <Button variant="nav" className="w-full justify-start" asChild>
-              <Link to="/pais/galeria">
-                <Camera className="mr-3 h-4 w-4" />
-                Galeria
-              </Link>
-            </Button>
-          </nav>
+          <SidebarNav items={PARENT_NAV_ITEMS} pathname={location.pathname} />
 
           {/* Logout */}
           <div className="border-t p-4">
@@ -278,14 +253,7 @@ export default function ParentDocumentos() {
       <div className="flex flex-1 flex-col">
         {/* Mobile Header */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={sidebarOpen ? "lg:hidden" : ""}
-            onClick={toggleSidebar}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
+          <div className="w-10" />
           <span className="font-display text-lg font-semibold">Documentos</span>
           <div className="w-10" />
         </header>
@@ -294,7 +262,7 @@ export default function ParentDocumentos() {
         <main className="flex-1 overflow-y-auto">
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-8">
             <div className="max-w-5xl mx-auto">
-              {/* Header */}
+            <div className="w-10" />
               <div className="mb-8">
                 <h1 className="text-3xl font-bold text-slate-900">Documentos</h1>
                 <p className="text-slate-600 mt-1">

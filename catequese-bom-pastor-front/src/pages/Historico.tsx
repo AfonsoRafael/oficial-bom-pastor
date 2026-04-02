@@ -38,6 +38,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
+import { SidebarNav } from "@/components/layout/SidebarNav";
+import { ADMIN_NAV_ITEMS } from "@/lib/sidebarNavItems";
 import { Link, useLocation } from "react-router-dom";
 
 // Mock data for historical records
@@ -160,9 +162,6 @@ export default function Historico() {
 
   const isAdminRoute = location.pathname.startsWith("/admin");
   const baseRoute = isAdminRoute ? "/admin" : "/catequista";
-  const navVariant = (path: string) =>
-    location.pathname === path ? "navActive" : "nav";
-
   const getColorByLevel = (level: number) => {
     switch (level) {
       case 1:
@@ -204,7 +203,6 @@ export default function Historico() {
             </Button>
           </div>
 
-          {/* User Info */}
           <div className="border-b p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
@@ -216,69 +214,7 @@ export default function Historico() {
             </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 space-y-1 p-4">
-            <Button variant={navVariant("/admin")} className="w-full justify-start" asChild>
-              <Link to="/admin">
-                <Users className="mr-3 h-4 w-4" />
-                Gerenciar Turmas
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/add-catequizando")} className="w-full justify-start" asChild>
-              <Link to="/admin/add-catequizando">
-                <Users className="mr-3 h-4 w-4" />
-                Adicionar Catequizando
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/inscricoes-catequistas")} className="w-full justify-start" asChild>
-              <Link to="/admin/inscricoes-catequistas">
-                <ClipboardList className="mr-3 h-4 w-4" />
-                Inscrições de Catequista
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/chamada")} className="w-full justify-start" asChild>
-              <Link to="/admin/chamada">
-                <ClipboardList className="mr-3 h-4 w-4" />
-                Chamada
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/minhas-turmas")} className="w-full justify-start" asChild>
-              <Link to="/admin/minhas-turmas">
-                <Users className="mr-3 h-4 w-4" />
-                Minhas Turmas
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/cronograma")} className="w-full justify-start" asChild>
-              <Link to="/admin/cronograma">
-                <Calendar className="mr-3 h-4 w-4" />
-                Cronograma
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/material")} className="w-full justify-start" asChild>
-              <Link to="/admin/material">
-                <BookOpen className="mr-3 h-4 w-4" />
-                Material
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/musicas")} className="w-full justify-start" asChild>
-              <Link to="/admin/musicas">
-                <Music className="mr-3 h-4 w-4" />
-                Músicas
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/contabilidade")} className="w-full justify-start" asChild>
-              <Link to="/admin/contabilidade">
-                <DollarSign className="mr-3 h-4 w-4" />
-                Contabilidade
-              </Link>
-            </Button>
-            <Button variant={navVariant("/admin/historico")} className="w-full justify-start" asChild>
-              <Link to="/admin/historico">
-                <Archive className="mr-3 h-4 w-4" />
-                Histórico
-              </Link>
-            </Button>
-          </nav>
+          <SidebarNav items={ADMIN_NAV_ITEMS} pathname={location.pathname} />
 
           {/* Logout */}
           <div className="border-t p-4">
