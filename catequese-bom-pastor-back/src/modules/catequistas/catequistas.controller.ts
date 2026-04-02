@@ -1,11 +1,18 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { CatequistasService } from './catequistas.service';
-import { CreateCatequistaDto, CreateCatequistaInscricaoDto, UpdateCatequistaDto } from './dto/catequista.dto';
+import {
+  ApproveCatequistaInscricaoDto,
+  CreateCatequistaDto,
+  CreateCatequistaInscricaoDto,
+  RejectCatequistaInscricaoDto,
+  UpdateCatequistaDto,
+} from './dto/catequista.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { GetUser } from '../../common/decorators/get-user.decorator';
 import { USER_ROLES } from '../../common/constants/user-roles';
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -114,6 +121,35 @@ export class CatequistasController {
       limit ? parseInt(limit, 10) : 20,
       offset ? parseInt(offset, 10) : 0,
     );
+  }
+
+  @Get('inscricoes/:id')
+  @Roles(USER_ROLES.ADMINISTRADOR)
+  @ApiOperation({ summary: 'Buscar inscrição de catequista por ID (ADMIN only)' })
+  findOneInscricao(@Param('id') id: string) {
+    return this.catequistasService.findOneInscricao(id);
+  }
+
+  @Put('inscricoes/:id/approve')
+  @Roles(USER_ROLES.ADMINISTRADOR)
+  @ApiOperation({ summary: 'Aprovar inscrição de catequista (ADMIN only)' })
+  approveInscricao(
+    @Param('id') id: string,
+    @Body() dto: ApproveCatequistaInscricaoDto,
+    @GetUser('id') adminId: string,
+  ) {
+    return this.catequistasService.approveInscricao(id, adminId, dto.observacoesAdmin);
+  }
+
+  @Put('inscricoes/:id/reject')
+  @Roles(USER_ROLES.ADMINISTRADOR)
+  @ApiOperation({ summary: 'Reprovar inscrição de catequista (ADMIN only)' })
+  rejectInscricao(
+    @Param('id') id: string,
+    @Body() dto: RejectCatequistaInscricaoDto,
+    @GetUser('id') adminId: string,
+  ) {
+    return this.catequistasService.rejectInscricao(id, adminId, dto.observacoesAdmin);
   }
 
   @Get(':id')

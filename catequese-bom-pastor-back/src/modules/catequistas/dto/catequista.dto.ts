@@ -141,3 +141,23 @@ export class CreateCatequistaInscricaoDto {
   @IsString()
   documentoCpfBase64?: string;
 }
+
+export class ApproveCatequistaInscricaoDto {
+  @ApiPropertyOptional({
+    description: 'Observações administrativas da aprovação',
+    example: 'Documentação conferida e aprovada.',
+  })
+  @IsOptional()
+  @IsString()
+  observacoesAdmin?: string;
+}
+
+export class RejectCatequistaInscricaoDto {
+  @ApiPropertyOptional({
+    description: 'Motivo ou observações administrativas da reprovação',
+    example: 'Necessário reenviar comprovante de residência legível.',
+  })
+  @IsOptional()
+  @IsString()
+  observacoesAdmin?: string;
+}

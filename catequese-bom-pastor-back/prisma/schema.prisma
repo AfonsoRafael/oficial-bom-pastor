@@ -21,8 +21,9 @@ model Administrador {
   updatedAt           DateTime @updatedAt
 
   // Relações
-  turmasCriadas          Turma[]        @relation("createdBy")
-  preMatriculasDecididas PreMatricula[]
+  turmasCriadas             Turma[]             @relation("createdBy")
+  preMatriculasDecididas    PreMatricula[]
+  inscricoesCatequistasDecididas InscricaoCatequista[]
 
   @@map("administrador")
 }
@@ -137,6 +138,10 @@ model InscricaoCatequista {
   alergias               String?
   ComprovanteResidencia  String?
   DocumentoCpf           String?
+  decisaoEm              DateTime?
+  decisaoPorId           String?
+  decisaoPor             Administrador?            @relation(fields: [decisaoPorId], references: [id], onDelete: SetNull)
+  observacoesAdmin       String?
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
 

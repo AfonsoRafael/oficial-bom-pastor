@@ -397,6 +397,12 @@ export default function AddCatequizando() {
                 Adicionar Catequizando
               </Link>
             </Button>
+            <Button variant={navVariant("/admin/inscricoes-catequistas")} className="w-full justify-start" asChild>
+              <Link to="/admin/inscricoes-catequistas">
+                <Check className="mr-3 h-4 w-4" />
+                Inscrições de Catequista
+              </Link>
+            </Button>
             <Button variant={navVariant("/admin/chamada")} className="w-full justify-start" asChild>
               <Link to="/admin/chamada">
                 <ClipboardList className="mr-3 h-4 w-4" />

@@ -3,6 +3,9 @@ export const API_ROUTES = {
   preMatriculasApprove: (id: number | string) => `/api/pre-matriculas/${id}/approve`,
   preMatriculasReject: (id: number | string) => `/api/pre-matriculas/${id}/reject`,
   catequistasInscricao: "/api/catequistas/inscricao",
+  catequistasInscricoes: "/api/catequistas/inscricoes",
+  catequistasInscricoesApprove: (id: number | string) => `/api/catequistas/inscricoes/${id}/approve`,
+  catequistasInscricoesReject: (id: number | string) => `/api/catequistas/inscricoes/${id}/reject`,
   auth: {
     login: "/api/auth/login",
     register: "/api/auth/register",

@@ -1,16 +1,17 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateCatequistaDto, CreateCatequistaInscricaoDto, UpdateCatequistaDto } from './dto/catequista.dto';
 import { S3StorageService } from '../../common/storage/s3-storage.service';
+import { MailerService } from '../../common/mailer/mailer.service';
 
 @Injectable()
 export class CatequistasService {
   constructor(
     private prisma: PrismaService,
     private s3StorageService: S3StorageService,
+    private mailerService: MailerService,
   ) {}
 
   async findAll() {
@@ -53,76 +54,178 @@ export class CatequistasService {
       'documento-cpf',
     );
 
-    const createdRows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
-      INSERT INTO "inscricoes_catequistas"
-      (
-        "id",
-        "status",
-        "nome",
-        "dataNascimento",
-        "dataBatismo",
-        "email",
-        "telefone",
-        "casado",
-        "casadaIgrejaCatolica",
-        "sacramentos",
-        "alergias",
-        "ComprovanteResidencia",
-        "DocumentoCpf",
-        "createdAt",
-        "updatedAt"
-      )
-      VALUES
-      (
-        ${randomUUID()},
-        'PENDING'::"InscricaoCatequistaStatus",
-        ${dto.nome},
-        ${new Date(dto.dataNascimento)},
-        ${dto.dataBatismo ? new Date(dto.dataBatismo) : null},
-        ${dto.email},
-        ${dto.telefone},
-        ${dto.casado},
-        ${dto.casadaIgrejaCatolica ?? null},
-        ${dto.sacramentos ?? null},
-        ${dto.alergias ?? null},
-        ${comprovanteResidenciaUrl ?? null},
-        ${documentoCpfUrl ?? null},
-        NOW(),
-        NOW()
-      )
-      RETURNING *
-    `);
+    const inscricao = await this.prisma.inscricaoCatequista.create({
+      data: {
+        nome: dto.nome,
+        dataNascimento: new Date(dto.dataNascimento),
+        dataBatismo: dto.dataBatismo ? new Date(dto.dataBatismo) : null,
+        email: dto.email,
+        telefone: dto.telefone,
+        casado: dto.casado,
+        casadaIgrejaCatolica: dto.casadaIgrejaCatolica ?? null,
+        sacramentos: dto.sacramentos ?? null,
+        alergias: dto.alergias ?? null,
+        ComprovanteResidencia: comprovanteResidenciaUrl ?? null,
+        DocumentoCpf: documentoCpfUrl ?? null,
+      },
+      include: {
+        decisaoPor: true,
+      },
+    });
 
-    return createdRows[0];
+    await this.notifyAdmins(inscricao.id, inscricao.nome);
+
+    return inscricao;
   }
 
   async findAllInscricoes(status?: string, limit: number = 20, offset: number = 0) {
     const safeLimit = Math.max(1, Math.min(limit, 100));
     const safeOffset = Math.max(0, offset);
-    const statusFilter = status
-      ? Prisma.sql`WHERE "status" = ${status}::"InscricaoCatequistaStatus"`
-      : Prisma.empty;
+    const where = status ? { status: status as Prisma.InscricaoCatequistaStatus } : undefined;
 
-    const [inscricoes, totalRows] = await Promise.all([
-      this.prisma.$queryRaw<any[]>(Prisma.sql`
-        SELECT *
-        FROM "inscricoes_catequistas"
-        ${statusFilter}
-        ORDER BY "createdAt" DESC
-        LIMIT ${safeLimit}
-        OFFSET ${safeOffset}
-      `),
-      this.prisma.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
-        SELECT COUNT(*)::bigint AS total
-        FROM "inscricoes_catequistas"
-        ${statusFilter}
-      `),
+    const [inscricoes, total] = await Promise.all([
+      this.prisma.inscricaoCatequista.findMany({
+        where,
+        include: {
+          decisaoPor: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: safeLimit,
+        skip: safeOffset,
+      }),
+      this.prisma.inscricaoCatequista.count({ where }),
     ]);
 
     return {
-      total: Number(totalRows[0]?.total || 0),
+      total,
       inscricoes,
     };
+  }
+
+  async findOneInscricao(id: string) {
+    const inscricao = await this.prisma.inscricaoCatequista.findUnique({
+      where: { id },
+      include: {
+        decisaoPor: true,
+      },
+    });
+
+    if (!inscricao) {
+      throw new NotFoundException('Inscricao de catequista not found');
+    }
+
+    return inscricao;
+  }
+
+  async approveInscricao(id: string, adminId: string, observacoesAdmin?: string) {
+    const inscricao = await this.prisma.inscricaoCatequista.findUnique({
+      where: { id },
+    });
+
+    if (!inscricao) {
+      throw new NotFoundException('Inscricao de catequista not found');
+    }
+
+    if (inscricao.status === 'REJECTED') {
+      throw new BadRequestException('Inscricao de catequista already rejected');
+    }
+
+    if (inscricao.status === 'APPROVED') {
+      return this.prisma.inscricaoCatequista.findUniqueOrThrow({
+        where: { id },
+        include: {
+          decisaoPor: true,
+        },
+      });
+    }
+
+    const [existingAdmin, existingResponsavel, existingCatequista] = await Promise.all([
+      this.prisma.administrador.findUnique({ where: { email: inscricao.email } }),
+      this.prisma.responsavel.findUnique({ where: { email: inscricao.email } }),
+      this.prisma.catequista.findUnique({ where: { email: inscricao.email } }),
+    ]);
+
+    if (existingAdmin || existingResponsavel || existingCatequista) {
+      throw new ConflictException('Este email ja esta cadastrado em outro perfil');
+    }
+
+    let temporaryPassword: string | undefined;
+
+    const approvedInscricao = await this.prisma.$transaction(async (tx) => {
+      temporaryPassword = this.generateTemporaryPassword();
+      const temporaryPasswordHash = await bcrypt.hash(temporaryPassword, 10);
+
+      let catequista = await tx.catequista.findUnique({ where: { email: inscricao.email } });
+
+      if (!catequista) {
+        catequista = await tx.catequista.create({
+          data: {
+            nome: inscricao.nome,
+            email: inscricao.email,
+            senha: temporaryPasswordHash,
+            telefone: inscricao.telefone,
+            firstAccessComplete: false,
+          },
+        });
+      }
+
+      return tx.inscricaoCatequista.update({
+        where: { id },
+        data: {
+          status: 'APPROVED',
+          decisaoEm: new Date(),
+          decisaoPorId: adminId,
+          observacoesAdmin,
+        },
+        include: {
+          decisaoPor: true,
+        },
+      });
+    });
+
+    await this.notifyCandidateDecision(approvedInscricao.email, approvedInscricao.nome, 'APPROVED', temporaryPassword);
+
+    return approvedInscricao;
+  }
+
+  async rejectInscricao(id: string, adminId: string, observacoesAdmin?: string) {
+    const inscricao = await this.prisma.inscricaoCatequista.findUnique({
+      where: { id },
+    });
+
+    if (!inscricao) {
+      throw new NotFoundException('Inscricao de catequista not found');
+    }
+
+    if (inscricao.status === 'REJECTED') {
+      return this.prisma.inscricaoCatequista.findUniqueOrThrow({
+        where: { id },
+        include: {
+          decisaoPor: true,
+        },
+      });
+    }
+
+    if (inscricao.status === 'APPROVED') {
+      throw new BadRequestException('Inscricao de catequista already approved');
+    }
+
+    const rejectedInscricao = await this.prisma.inscricaoCatequista.update({
+      where: { id },
+      data: {
+        status: 'REJECTED',
+        decisaoEm: new Date(),
+        decisaoPorId: adminId,
+        observacoesAdmin,
+      },
+      include: {
+        decisaoPor: true,
+      },
+    });
+
+    await this.notifyCandidateDecision(rejectedInscricao.email, rejectedInscricao.nome, 'REJECTED');
+
+    return rejectedInscricao;
   }
 
   async update(id: string, dto: UpdateCatequistaDto) {
@@ -173,5 +276,66 @@ export class CatequistasService {
     }
 
     return String(dataUrlMatch[1] || '').toLowerCase().trim();
+  }
+
+  private async notifyAdmins(preMatriculaId: string, nome: string) {
+    const admins = await this.prisma.administrador.findMany({
+      select: { email: true, nome: true },
+    });
+
+    const to = admins.map((admin) => admin.email).filter(Boolean);
+
+    if (!to.length) {
+      return;
+    }
+
+    await this.mailerService.sendMail({
+      to,
+      subject: 'Nova inscricao de catequista aguardando aprovacao',
+      text: [
+        'Nova inscricao de catequista recebida.',
+        `ID: ${preMatriculaId}`,
+        `Catequista: ${nome}`,
+        'Acesse o painel para aprovar ou reprovar.',
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    });
+  }
+
+  private async notifyCandidateDecision(
+    email: string,
+    nome: string,
+    status: 'APPROVED' | 'REJECTED',
+    temporaryPassword?: string,
+  ) {
+    const subject =
+      status === 'APPROVED'
+        ? 'Sua inscricao de catequista foi aprovada'
+        : 'Sua inscricao de catequista foi reprovada';
+
+    const text =
+      status === 'APPROVED'
+        ? [
+            'Sua inscricao de catequista foi aprovada.',
+            `Nome: ${nome}`,
+            `Senha temporaria: ${temporaryPassword || 'definida pela coordenação'}`,
+            'Acesse o sistema com seu email e essa senha inicial.',
+          ]
+        : [
+            'Sua inscricao de catequista nao foi aprovada no momento.',
+            `Nome: ${nome}`,
+            'Caso queira, entre em contato com a coordenação para mais detalhes.',
+          ];
+
+    await this.mailerService.sendMail({
+      to: [email],
+      subject,
+      text: text.join('\n'),
+    });
+  }
+
+  private generateTemporaryPassword() {
+    return `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   }
 }

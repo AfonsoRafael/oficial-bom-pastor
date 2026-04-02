@@ -53,6 +53,9 @@ import {
   Music,
   MessageCircle,
   Plus,
+  Pencil,
+  Trash2,
+  Loader2,
   Send,
   Shield,
   Users,
@@ -142,6 +145,9 @@ export default function AdminDashboard() {
   const [selectedLevel, setSelectedLevel] = useState<string>("all");
   const [selectedCatequista, setSelectedCatequista] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingTurmaId, setEditingTurmaId] = useState<string | null>(null);
+  const [savingTurma, setSavingTurma] = useState(false);
+  const [deletingTurmaId, setDeletingTurmaId] = useState<string | null>(null);
   const [communicationOpen, setCommunicationOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -379,26 +385,43 @@ export default function AdminDashboard() {
       return;
     }
 
+    const levelNumber = Number(formData.level);
+    if (!Number.isInteger(levelNumber) || levelNumber < 1 || levelNumber > 3) {
+      alert("A etapa deve ser Nível I, II ou III");
+      return;
+    }
+
+    setSavingTurma(true);
     try {
-      const response = await fetchWithAuth(API_ROUTES.turmas, {
-        method: "POST",
-        body: JSON.stringify({
-          nome: formData.name,
-          ano: parseInt(formData.level),
-          horario: formData.schedule,
-          sala: formData.room || undefined,
-          catequistaId: formData.catequistatId || undefined,
-        }),
-      });
+      const isEditing = Boolean(editingTurmaId);
+      const response = await fetchWithAuth(
+        isEditing ? `${API_ROUTES.turmas}/${editingTurmaId}` : API_ROUTES.turmas,
+        {
+          method: isEditing ? "PATCH" : "POST",
+          body: JSON.stringify({
+            nome: formData.name,
+            ano: levelNumber,
+            horario: formData.schedule,
+            sala: formData.room || undefined,
+            catequistaId: formData.catequistatId || undefined,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error?.message || "Não foi possível criar a turma");
+        alert(
+          error?.message ||
+            (isEditing
+              ? "Não foi possível atualizar a turma"
+              : "Não foi possível criar a turma")
+        );
         return;
       }
 
       await carregarDados();
       setDialogOpen(false);
+      setEditingTurmaId(null);
       setFormData({
         name: "",
         level: "",
@@ -407,8 +430,80 @@ export default function AdminDashboard() {
         catequistatId: "",
       });
     } catch (error) {
-      console.error("Erro ao criar turma:", error);
-      alert("Erro ao criar turma");
+      console.error("Erro ao salvar turma:", error);
+      alert(editingTurmaId ? "Erro ao atualizar turma" : "Erro ao criar turma");
+    } finally {
+      setSavingTurma(false);
+    }
+  };
+
+  const handleEditTurma = (turma: Turma) => {
+    const turmaLevel = String(turma.level);
+    const isValidLevel = ["1", "2", "3"].includes(turmaLevel);
+
+    setEditingTurmaId(turma.id);
+    setFormData({
+      name: turma.name,
+      level: isValidLevel ? turmaLevel : "",
+      schedule: turma.schedule,
+      room: turma.room,
+      catequistatId: turma.catequistatId || "",
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDeleteTurma = async (turma: Turma) => {
+    const confirmed = window.confirm(
+      `Tem certeza que deseja excluir a turma \"${turma.name}\"?`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingTurmaId(turma.id);
+    try {
+      const response = await fetchWithAuth(`${API_ROUTES.turmas}/${turma.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        alert(error?.message || "Não foi possível excluir a turma");
+        return;
+      }
+
+      await carregarDados();
+    } catch (error) {
+      console.error("Erro ao excluir turma:", error);
+      alert("Erro ao excluir turma");
+    } finally {
+      setDeletingTurmaId(null);
+    }
+  };
+
+  const handleOpenAddTurmaDialog = () => {
+    setEditingTurmaId(null);
+    setFormData({
+      name: "",
+      level: "",
+      schedule: "",
+      room: "",
+      catequistatId: "",
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      setEditingTurmaId(null);
+      setFormData({
+        name: "",
+        level: "",
+        schedule: "",
+        room: "",
+        catequistatId: "",
+      });
     }
   };
 
@@ -470,6 +565,12 @@ export default function AdminDashboard() {
               <Link to="/admin/add-catequizando">
                 <Plus className="mr-3 h-4 w-4" />
                 Adicionar Catequizando
+              </Link>
+            </Button>
+            <Button variant={navVariant("/admin/inscricoes-catequistas")} className="w-full justify-start" asChild>
+              <Link to="/admin/inscricoes-catequistas">
+                <Check className="mr-3 h-4 w-4" />
+                Inscrições de Catequista
               </Link>
             </Button>
             <Button variant={navVariant("/admin/chamada")} className="w-full justify-start" asChild>
@@ -621,18 +722,22 @@ export default function AdminDashboard() {
                       Visualize e gerencie todas as turmas da catequese
                     </CardDescription>
                   </div>
-                  <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                  <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
                     <DialogTrigger asChild>
-                      <Button size="lg" className="gap-2">
+                      <Button size="lg" className="gap-2" onClick={handleOpenAddTurmaDialog}>
                         <Plus className="h-5 w-5" />
                         Adicionar Nova Turma
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[500px]">
                       <DialogHeader>
-                        <DialogTitle>Adicionar Nova Turma</DialogTitle>
+                        <DialogTitle>
+                          {editingTurmaId ? "Editar Turma" : "Adicionar Nova Turma"}
+                        </DialogTitle>
                         <DialogDescription>
-                          Preencha os dados da nova turma
+                          {editingTurmaId
+                            ? "Atualize os dados da turma"
+                            : "Preencha os dados da nova turma"}
                         </DialogDescription>
                       </DialogHeader>
                       <div className="grid gap-4 py-4">
@@ -712,10 +817,22 @@ export default function AdminDashboard() {
                         <Button
                           variant="outline"
                           onClick={() => setDialogOpen(false)}
+                          disabled={savingTurma}
                         >
                           Cancelar
                         </Button>
-                        <Button onClick={handleAddTurma}>Adicionar</Button>
+                        <Button onClick={handleAddTurma} disabled={savingTurma}>
+                          {savingTurma ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Salvando...
+                            </>
+                          ) : editingTurmaId ? (
+                            "Salvar alterações"
+                          ) : (
+                            "Adicionar"
+                          )}
+                        </Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
@@ -762,13 +879,14 @@ export default function AdminDashboard() {
                         <TableHead>Horário</TableHead>
                         <TableHead>Sala</TableHead>
                         <TableHead className="text-right">Alunos</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredTurmas.length === 0 ? (
                         <TableRow>
                           <TableCell
-                            colSpan={6}
+                            colSpan={7}
                             className="h-24 text-center text-muted-foreground"
                           >
                             Nenhuma turma encontrada com os filtros selecionados.
@@ -798,6 +916,35 @@ export default function AdminDashboard() {
                             </TableCell>
                             <TableCell className="text-right">
                               {turma.students.length}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+                                  title="Editar turma"
+                                  aria-label="Editar turma"
+                                  onClick={() => handleEditTurma(turma)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 rounded-md border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                  title="Excluir turma"
+                                  aria-label="Excluir turma"
+                                  disabled={deletingTurmaId === turma.id}
+                                  onClick={() => handleDeleteTurma(turma)}
+                                >
+                                  {deletingTurmaId === turma.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))

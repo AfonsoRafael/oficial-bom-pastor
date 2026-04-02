@@ -23,6 +23,7 @@ import ParentDashboard from "./pages/ParentDashboard";
 import ParentDocumentos from "./pages/ParentDocumentos";
 import ParentCronograma from "./pages/ParentCronograma";
 import ParentGaleria from "./pages/ParentGaleria";
+import AdminInscricoesCatequistas from "./pages/AdminInscricoesCatequistas";
 import PreMatriculaCrianca from "./pages/PreMatriculaCrianca";
 import PrimeiroAcesso from "./pages/PrimeiroAcesso";
 import Sobre from "./pages/Sobre";
@@ -60,6 +61,7 @@ const App = () => (
                 <AddCatequizando />
             } 
           />
+          <Route path="/admin/inscricoes-catequistas" element={<AdminInscricoesCatequistas />} />
           <Route path="/admin/chamada" element={<CatechistDashboard />} />
           <Route path="/admin/minhas-turmas" element={<MinhasTurmas />} />
           <Route path="/admin/cronograma" element={<Cronograma />} />
