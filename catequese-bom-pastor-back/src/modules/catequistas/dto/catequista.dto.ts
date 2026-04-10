@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEmail, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
 
 export class CreateCatequistaDto {
   @ApiProperty()
@@ -150,6 +150,23 @@ export class ApproveCatequistaInscricaoDto {
   @IsOptional()
   @IsString()
   observacoesAdmin?: string;
+
+  @ApiPropertyOptional({
+    description: 'ID da turma para alocar o catequista no momento da aprovação',
+    example: 'clx123abc456turma',
+  })
+  @IsOptional()
+  @IsString()
+  turmaId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Categoria do vínculo na turma: catequista ou auxiliar',
+    example: 'auxiliar',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['catequista', 'auxiliar'])
+  categoriaTurma?: 'catequista' | 'auxiliar';
 }
 
 export class RejectCatequistaInscricaoDto {

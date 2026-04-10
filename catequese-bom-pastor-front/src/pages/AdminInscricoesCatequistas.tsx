@@ -3,6 +3,9 @@ import { useLocation, useNavigate, Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +36,20 @@ import {
 
 type InscricaoStatus = "PENDING" | "APPROVED" | "REJECTED";
 
+interface Turma {
+  id: string;
+  nome: string;
+  ano: number;
+  catequistasTurma: Array<{
+    id: string;
+    categoria: "CATEQUISTA" | "AUXILIAR";
+    catequista: {
+      id: string;
+      nome: string;
+    };
+  }>;
+}
+
 interface InscricaoCatequista {
   id: string;
   nome: string;
@@ -54,6 +71,10 @@ interface InscricaoCatequista {
   } | null;
 }
 
+const NO_TURMA_VALUE = "__NO_TURMA__";
+const CATEGORIA_CATEQUISTA_VALUE = "catequista";
+const CATEGORIA_AUXILIAR_VALUE = "auxiliar";
+
 function formatDate(value?: string | null) {
   if (!value) return "-";
   const date = new Date(value);
@@ -68,9 +89,15 @@ export default function AdminInscricoesCatequistas() {
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
 
   const [loading, setLoading] = useState(false);
+  const [turmasLoading, setTurmasLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [inscricoes, setInscricoes] = useState<InscricaoCatequista[]>([]);
+  const [turmas, setTurmas] = useState<Turma[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<InscricaoStatus | "ALL">("PENDING");
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [inscricaoToApprove, setInscricaoToApprove] = useState<InscricaoCatequista | null>(null);
+  const [selectedTurmaId, setSelectedTurmaId] = useState<string>(NO_TURMA_VALUE);
+  const [selectedCategoriaTurma, setSelectedCategoriaTurma] = useState<string>(CATEGORIA_CATEQUISTA_VALUE);
 
   const isAdminRoute = location.pathname.startsWith("/admin");
   useEffect(() => {
@@ -84,6 +111,7 @@ export default function AdminInscricoesCatequistas() {
       return;
     }
 
+    void carregarTurmas();
     carregarDados();
   }, [isAdminRoute]);
 
@@ -141,6 +169,61 @@ export default function AdminInscricoesCatequistas() {
     }
   };
 
+  const carregarTurmas = async () => {
+    setTurmasLoading(true);
+    try {
+      const response = await fetchWithAuth(`${API_ROUTES.turmas}?limit=1000&offset=0`);
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody?.message || "Falha ao carregar turmas");
+      }
+
+      const data = await response.json();
+      const list = Array.isArray(data?.turmas)
+        ? data.turmas
+        : Array.isArray(data)
+          ? data
+          : [];
+
+      setTurmas(
+        list.map((item: any) => ({
+          id: String(item.id),
+          nome: String(item.nome || ""),
+          ano: Number(item.ano || 0),
+          catequistasTurma: Array.isArray(item.catequistasTurma)
+            ? item.catequistasTurma
+                .map((vinculo: any) => {
+                  if (!vinculo?.catequista?.id) {
+                    return null;
+                  }
+
+                  return {
+                    id: String(vinculo.id || ""),
+                    categoria: vinculo.categoria === "AUXILIAR" ? "AUXILIAR" : "CATEQUISTA",
+                    catequista: {
+                      id: String(vinculo.catequista.id),
+                      nome: String(vinculo.catequista.nome || ""),
+                    },
+                  };
+                })
+                .filter(Boolean)
+            : [],
+        }))
+      );
+    } catch (error: any) {
+      console.error("Erro ao carregar turmas:", error);
+      setTurmas([]);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error?.message || "Nao foi possivel carregar as turmas",
+      });
+    } finally {
+      setTurmasLoading(false);
+    }
+  };
+
   const filteredInscricoes = useMemo(() => {
     if (selectedStatus === "ALL") {
       return inscricoes;
@@ -158,12 +241,51 @@ export default function AdminInscricoesCatequistas() {
     };
   }, [inscricoes]);
 
-  const handleApprove = async (inscricao: InscricaoCatequista) => {
-    setActionLoadingId(inscricao.id);
+  const selectedTurma = useMemo(() => {
+    if (selectedTurmaId === NO_TURMA_VALUE) {
+      return null;
+    }
+
+    return turmas.find((turma) => turma.id === selectedTurmaId) ?? null;
+  }, [selectedTurmaId, turmas]);
+
+  const openApproveDialog = (inscricao: InscricaoCatequista) => {
+    setInscricaoToApprove(inscricao);
+    setSelectedTurmaId(NO_TURMA_VALUE);
+    setSelectedCategoriaTurma(CATEGORIA_CATEQUISTA_VALUE);
+    setApproveDialogOpen(true);
+  };
+
+  const closeApproveDialog = (open: boolean) => {
+    setApproveDialogOpen(open);
+
+    if (!open) {
+      setInscricaoToApprove(null);
+      setSelectedTurmaId(NO_TURMA_VALUE);
+      setSelectedCategoriaTurma(CATEGORIA_CATEQUISTA_VALUE);
+    }
+  };
+
+  const handleApprove = async () => {
+    const currentInscricao = inscricaoToApprove;
+
+    if (!currentInscricao) {
+      return;
+    }
+
+    setActionLoadingId(currentInscricao.id);
     try {
-      const response = await fetchWithAuth(API_ROUTES.catequistasInscricoesApprove(inscricao.id), {
+      const turmaId = selectedTurmaId === NO_TURMA_VALUE ? undefined : selectedTurmaId;
+      const response = await fetchWithAuth(API_ROUTES.catequistasInscricoesApprove(currentInscricao.id), {
         method: "PUT",
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          ...(turmaId
+            ? {
+                turmaId,
+                categoriaTurma: selectedCategoriaTurma,
+              }
+            : {}),
+        }),
       });
 
       if (!response.ok) {
@@ -171,11 +293,18 @@ export default function AdminInscricoesCatequistas() {
         throw new Error(error?.message || "Nao foi possivel aprovar a inscricao");
       }
 
+      const turmaSelecionada = turmaId ? turmas.find((turma) => turma.id === turmaId) : null;
+
       toast({
         title: "Inscricao aprovada",
-        description: `${inscricao.nome} foi aprovada e já pode acessar o sistema.`,
+        description: turmaSelecionada
+          ? `${currentInscricao.nome} foi aprovada e alocada em ${turmaSelecionada.nome} como ${
+              selectedCategoriaTurma === CATEGORIA_AUXILIAR_VALUE ? "auxiliar" : "catequista"
+            }.`
+          : `${currentInscricao.nome} foi aprovada sem alocacao em turma.`,
       });
 
+      closeApproveDialog(false);
       await carregarDados();
     } catch (error: any) {
       toast({
@@ -288,7 +417,7 @@ export default function AdminInscricoesCatequistas() {
                         <Button
                           size="sm"
                           className="gap-2"
-                          onClick={() => handleApprove(inscricao)}
+                          onClick={() => openApproveDialog(inscricao)}
                           disabled={actionLoadingId === inscricao.id}
                         >
                           {actionLoadingId === inscricao.id ? (
@@ -450,6 +579,9 @@ export default function AdminInscricoesCatequistas() {
             <CardDescription>
               Cada inscrição é tratada de forma independente do fluxo de catequizando.
             </CardDescription>
+            <p className="text-sm text-muted-foreground">
+              Revise, aprove ou reprova as inscrições recebidas pelo formulário público. A aprovação cria o cadastro de catequista; a alocação em turma é feita depois.
+            </p>
           </CardHeader>
           <CardContent>
             <Tabs value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as InscricaoStatus | "ALL")} className="space-y-4">
@@ -472,6 +604,104 @@ export default function AdminInscricoesCatequistas() {
             </Tabs>
           </CardContent>
         </Card>
+        <Dialog open={approveDialogOpen} onOpenChange={closeApproveDialog}>
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Aprovar inscrição de catequista</DialogTitle>
+              <DialogDescription>
+                Selecione uma turma para alocar o novo catequista agora ou conclua a aprovação sem vínculo.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+                <div className="font-medium text-foreground">{inscricaoToApprove?.nome || "-"}</div>
+                <div className="mt-1 text-muted-foreground">{inscricaoToApprove?.email || "-"}</div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="turma-approve">Turma</Label>
+                <Select
+                  value={selectedTurmaId}
+                  onValueChange={setSelectedTurmaId}
+                  disabled={turmasLoading}
+                >
+                  <SelectTrigger id="turma-approve">
+                    <SelectValue placeholder="Selecione uma turma" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_TURMA_VALUE}>Sem alocacao</SelectItem>
+                    {turmas.map((turma) => (
+                      <SelectItem key={turma.id} value={turma.id}>
+                        {turma.nome} {turma.ano ? `- ${turma.ano}` : ""}
+                        {turma.catequistasTurma.length > 0
+                          ? ` (${turma.catequistasTurma.length} catequista(s) na turma)`
+                          : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedTurmaId !== NO_TURMA_VALUE ? (
+                <div className="space-y-2">
+                  <Label htmlFor="categoria-turma-approve">Categoria na turma</Label>
+                  <Select value={selectedCategoriaTurma} onValueChange={setSelectedCategoriaTurma}>
+                    <SelectTrigger id="categoria-turma-approve">
+                      <SelectValue placeholder="Selecione a categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={CATEGORIA_CATEQUISTA_VALUE}>Catequista</SelectItem>
+                      <SelectItem value={CATEGORIA_AUXILIAR_VALUE}>Auxiliar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+
+              {selectedTurma ? (
+                <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                  <div>
+                    <div className="text-sm font-medium text-foreground">Catequistas da turma</div>
+                    <div className="text-xs text-muted-foreground">
+                      {selectedTurma.nome} {selectedTurma.ano ? `- ${selectedTurma.ano}` : ""}
+                    </div>
+                  </div>
+
+                  {selectedTurma.catequistasTurma.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedTurma.catequistasTurma.map((vinculo) => (
+                        <div key={vinculo.id} className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-sm">
+                          <span className="font-medium text-foreground">{vinculo.catequista.nome}</span>
+                          <Badge variant={vinculo.categoria === "AUXILIAR" ? "secondary" : "default"}>
+                            {vinculo.categoria === "AUXILIAR" ? "Auxiliar" : "Catequista"}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Esta turma ainda não possui catequistas vinculados.</p>
+                  )}
+                </div>
+              ) : null}
+
+              <p className="text-sm text-muted-foreground">
+                É permitido ter mais de um catequista na mesma turma, com categorias diferentes.
+              </p>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => closeApproveDialog(false)} disabled={actionLoadingId !== null}>
+                Cancelar
+              </Button>
+              <Button onClick={() => void handleApprove()} disabled={actionLoadingId !== null || !inscricaoToApprove}>
+                {actionLoadingId === inscricaoToApprove?.id ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Confirmar aprovação
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
           </div>
         </main>
       </div>

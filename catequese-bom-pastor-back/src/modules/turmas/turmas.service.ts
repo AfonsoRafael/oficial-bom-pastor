@@ -14,7 +14,11 @@ export class TurmasService {
       this.prisma.turma.findMany({
         where,
         include: {
-          catequista: true,
+          catequistasTurma: {
+            include: {
+              catequista: true,
+            },
+          },
           catequizandos: {
             include: {
               responsavel: true,
@@ -42,7 +46,11 @@ export class TurmasService {
     const turma = await this.prisma.turma.findUnique({
       where: { id },
       include: {
-        catequista: true,
+        catequistasTurma: {
+          include: {
+            catequista: true,
+          },
+        },
         catequizandos: {
           include: {
             responsavel: true,
@@ -77,7 +85,6 @@ export class TurmasService {
         ano: dto.ano,
         horario: dto.horario,
         sala: dto.sala,
-        catequistaId: dto.catequistaId,
         administradorId: createdById,
       },
     });
@@ -103,7 +110,6 @@ export class TurmasService {
         ...(dto.ano && { ano: dto.ano }),
         ...(dto.horario !== undefined && { horario: dto.horario }),
         ...(dto.sala !== undefined && { sala: dto.sala }),
-        ...(dto.catequistaId !== undefined && { catequistaId: dto.catequistaId }),
       },
     });
 

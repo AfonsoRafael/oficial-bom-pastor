@@ -53,8 +53,7 @@ model Turma {
   sala            String?
   administradorId String
   administrador   Administrador  @relation("createdBy", fields: [administradorId], references: [id])
-  catequistaId    String?
-  catequista      Catequista?    @relation(fields: [catequistaId], references: [id], onDelete: SetNull)
+  catequistasTurma TurmaCatequista[]
   catequizandos   Catequizando[]
   inscricoes      Inscricao[]
   eventos         Evento[]
@@ -251,11 +250,30 @@ model Catequista {
   endereco            String?
   bio                 String?
   firstAccessComplete Boolean  @default(false)
-  turmas              Turma[]
+  turmas              TurmaCatequista[]
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
   @@map("catequistas")
+}
+
+enum CategoriaCatequistaTurma {
+  CATEQUISTA
+  AUXILIAR
+}
+
+model TurmaCatequista {
+  id           String                    @id @default(cuid())
+  turmaId      String
+  catequistaId String
+  categoria    CategoriaCatequistaTurma @default(CATEQUISTA)
+  turma        Turma                     @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  catequista   Catequista                @relation(fields: [catequistaId], references: [id], onDelete: Cascade)
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+
+  @@unique([turmaId, catequistaId])
+  @@map("turmas_catequistas")
 }
 
 // Documento

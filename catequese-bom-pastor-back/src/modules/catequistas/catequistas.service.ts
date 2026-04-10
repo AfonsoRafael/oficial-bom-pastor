@@ -1,6 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateCatequistaDto, CreateCatequistaInscricaoDto, UpdateCatequistaDto } from './dto/catequista.dto';
 import { S3StorageService } from '../../common/storage/s3-storage.service';
@@ -81,7 +80,14 @@ export class CatequistasService {
   async findAllInscricoes(status?: string, limit: number = 20, offset: number = 0) {
     const safeLimit = Math.max(1, Math.min(limit, 100));
     const safeOffset = Math.max(0, offset);
-    const where = status ? { status: status as Prisma.InscricaoCatequistaStatus } : undefined;
+    const statusMap = {
+      PENDING: 'PENDING',
+      APPROVED: 'APPROVED',
+      REJECTED: 'REJECTED',
+    } as const;
+
+    const normalizedStatus = status ? statusMap[status.toUpperCase() as keyof typeof statusMap] : undefined;
+    const where = normalizedStatus ? { status: normalizedStatus } : undefined;
 
     const [inscricoes, total] = await Promise.all([
       this.prisma.inscricaoCatequista.findMany({
@@ -117,7 +123,13 @@ export class CatequistasService {
     return inscricao;
   }
 
-  async approveInscricao(id: string, adminId: string, observacoesAdmin?: string) {
+  async approveInscricao(
+    id: string,
+    adminId: string,
+    observacoesAdmin?: string,
+    turmaId?: string,
+    categoriaTurma?: 'catequista' | 'auxiliar',
+  ) {
     const inscricao = await this.prisma.inscricaoCatequista.findUnique({
       where: { id },
     });
@@ -149,6 +161,22 @@ export class CatequistasService {
       throw new ConflictException('Este email ja esta cadastrado em outro perfil');
     }
 
+    const categoriaNormalizada = categoriaTurma?.toLowerCase() === 'auxiliar' ? 'AUXILIAR' : 'CATEQUISTA';
+
+    const turmaSelecionada = turmaId
+      ? await this.prisma.turma.findUnique({
+          where: { id: turmaId },
+          select: {
+            id: true,
+            nome: true,
+          },
+        })
+      : null;
+
+    if (turmaId && !turmaSelecionada) {
+      throw new NotFoundException('Turma not found');
+    }
+
     let temporaryPassword: string | undefined;
 
     const approvedInscricao = await this.prisma.$transaction(async (tx) => {
@@ -165,6 +193,25 @@ export class CatequistasService {
             senha: temporaryPasswordHash,
             telefone: inscricao.telefone,
             firstAccessComplete: false,
+          },
+        });
+      }
+
+      if (turmaId) {
+        await tx.turmaCatequista.upsert({
+          where: {
+            turmaId_catequistaId: {
+              turmaId,
+              catequistaId: catequista.id,
+            },
+          },
+          create: {
+            turmaId,
+            catequistaId: catequista.id,
+            categoria: categoriaNormalizada,
+          },
+          update: {
+            categoria: categoriaNormalizada,
           },
         });
       }

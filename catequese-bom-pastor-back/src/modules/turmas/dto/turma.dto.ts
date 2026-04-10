@@ -22,11 +22,6 @@ export class CreateTurmaDto {
   @IsString()
   sala?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  catequistaId?: string;
-
 }
 
 export class UpdateTurmaDto {
@@ -52,9 +47,5 @@ export class UpdateTurmaDto {
   @IsString()
   sala?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  catequistaId?: string;
 }
 

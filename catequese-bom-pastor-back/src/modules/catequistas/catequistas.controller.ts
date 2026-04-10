@@ -138,7 +138,13 @@ export class CatequistasController {
     @Body() dto: ApproveCatequistaInscricaoDto,
     @GetUser('id') adminId: string,
   ) {
-    return this.catequistasService.approveInscricao(id, adminId, dto.observacoesAdmin);
+    return this.catequistasService.approveInscricao(
+      id,
+      adminId,
+      dto.observacoesAdmin,
+      dto.turmaId,
+      dto.categoriaTurma,
+    );
   }
 
   @Put('inscricoes/:id/reject')

@@ -132,10 +132,12 @@ interface Turma {
   levelName: string;
   schedule: string;
   room: string;
-  catequista: string;
-  catequistatId: string;
+  catequistasTurma: Array<{
+    id: string;
+    categoria: "CATEQUISTA" | "AUXILIAR";
+    catequista: Catequista;
+  }>;
   students: Student[];
-  catequisstaInfo?: Catequista;
 }
 
 export default function AdminDashboard() {
@@ -156,7 +158,6 @@ export default function AdminDashboard() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [selectedTurmaDetail, setSelectedTurmaDetail] = useState<Turma | null>(null);
   const [selectedStudentDetail, setSelectedStudentDetail] = useState<Student | null>(null);
-  const [showCatequistaInfo, setShowCatequistaInfo] = useState(false);
   const [messageRecipient, setMessageRecipient] = useState<string>("catequistas");
   const [messageText, setMessageText] = useState("");
   const [messages, setMessages] = useState(
@@ -199,7 +200,6 @@ export default function AdminDashboard() {
     level: "",
     schedule: "",
     room: "",
-    catequistatId: "",
   });
 
   const navVariant = (path: string) =>
@@ -239,6 +239,9 @@ export default function AdminDashboard() {
       .toUpperCase()
       .slice(0, 2);
 
+  const formatCategoriaTurma = (categoria: "CATEQUISTA" | "AUXILIAR") =>
+    categoria === "AUXILIAR" ? "Auxiliar" : "Catequista";
+
   const carregarDados = async () => {
     try {
       const [turmasResponse, catequistasResponse] = await Promise.all([
@@ -266,7 +269,23 @@ export default function AdminDashboard() {
       }));
 
       const mappedTurmas: Turma[] = turmasList.map((turma: any) => {
-        const catequistaInfo = mappedCatequistas.find((cat) => cat.id === String(turma.catequistaId)) || null;
+        const catequistasTurma = Array.isArray(turma.catequistasTurma)
+          ? turma.catequistasTurma
+              .map((vinculo: any) => {
+                const catequistaInfo = mappedCatequistas.find((cat) => cat.id === String(vinculo.catequista?.id));
+
+                if (!catequistaInfo) {
+                  return null;
+                }
+
+                return {
+                  id: String(vinculo.id || `${vinculo.turmaId || turma.id}-${catequistaInfo.id}`),
+                  categoria: vinculo.categoria === "AUXILIAR" ? "AUXILIAR" : "CATEQUISTA",
+                  catequista: catequistaInfo,
+                };
+              })
+              .filter(Boolean)
+          : [];
         const students: Student[] = Array.isArray(turma.catequizandos)
           ? turma.catequizandos.map((catequizando: any) => {
               const docs = Array.isArray(catequizando.documentos)
@@ -330,10 +349,8 @@ export default function AdminDashboard() {
           levelName: getLevelName(turma.ano),
           schedule: turma.horario || "",
           room: turma.sala || "",
-          catequista: catequistaInfo?.name || "",
-          catequistatId: catequistaInfo?.id || "",
+          catequistasTurma,
           students,
-          catequisstaInfo: catequistaInfo || undefined,
         };
       });
 
@@ -354,7 +371,7 @@ export default function AdminDashboard() {
   const filteredTurmas = turmas.filter((turma) => {
     const levelMatch = selectedLevel === "all" || turma.level === parseInt(selectedLevel);
     const catequistatMatch =
-      selectedCatequista === "all" || turma.catequistatId === selectedCatequista;
+      selectedCatequista === "all" || turma.catequistasTurma.some((vinculo) => vinculo.catequista.id === selectedCatequista);
     return levelMatch && catequistatMatch;
   });
 
@@ -406,7 +423,6 @@ export default function AdminDashboard() {
             ano: levelNumber,
             horario: formData.schedule,
             sala: formData.room || undefined,
-            catequistaId: formData.catequistatId || undefined,
           }),
         }
       );
@@ -430,7 +446,6 @@ export default function AdminDashboard() {
         level: "",
         schedule: "",
         room: "",
-        catequistatId: "",
       });
     } catch (error) {
       console.error("Erro ao salvar turma:", error);
@@ -450,7 +465,6 @@ export default function AdminDashboard() {
       level: isValidLevel ? turmaLevel : "",
       schedule: turma.schedule,
       room: turma.room,
-      catequistatId: turma.catequistatId || "",
     });
     setDialogOpen(true);
   };
@@ -491,7 +505,6 @@ export default function AdminDashboard() {
       level: "",
       schedule: "",
       room: "",
-      catequistatId: "",
     });
     setDialogOpen(true);
   };
@@ -505,7 +518,6 @@ export default function AdminDashboard() {
         level: "",
         schedule: "",
         room: "",
-        catequistatId: "",
       });
     }
   };
@@ -710,25 +722,8 @@ export default function AdminDashboard() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="catequista">Catequista</Label>
-                          <Select
-                            value={formData.catequistatId}
-                            onValueChange={(value) =>
-                              setFormData({ ...formData, catequistatId: value })
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o catequista" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {catequistas.map((cat) => (
-                                <SelectItem key={cat.id} value={cat.id.toString()}>
-                                  {cat.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        <div className="rounded-md border border-dashed bg-muted/20 p-3 text-sm text-muted-foreground">
+                          Os vínculos com catequistas e auxiliares são feitos na aprovação das inscrições e aparecem na lista da turma abaixo.
                         </div>
                         <div className="grid gap-2">
                           <Label htmlFor="schedule">Horário</Label>
@@ -808,6 +803,9 @@ export default function AdminDashboard() {
                     </SelectContent>
                   </Select>
                 </div>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Só catequistas aprovados aparecem nesta lista. Inscrições pendentes continuam na tela de Inscrições de Catequista até o admin aprovar e liberar a alocação em turma.
+                </p>
 
                 <div className="rounded-md border">
                   <Table>
@@ -815,7 +813,7 @@ export default function AdminDashboard() {
                       <TableRow>
                         <TableHead>Nome</TableHead>
                         <TableHead>Etapa</TableHead>
-                        <TableHead>Catequista</TableHead>
+                        <TableHead>Catequistas e auxiliares</TableHead>
                         <TableHead>Horário</TableHead>
                         <TableHead>Sala</TableHead>
                         <TableHead className="text-right">Alunos</TableHead>
@@ -847,7 +845,22 @@ export default function AdminDashboard() {
                                 {turma.levelName}
                               </Badge>
                             </TableCell>
-                            <TableCell>{turma.catequista}</TableCell>
+                            <TableCell>
+                              <div className="space-y-2">
+                                {turma.catequistasTurma.length > 0 ? (
+                                  turma.catequistasTurma.map((vinculo) => (
+                                    <div key={vinculo.id} className="flex flex-wrap items-center gap-2">
+                                      <span className="font-medium">{vinculo.catequista.name}</span>
+                                      <Badge variant={vinculo.categoria === "AUXILIAR" ? "secondary" : "default"}>
+                                        {formatCategoriaTurma(vinculo.categoria)}
+                                      </Badge>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <span className="text-muted-foreground">Nenhum vínculo ainda</span>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell className="text-muted-foreground">
                               {turma.schedule}
                             </TableCell>
@@ -901,7 +914,6 @@ export default function AdminDashboard() {
       {/* Modal - Turma Details (Lista de Catequizandos) */}
       <Dialog open={!!selectedTurmaDetail} onOpenChange={() => {
         setSelectedTurmaDetail(null);
-        setShowCatequistaInfo(false);
       }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           {selectedTurmaDetail && (
@@ -927,74 +939,52 @@ export default function AdminDashboard() {
                 </DialogDescription>
               </DialogHeader>
 
-              {/* Catequista Info Card */}
-              {selectedTurmaDetail.catequisstaInfo && (
-                <div className="mt-6">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCatequistaInfo(!showCatequistaInfo)}
-                    className="w-full justify-between mb-2"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Shield className="w-4 h-4" />
-                      Informações do Catequista
-                    </span>
-                    <ChevronRight className={`w-4 h-4 transition-transform ${showCatequistaInfo ? 'rotate-90' : ''}`} />
-                  </Button>
-                  
-                  {showCatequistaInfo && (
-                    <Card className="bg-blue-50 border-blue-200">
-                      <CardContent className="space-y-3 pt-6">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarFallback className="bg-blue-200 text-blue-900">
-                              {selectedTurmaDetail.catequisstaInfo.name.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-semibold text-blue-900">{selectedTurmaDetail.catequisstaInfo.name}</p>
-                            <p className="text-xs text-blue-700">Catequista</p>
-                          </div>
-                        </div>
-                        
-                        <div className="border-t border-blue-200 pt-3 space-y-2 text-sm">
-                          <div className="flex items-center gap-2 text-blue-900">
-                            <Mail className="w-4 h-4" />
-                            <span>{selectedTurmaDetail.catequisstaInfo.email}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-blue-900">
-                            <Phone className="w-4 h-4" />
-                            <span>{selectedTurmaDetail.catequisstaInfo.phone}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-blue-900">
-                            <MapPin className="w-4 h-4" />
-                            <span>{selectedTurmaDetail.catequisstaInfo.address}</span>
-                          </div>
-                        </div>
-
-                        {/* Attendance Section */}
-                        <div className="border-t border-blue-200 pt-3 mt-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-blue-900">Frequência</span>
-                            <Badge className="bg-blue-600">
-                              {selectedTurmaDetail.catequisstaInfo.attendance.percentage}%
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-blue-700">
-                            {selectedTurmaDetail.catequisstaInfo.attendance.attendedClasses} de {selectedTurmaDetail.catequisstaInfo.attendance.totalClasses} aulas
-                          </p>
-                        </div>
-
-                        {selectedTurmaDetail.catequisstaInfo.bio && (
-                          <div className="border-t border-blue-200 pt-3 mt-3">
-                            <p className="text-blue-800 italic text-sm">{selectedTurmaDetail.catequisstaInfo.bio}</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
+              <div className="mt-6 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-lg">Catequistas e auxiliares</h3>
                 </div>
-              )}
+                {selectedTurmaDetail.catequistasTurma.length > 0 ? (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {selectedTurmaDetail.catequistasTurma.map((vinculo) => (
+                      <Card key={vinculo.id} className="border-border/60">
+                        <CardContent className="space-y-3 pt-6">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarFallback className="bg-primary/10 text-primary">
+                                {vinculo.catequista.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-semibold text-foreground">{vinculo.catequista.name}</p>
+                              <Badge variant={vinculo.categoria === "AUXILIAR" ? "secondary" : "default"}>
+                                {formatCategoriaTurma(vinculo.categoria)}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2 border-t pt-3 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-2">
+                              <Mail className="w-4 h-4" />
+                              <span>{vinculo.catequista.email}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Phone className="w-4 h-4" />
+                              <span>{vinculo.catequista.phone || "-"}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              <span>{vinculo.catequista.address || "-"}</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">Nenhum catequista ou auxiliar vinculado a esta turma.</p>
+                )}
+              </div>
 
               <div className="space-y-3 mt-6">
                 <h3 className="font-semibold text-lg">Catequizandos</h3>
