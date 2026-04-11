@@ -1,3 +1,5 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,15 +26,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
+import { fetchWithAuth } from "@/lib/api";
+import { API_ROUTES } from "@/lib/routes";
+import { getDashboardNavItems } from "@/lib/sidebarNavItems";
+import { SidebarNav } from "@/components/layout/SidebarNav";
 import {
   AlertCircle,
-  BookOpen,
   Calendar,
-  Calendar as CalendarNav,
-  ClipboardList,
   Clock,
   Cross,
-  DollarSign,
   Download,
   Eye,
   FileText,
@@ -40,26 +43,30 @@ import {
   Mail,
   MapPin,
   Menu,
-  Music,
   Phone,
   Search,
   Users,
   X,
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
-import { SidebarNav } from "@/components/layout/SidebarNav";
-import { getDashboardNavItems } from "@/lib/sidebarNavItems";
-import { Link, useLocation } from "react-router-dom";
+
+type DocumentoTipo = "CERTIDAO_NASCIMENTO" | "CPF" | "CARTEIRA_VACINA";
+
+interface BackendDocumento {
+  tipo: DocumentoTipo;
+  status: boolean;
+  uploadDate: string | null;
+  fileUrl: string | null;
+}
 
 interface DocumentInfo {
   status: boolean;
   uploadDate: string | null;
   fileName?: string;
+  fileUrl?: string | null;
 }
 
 interface Student {
-  id: number;
+  id: string;
   name: string;
   birthDate: string;
   phone: string;
@@ -79,7 +86,7 @@ interface Student {
 }
 
 interface Turma {
-  id: number;
+  id: string;
   name: string;
   level: number;
   schedule: string;
@@ -87,507 +94,145 @@ interface Turma {
   students: Student[];
 }
 
-// Mock data
-const mockTurmas: Turma[] = [
-  {
-    id: 1,
-    name: "Turma A - Nível 1",
-    level: 1,
-    schedule: "Sábados, 9h às 11h",
-    room: "Sala 1",
-    students: [
-      {
-        id: 1,
-        name: "Ana Carolina Souza",
-        birthDate: "2015-03-22",
-        phone: "(11) 98765-4321",
-        email: "ana.souza@email.com",
-        address: "Rua das Flores, 123 - São Paulo, SP",
-        cpf: "123.456.789-00",
-        documents: {
-          birthCertificate: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "certidao_nascimento_ana.pdf",
-          },
-          cpf: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "cpf_ana.pdf",
-          },
-          vaccineCard: {
-            status: true,
-            uploadDate: "2024-10-20",
-            fileName: "cartao_vacinacao_ana.pdf",
-          },
-        },
+function getInitials(name: string): string {
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return "--";
+  }
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+function safeDate(date: string | null | undefined): string {
+  if (!date) {
+    return "";
+  }
+
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  return parsed.toLocaleDateString("pt-BR");
+}
+
+function getFileNameFromUrl(url: string | null | undefined): string | undefined {
+  if (!url) {
+    return undefined;
+  }
+
+  try {
+    const clean = url.split("?")[0];
+    const parts = clean.split("/");
+    return decodeURIComponent(parts[parts.length - 1] || "");
+  } catch {
+    return undefined;
+  }
+}
+
+function createDefaultDocument(): DocumentInfo {
+  return {
+    status: false,
+    uploadDate: null,
+    fileName: undefined,
+    fileUrl: null,
+  };
+}
+
+function mapBackendDocuments(documents: BackendDocumento[] | undefined) {
+  const mapped = {
+    birthCertificate: createDefaultDocument(),
+    cpf: createDefaultDocument(),
+    vaccineCard: createDefaultDocument(),
+  };
+
+  for (const doc of documents || []) {
+    const item: DocumentInfo = {
+      status: Boolean(doc.status),
+      uploadDate: doc.uploadDate || null,
+      fileUrl: doc.fileUrl || null,
+      fileName: getFileNameFromUrl(doc.fileUrl || undefined),
+    };
+
+    if (doc.tipo === "CERTIDAO_NASCIMENTO") {
+      mapped.birthCertificate = item;
+    }
+
+    if (doc.tipo === "CPF") {
+      mapped.cpf = item;
+    }
+
+    if (doc.tipo === "CARTEIRA_VACINA") {
+      mapped.vaccineCard = item;
+    }
+  }
+
+  return mapped;
+}
+
+function mapTurma(turma: any): Turma {
+  const students: Student[] = Array.isArray(turma?.catequizandos)
+    ? turma.catequizandos.map((student: any) => ({
+        id: String(student.id || ""),
+        name: String(student.nome || "Sem nome"),
+        birthDate: String(student.dataNascimento || ""),
+        phone: String(student.telefone || student.responsavel?.telefone || "Não informado"),
+        email: String(student.email || student.responsavel?.email || "Não informado"),
+        address: String(student.endereco || "Não informado"),
+        cpf: String(student.cpf || "Não informado"),
+        documents: mapBackendDocuments(student.documentos),
         attendanceDates: {
-          percentage: 85,
-          absenceDates: ["2024-11-02", "2024-11-16"],
-        },
-        avatar: "AS",
-      },
-      {
-        id: 2,
-        name: "Bruno Santos Lima",
-        birthDate: "2015-07-15",
-        phone: "(11) 99876-5432",
-        email: "bruno.lima@email.com",
-        address: "Avenida Paulista, 456 - São Paulo, SP",
-        cpf: "234.567.890-11",
-        documents: {
-          birthCertificate: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "certidao_nascimento_bruno.pdf",
-          },
-          cpf: { status: false, uploadDate: null },
-          vaccineCard: {
-            status: true,
-            uploadDate: "2024-10-20",
-            fileName: "cartao_vacinacao_bruno.pdf",
-          },
-        },
-        attendanceDates: {
-          percentage: 92,
-          absenceDates: ["2024-12-07"],
-        },
-        avatar: "BL",
-      },
-      {
-        id: 3,
-        name: "Clara Oliveira",
-        birthDate: "2015-11-08",
-        phone: "(11) 97654-3210",
-        email: "clara.oliveira@email.com",
-        address: "Rua Consolação, 789 - São Paulo, SP",
-        cpf: "345.678.901-22",
-        documents: {
-          birthCertificate: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "certidao_nascimento_clara.pdf",
-          },
-          cpf: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "cpf_clara.pdf",
-          },
-          vaccineCard: {
-            status: true,
-            uploadDate: "2024-10-20",
-            fileName: "cartao_vacinacao_clara.pdf",
-          },
-        },
-        attendanceDates: {
-          percentage: 78,
-          absenceDates: [
-            "2024-11-02",
-            "2024-11-09",
-            "2024-11-23",
-            "2024-12-07",
-          ],
-        },
-        avatar: "CO",
-      },
-      {
-        id: 4,
-        name: "Daniel Pereira",
-        birthDate: "2016-01-20",
-        phone: "(11) 98765-6543",
-        email: "daniel.pereira@email.com",
-        address: "Rua Augusta, 234 - São Paulo, SP",
-        cpf: "456.789.012-33",
-        documents: {
-          birthCertificate: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "certidao_nascimento_daniel.pdf",
-          },
-          cpf: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "cpf_daniel.pdf",
-          },
-          vaccineCard: { status: false, uploadDate: null },
-        },
-        attendanceDates: {
-          percentage: 88,
-          absenceDates: ["2024-11-30"],
-        },
-        avatar: "DP",
-      },
-      {
-        id: 5,
-        name: "Elena Maria Costa",
-        birthDate: "2015-05-10",
-        phone: "(11) 99123-4567",
-        email: "elena.costa@email.com",
-        address: "Rua Oscar Freire, 567 - São Paulo, SP",
-        cpf: "567.890.123-44",
-        documents: {
-          birthCertificate: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "certidao_nascimento_elena.pdf",
-          },
-          cpf: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "cpf_elena.pdf",
-          },
-          vaccineCard: {
-            status: true,
-            uploadDate: "2024-10-20",
-            fileName: "cartao_vacinacao_elena.pdf",
-          },
-        },
-        attendanceDates: {
-          percentage: 95,
+          percentage: 0,
           absenceDates: [],
         },
-        avatar: "EC",
-      },
-      {
-        id: 6,
-        name: "Felipe Rodrigues",
-        birthDate: "2016-02-14",
-        phone: "(11) 97891-2345",
-        email: "felipe.rodrigues@email.com",
-        address: "Rua Pamplona, 890 - São Paulo, SP",
-        cpf: "678.901.234-55",
-        documents: {
-          birthCertificate: { status: false, uploadDate: null },
-          cpf: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "cpf_felipe.pdf",
-          },
-          vaccineCard: {
-            status: true,
-            uploadDate: "2024-10-20",
-            fileName: "cartao_vacinacao_felipe.pdf",
-          },
-        },
-        attendanceDates: {
-          percentage: 75,
-          absenceDates: [
-            "2024-10-26",
-            "2024-11-02",
-            "2024-11-16",
-            "2024-12-07",
-          ],
-        },
-        avatar: "FR",
-      },
-      {
-        id: 7,
-        name: "Gabriela Fernandes",
-        birthDate: "2015-08-30",
-        phone: "(11) 98345-6789",
-        email: "gabriela.fernandes@email.com",
-        address: "Rua Haddock Lobo, 345 - São Paulo, SP",
-        cpf: "789.012.345-66",
-        documents: {
-          birthCertificate: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "certidao_nascimento_gabriela.pdf",
-          },
-          cpf: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "cpf_gabriela.pdf",
-          },
-          vaccineCard: {
-            status: true,
-            uploadDate: "2024-10-20",
-            fileName: "cartao_vacinacao_gabriela.pdf",
-          },
-        },
-        attendanceDates: {
-          percentage: 90,
-          absenceDates: ["2024-12-14"],
-        },
-        avatar: "GF",
-      },
-      {
-        id: 8,
-        name: "Henrique Almeida",
-        birthDate: "2016-04-03",
-        phone: "(11) 99234-5678",
-        email: "henrique.almeida@email.com",
-        address: "Rua Bela Cintra, 678 - São Paulo, SP",
-        cpf: "890.123.456-77",
-        documents: {
-          birthCertificate: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "certidao_nascimento_henrique.pdf",
-          },
-          cpf: { status: false, uploadDate: null },
-          vaccineCard: {
-            status: true,
-            uploadDate: "2024-10-20",
-            fileName: "cartao_vacinacao_henrique.pdf",
-          },
-        },
-        attendanceDates: {
-          percentage: 82,
-          absenceDates: ["2024-11-23", "2024-12-07"],
-        },
-        avatar: "HA",
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: "Turma B - Nível 2",
-    level: 2,
-    schedule: "Sábados, 11h às 13h",
-    room: "Sala 2",
-    students: [
-      {
-        id: 9,
-        name: "Isabela Martins",
-        birthDate: "2014-09-12",
-        phone: "(11) 98765-1234",
-        email: "isabela.martins@email.com",
-        address: "Avenida Brasil, 111 - São Paulo, SP",
-        cpf: "901.234.567-88",
-        documents: {
-          birthCertificate: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "certidao_nascimento_isabela.pdf",
-          },
-          cpf: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "cpf_isabela.pdf",
-          },
-          vaccineCard: {
-            status: true,
-            uploadDate: "2024-10-20",
-            fileName: "cartao_vacinacao_isabela.pdf",
-          },
-        },
-        attendanceDates: {
-          percentage: 88,
-          absenceDates: ["2024-11-09"],
-        },
-        avatar: "IM",
-      },
-      {
-        id: 10,
-        name: "João Paulo Silva",
-        birthDate: "2014-06-25",
-        phone: "(11) 99876-2345",
-        email: "joao.silva@email.com",
-        address: "Rua Vergueiro, 222 - São Paulo, SP",
-        cpf: "012.345.678-99",
-        documents: {
-          birthCertificate: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "certidao_nascimento_joao.pdf",
-          },
-          cpf: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "cpf_joao.pdf",
-          },
-          vaccineCard: {
-            status: true,
-            uploadDate: "2024-10-20",
-            fileName: "cartao_vacinacao_joao.pdf",
-          },
-        },
-        attendanceDates: {
-          percentage: 91,
-          absenceDates: [],
-        },
-        avatar: "JP",
-      },
-      {
-        id: 11,
-        name: "Karina Souza",
-        birthDate: "2014-12-08",
-        phone: "(11) 97654-1234",
-        email: "karina.souza@email.com",
-        address: "Rua 13 de Maio, 333 - São Paulo, SP",
-        cpf: "123.456.789-01",
-        documents: {
-          birthCertificate: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "certidao_nascimento_karina.pdf",
-          },
-          cpf: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "cpf_karina.pdf",
-          },
-          vaccineCard: { status: false, uploadDate: null },
-        },
-        attendanceDates: {
-          percentage: 79,
-          absenceDates: [
-            "2024-11-02",
-            "2024-11-16",
-            "2024-12-07",
-            "2024-12-14",
-          ],
-        },
-        avatar: "KS",
-      },
-      {
-        id: 12,
-        name: "Lucas Gomes",
-        birthDate: "2014-03-17",
-        phone: "(11) 98765-2345",
-        email: "lucas.gomes@email.com",
-        address: "Rua Maria Antônia, 444 - São Paulo, SP",
-        cpf: "234.567.890-12",
-        documents: {
-          birthCertificate: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "certidao_nascimento_lucas.pdf",
-          },
-          cpf: { status: false, uploadDate: null },
-          vaccineCard: {
-            status: true,
-            uploadDate: "2024-10-20",
-            fileName: "cartao_vacinacao_lucas.pdf",
-          },
-        },
-        attendanceDates: {
-          percentage: 87,
-          absenceDates: ["2024-11-30"],
-        },
-        avatar: "LG",
-      },
-      {
-        id: 13,
-        name: "Mariana Cardoso",
-        birthDate: "2014-07-22",
-        phone: "(11) 99123-2345",
-        email: "mariana.cardoso@email.com",
-        address: "Avenida Tomás Edson, 555 - São Paulo, SP",
-        cpf: "345.678.901-23",
-        documents: {
-          birthCertificate: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "certidao_nascimento_mariana.pdf",
-          },
-          cpf: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "cpf_mariana.pdf",
-          },
-          vaccineCard: {
-            status: true,
-            uploadDate: "2024-10-20",
-            fileName: "cartao_vacinacao_mariana.pdf",
-          },
-        },
-        attendanceDates: {
-          percentage: 93,
-          absenceDates: [],
-        },
-        avatar: "MC",
-      },
-    ],
-  },
-  {
-    id: 3,
-    name: "Turma C - Nível 3",
-    level: 3,
-    schedule: "Domingos, 10h às 12h",
-    room: "Sala 3",
-    students: [
-      {
-        id: 14,
-        name: "Nicolas Ribeiro",
-        birthDate: "2013-05-30",
-        phone: "(11) 98765-3456",
-        email: "nicolas.ribeiro@email.com",
-        address: "Rua Capote Valente, 666 - São Paulo, SP",
-        cpf: "456.789.012-34",
-        documents: {
-          birthCertificate: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "certidao_nascimento_nicolas.pdf",
-          },
-          cpf: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "cpf_nicolas.pdf",
-          },
-          vaccineCard: {
-            status: true,
-            uploadDate: "2024-10-20",
-            fileName: "cartao_vacinacao_nicolas.pdf",
-          },
-        },
-        attendanceDates: {
-          percentage: 86,
-          absenceDates: ["2024-12-07"],
-        },
-        avatar: "NR",
-      },
-      {
-        id: 15,
-        name: "Olivia Santos",
-        birthDate: "2013-09-14",
-        phone: "(11) 99876-3456",
-        email: "olivia.santos@email.com",
-        address: "Rua Bandeira Paulista, 777 - São Paulo, SP",
-        cpf: "567.890.123-45",
-        documents: {
-          birthCertificate: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "certidao_nascimento_olivia.pdf",
-          },
-          cpf: {
-            status: true,
-            uploadDate: "2024-10-15",
-            fileName: "cpf_olivia.pdf",
-          },
-          vaccineCard: {
-            status: true,
-            uploadDate: "2024-10-20",
-            fileName: "cartao_vacinacao_olivia.pdf",
-          },
-        },
-        attendanceDates: {
-          percentage: 94,
-          absenceDates: [],
-        },
-        avatar: "OS",
-      },
-    ],
-  },
-];
+        avatar: getInitials(String(student.nome || "")),
+      }))
+    : [];
+
+  return {
+    id: String(turma?.id || ""),
+    name: String(turma?.nome || "Turma"),
+    level: Number(turma?.ano || 0),
+    schedule: String(turma?.horario || "Não informado"),
+    room: String(turma?.sala || "Não informado"),
+    students,
+  };
+}
+
+function getLoggedUserId(): string | null {
+  const raw = localStorage.getItem("user");
+
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as { id?: string };
+    return parsed?.id || null;
+  } catch {
+    return null;
+  }
+}
 
 export default function MinhasTurmas() {
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
-  const [isAdmin, setIsAdmin] = useState(false);
   const location = useLocation();
-  
-  useEffect(() => {
-    setIsAdmin((localStorage.getItem("role") || "guest") === "admin");
-  }, []);
-  
-  // Detecta se está em rota de admin ou catequista
-  const baseRoute = location.pathname.startsWith('/admin') ? '/admin' : '/catequista';
-  const isAdminRoute = baseRoute === '/admin';
-  
-  const [selectedTurma, setSelectedTurma] = useState<Turma>(mockTurmas[0]);
+
+  const baseRoute = location.pathname.startsWith("/admin") ? "/admin" : "/catequista";
+  const isAdminRoute = baseRoute === "/admin";
+
+  const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [loadingTurmas, setLoadingTurmas] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedTurmaId, setSelectedTurmaId] = useState<string>("");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterLevel, setFilterLevel] = useState<string>("all");
@@ -596,35 +241,129 @@ export default function MinhasTurmas() {
     doc: DocumentInfo;
   } | null>(null);
 
-  const filteredStudents = selectedTurma.students.filter((student) => {
-    const matchesSearch = student.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadTurmas = async () => {
+      setLoadingTurmas(true);
+      setLoadError(null);
+
+      try {
+        const response = await fetchWithAuth(`${API_ROUTES.turmas}?limit=1000&offset=0`);
+
+        if (!response.ok) {
+          throw new Error("Não foi possível carregar as turmas.");
+        }
+
+        const data = await response.json();
+        const list = Array.isArray(data?.turmas) ? data.turmas : [];
+
+        const loggedUserId = getLoggedUserId();
+        const visibleTurmas = isAdminRoute
+          ? list
+          : list.filter((turma: any) => {
+              if (!loggedUserId || !Array.isArray(turma?.catequistasTurma)) {
+                return false;
+              }
+
+              return turma.catequistasTurma.some((rel: any) => {
+                const catequistaId = String(rel?.catequistaId || rel?.catequista?.id || "");
+                return catequistaId === loggedUserId;
+              });
+            });
+
+        const mappedTurmas = visibleTurmas.map(mapTurma);
+
+        if (!cancelled) {
+          setTurmas(mappedTurmas);
+          setSelectedTurmaId((prev) => {
+            const stillExists = mappedTurmas.some((turma) => turma.id === prev);
+            return stillExists ? prev : mappedTurmas[0]?.id || "";
+          });
+        }
+      } catch (error) {
+        console.error("Erro ao carregar turmas:", error);
+        if (!cancelled) {
+          setTurmas([]);
+          setSelectedTurmaId("");
+          setLoadError("Não foi possível carregar as turmas no momento.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingTurmas(false);
+        }
+      }
+    };
+
+    loadTurmas();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdminRoute]);
+
+  const filteredTurmas = useMemo(() => {
+    if (filterLevel === "all") {
+      return turmas;
+    }
+
+    return turmas.filter((turma) => turma.level === Number(filterLevel));
+  }, [filterLevel, turmas]);
+
+  useEffect(() => {
+    if (filteredTurmas.length === 0) {
+      setSelectedTurmaId("");
+      return;
+    }
+
+    const exists = filteredTurmas.some((turma) => turma.id === selectedTurmaId);
+    if (!exists) {
+      setSelectedTurmaId(filteredTurmas[0].id);
+    }
+  }, [filteredTurmas, selectedTurmaId]);
+
+  const selectedTurma = useMemo(
+    () => filteredTurmas.find((turma) => turma.id === selectedTurmaId) || null,
+    [filteredTurmas, selectedTurmaId]
+  );
+
+  const filteredStudents = useMemo(() => {
+    if (!selectedTurma) {
+      return [];
+    }
+
+    return selectedTurma.students.filter((student) =>
+      student.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery, selectedTurma]);
 
   const calculateAge = (birthDate: string) => {
+    const parsedBirthDate = new Date(birthDate);
+
+    if (Number.isNaN(parsedBirthDate.getTime())) {
+      return null;
+    }
+
     const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0) {
+    let age = today.getFullYear() - parsedBirthDate.getFullYear();
+    const monthDiff = today.getMonth() - parsedBirthDate.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < parsedBirthDate.getDate())
+    ) {
       age--;
     }
+
     return age;
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("pt-BR");
-  };
-
-  const filteredTurmas =
-    filterLevel === "all"
-      ? mockTurmas
-      : mockTurmas.filter((t) => t.level === parseInt(filterLevel));
-
   return (
-    <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>
+    <div
+      className={`flex min-h-screen bg-background transition-[padding] duration-300 ${
+        sidebarOpen ? "lg:pl-64" : "lg:pl-0"
+      }`}
+    >
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-card transition-transform duration-300 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -636,15 +375,9 @@ export default function MinhasTurmas() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
                 <Cross className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="font-display text-lg font-semibold">
-                Catequese
-              </span>
+              <span className="font-display text-lg font-semibold">Catequese</span>
             </Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-            >
+            <Button variant="ghost" size="icon" onClick={toggleSidebar}>
               <Menu className="h-5 w-5" />
             </Button>
           </div>
@@ -655,19 +388,20 @@ export default function MinhasTurmas() {
                 <Users className="h-5 w-5 text-gold-dark" />
               </div>
               <div>
-                <p className="font-medium">{isAdminRoute ? 'Área do Admin' : 'Área do Catequista'}</p>
+                <p className="font-medium">
+                  {isAdminRoute ? "Área do Admin" : "Área do Catequista"}
+                </p>
               </div>
             </div>
           </div>
 
-          <SidebarNav items={getDashboardNavItems(isAdminRoute)} pathname={location.pathname} />
+          <SidebarNav
+            items={getDashboardNavItems(isAdminRoute)}
+            pathname={location.pathname}
+          />
 
           <div className="border-t p-4">
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-destructive"
-              asChild
-            >
+            <Button variant="ghost" className="w-full justify-start text-destructive" asChild>
               <Link to="/">
                 <LogOut className="mr-3 h-4 w-4" />
                 Sair
@@ -694,163 +428,188 @@ export default function MinhasTurmas() {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <span className="font-display text-lg font-semibold">
-            Minhas Turmas
-          </span>
+          <span className="font-display text-lg font-semibold">Minhas Turmas</span>
           <div className="w-10" />
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl">
-            {/* Header */}
-            <div className="mb-8">
+            <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div>
-                <h1 className="text-4xl font-bold text-slate-900 mb-2">
-                  Minhas Turmas
-                </h1>
+                <h1 className="mb-2 text-4xl font-bold text-slate-900">Minhas Turmas</h1>
                 <p className="text-slate-600">
                   Gerencie suas turmas e as informações dos catequizandos
                 </p>
               </div>
+
+              <div className="w-full md:w-56">
+                <Select value={filterLevel} onValueChange={setFilterLevel}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filtrar por nível" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os níveis</SelectItem>
+                    {[...new Set(turmas.map((turma) => turma.level))]
+                      .filter((value) => Number.isFinite(value) && value > 0)
+                      .sort((a, b) => a - b)
+                      .map((level) => (
+                        <SelectItem key={level} value={String(level)}>
+                          Nível {level}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              {/* Sidebar - Turmas */}
-              <div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Turmas</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex flex-col gap-2">
-                      {filteredTurmas.map((turma) => (
-                        <Button
-                          key={turma.id}
-                          variant={
-                            selectedTurma.id === turma.id
-                              ? "default"
-                              : "outline"
-                          }
-                          className="justify-start text-left h-auto py-3 px-3"
-                          onClick={() => {
-                            setSelectedTurma(turma);
-                            setSearchQuery("");
-                          }}
-                        >
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium text-sm">
-                              {turma.name}
-                            </span>
-                            <span className="text-xs opacity-75">
-                              {turma.students.length} crianças
-                            </span>
-                          </div>
-                        </Button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+            {loadingTurmas && (
+              <Card>
+                <CardContent className="py-10 text-center text-slate-600">
+                  Carregando turmas...
+                </CardContent>
+              </Card>
+            )}
 
-              {/* Main Content - Turma Details */}
-              <div className="lg:col-span-3">
-                <Card>
-                  <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-2xl">
-                          {selectedTurma.name}
-                        </CardTitle>
-                        <CardDescription className="mt-2">
-                          <div className="flex flex-wrap gap-4 text-sm">
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              {selectedTurma.schedule}
+            {!loadingTurmas && loadError && (
+              <Card>
+                <CardContent className="py-10 text-center">
+                  <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-500" />
+                  <p className="text-slate-700">{loadError}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {!loadingTurmas && !loadError && filteredTurmas.length === 0 && (
+              <Card>
+                <CardContent className="py-10 text-center">
+                  <Users className="mx-auto mb-3 h-10 w-10 text-slate-400" />
+                  <p className="text-slate-700">
+                    {isAdminRoute
+                      ? "Nenhuma turma encontrada."
+                      : "Você ainda não foi vinculado a nenhuma turma."}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {!loadingTurmas && !loadError && filteredTurmas.length > 0 && selectedTurma && (
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+                <div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Turmas</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div className="flex flex-col gap-2">
+                        {filteredTurmas.map((turma) => (
+                          <Button
+                            key={turma.id}
+                            variant={selectedTurma.id === turma.id ? "default" : "outline"}
+                            className="h-auto justify-start px-3 py-3 text-left"
+                            onClick={() => {
+                              setSelectedTurmaId(turma.id);
+                              setSearchQuery("");
+                            }}
+                          >
+                            <div className="flex flex-col items-start">
+                              <span className="text-sm font-medium">{turma.name}</span>
+                              <span className="text-xs opacity-75">
+                                {turma.students.length} catequizando(s)
+                              </span>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <MapPin className="w-4 h-4" />
-                              {selectedTurma.room}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Users className="w-4 h-4" />
-                              {selectedTurma.students.length} crianças
-                            </div>
-                          </div>
-                        </CardDescription>
+                          </Button>
+                        ))}
                       </div>
-                    </div>
-                  </CardHeader>
+                    </CardContent>
+                  </Card>
+                </div>
 
-                  <CardContent className="pt-6">
-                    {/* Search Bar */}
-                    <div className="mb-6 relative">
-                      <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                      <Input
-                        placeholder="Buscar catequizando..."
-                        className="pl-10"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                      />
-                    </div>
-
-                    {/* Students Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {filteredStudents.map((student) => (
-                        <button
-                          key={student.id}
-                          onClick={() => setSelectedStudent(student)}
-                          className="p-4 rounded-lg border border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer text-left group"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-3 flex-1">
-                              <Avatar className="h-10 w-10 mt-0.5">
-                                <AvatarImage
-                                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.id}`}
-                                />
-                                <AvatarFallback>
-                                  {student.avatar}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-slate-900 truncate group-hover:text-blue-600">
-                                  {student.name}
-                                </p>
-                                <p className="text-xs text-slate-500 mt-1">
-                                  {calculateAge(student.birthDate)} anos •{" "}
-                                  {student.phone}
-                                </p>
+                <div className="lg:col-span-3">
+                  <Card>
+                    <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-2xl">{selectedTurma.name}</CardTitle>
+                          <CardDescription className="mt-2">
+                            <div className="flex flex-wrap gap-4 text-sm">
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-4 w-4" />
+                                {selectedTurma.schedule}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <MapPin className="h-4 w-4" />
+                                {selectedTurma.room}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Users className="h-4 w-4" />
+                                {selectedTurma.students.length} catequizando(s)
                               </div>
                             </div>
-                            <Badge
-                              variant={
-                                student.attendanceDates.percentage >= 85
-                                  ? "default"
-                                  : "secondary"
-                              }
-                              className="ml-2 whitespace-nowrap"
-                            >
-                              {student.attendanceDates.percentage}%
-                            </Badge>
-                          </div>
-                        </button>
-                        ))}
-                          </div>
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
 
-                          {filteredStudents.length === 0 && (
-                            <div className="text-center py-12">
-                              <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                              <p className="text-slate-500">
-                                Nenhum catequizando encontrado
-                              </p>
-                            </div>
-                          )}
-                  </CardContent>
-                </Card>
+                    <CardContent className="pt-6">
+                      <div className="relative mb-6">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                        <Input
+                          placeholder="Buscar catequizando..."
+                          className="pl-10"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        {filteredStudents.map((student) => {
+                          const age = calculateAge(student.birthDate);
+
+                          return (
+                            <button
+                              key={student.id}
+                              onClick={() => setSelectedStudent(student)}
+                              className="group cursor-pointer rounded-lg border border-slate-200 p-4 text-left transition-all hover:border-blue-500 hover:bg-blue-50"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex flex-1 items-start gap-3">
+                                  <Avatar className="mt-0.5 h-10 w-10">
+                                    <AvatarImage
+                                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.id}`}
+                                    />
+                                    <AvatarFallback>{student.avatar}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate font-medium text-slate-900 group-hover:text-blue-600">
+                                      {student.name}
+                                    </p>
+                                    <p className="mt-1 text-xs text-slate-500">
+                                      {age !== null ? `${age} anos` : "Idade não informada"} • {student.phone}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Badge variant="secondary" className="ml-2 whitespace-nowrap">
+                                  {student.attendanceDates.percentage}%
+                                </Badge>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {filteredStudents.length === 0 && (
+                        <div className="py-12 text-center">
+                          <Users className="mx-auto mb-4 h-12 w-12 text-slate-300" />
+                          <p className="text-slate-500">Nenhum catequizando encontrado</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
-            </div>
-            {/* Close max-width wrapper */}
+            )}
           </div>
-          {/* Student Detail Modal */}
+
           <Dialog
             open={!!selectedStudent}
             onOpenChange={() => {
@@ -858,7 +617,7 @@ export default function MinhasTurmas() {
               setDocumentPreview(null);
             }}
           >
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
               {selectedStudent && !documentPreview && (
                 <>
                   <DialogHeader>
@@ -867,47 +626,38 @@ export default function MinhasTurmas() {
                         <AvatarImage
                           src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedStudent.id}`}
                         />
-                        <AvatarFallback>
-                          {selectedStudent.avatar}
-                        </AvatarFallback>
+                        <AvatarFallback>{selectedStudent.avatar}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <DialogTitle className="text-2xl">
-                          {selectedStudent.name}
-                        </DialogTitle>
-                        <DialogDescription className="text-base mt-1">
-                          {calculateAge(selectedStudent.birthDate)} anos • Nível{" "}
-                          {selectedTurma.level}
+                        <DialogTitle className="text-2xl">{selectedStudent.name}</DialogTitle>
+                        <DialogDescription className="mt-1 text-base">
+                          {calculateAge(selectedStudent.birthDate) ?? "Idade não informada"} anos • Nível{" "}
+                          {selectedTurma?.level || "-"}
                         </DialogDescription>
                       </div>
                     </div>
                   </DialogHeader>
 
-                  <Tabs defaultValue="info" className="w-full mt-6">
+                  <Tabs defaultValue="info" className="mt-6 w-full">
                     <TabsList className="grid w-full grid-cols-3">
                       <TabsTrigger value="info">Informações</TabsTrigger>
                       <TabsTrigger value="documents">Documentos</TabsTrigger>
                       <TabsTrigger value="attendance">Frequência</TabsTrigger>
                     </TabsList>
 
-                    {/* Informações Tab */}
-                    <TabsContent value="info" className="space-y-4 mt-4">
+                    <TabsContent value="info" className="mt-4 space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-sm font-medium text-slate-600">
-                            Data de Nascimento
-                          </label>
-                          <p className="text-slate-900 mt-1 flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-blue-500" />
-                            {formatDate(selectedStudent.birthDate)}
+                          <label className="text-sm font-medium text-slate-600">Data de Nascimento</label>
+                          <p className="mt-1 flex items-center gap-2 text-slate-900">
+                            <Calendar className="h-4 w-4 text-blue-500" />
+                            {safeDate(selectedStudent.birthDate) || "Não informado"}
                           </p>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-slate-600">
-                            CPF
-                          </label>
-                          <p className="text-slate-900 mt-1 flex items-center gap-2">
-                            <FileText className="w-4 h-4 text-blue-500" />
+                          <label className="text-sm font-medium text-slate-600">CPF</label>
+                          <p className="mt-1 flex items-center gap-2 text-slate-900">
+                            <FileText className="h-4 w-4 text-blue-500" />
                             {selectedStudent.cpf}
                           </p>
                         </div>
@@ -915,246 +665,109 @@ export default function MinhasTurmas() {
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-sm font-medium text-slate-600">
-                            Telefone
-                          </label>
-                          <p className="text-slate-900 mt-1 flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-blue-500" />
+                          <label className="text-sm font-medium text-slate-600">Telefone</label>
+                          <p className="mt-1 flex items-center gap-2 text-slate-900">
+                            <Phone className="h-4 w-4 text-blue-500" />
                             {selectedStudent.phone}
                           </p>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-slate-600">
-                            E-mail
-                          </label>
-                          <p className="text-slate-900 mt-1 flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-blue-500" />
+                          <label className="text-sm font-medium text-slate-600">E-mail</label>
+                          <p className="mt-1 flex items-center gap-2 text-slate-900">
+                            <Mail className="h-4 w-4 text-blue-500" />
                             {selectedStudent.email}
                           </p>
                         </div>
                       </div>
 
                       <div>
-                        <label className="text-sm font-medium text-slate-600">
-                          Endereço
-                        </label>
-                        <p className="text-slate-900 mt-1 flex items-start gap-2">
-                          <MapPin className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                        <label className="text-sm font-medium text-slate-600">Endereço</label>
+                        <p className="mt-1 flex items-start gap-2 text-slate-900">
+                          <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-500" />
                           {selectedStudent.address}
                         </p>
                       </div>
                     </TabsContent>
 
-                    {/* Documentos Tab */}
-                    <TabsContent value="documents" className="space-y-3 mt-4">
+                    <TabsContent value="documents" className="mt-4 space-y-3">
                       <div className="space-y-3">
-                        {/* Certidão de Nascimento */}
-                        <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-slate-50">
-                          <div className="flex-1">
-                            <span className="font-medium text-slate-900">
-                              Certidão de Nascimento
-                            </span>
-                            {selectedStudent.documents.birthCertificate
-                              .status &&
-                              selectedStudent.documents.birthCertificate
-                                .uploadDate && (
-                                <p className="text-xs text-slate-500 mt-1">
-                                  Enviado em{" "}
-                                  {formatDate(
-                                    selectedStudent.documents.birthCertificate
-                                      .uploadDate
-                                  )}
+                        {[
+                          {
+                            label: "Certidão de Nascimento",
+                            type: "Certidão de Nascimento",
+                            document: selectedStudent.documents.birthCertificate,
+                          },
+                          {
+                            label: "CPF",
+                            type: "CPF",
+                            document: selectedStudent.documents.cpf,
+                          },
+                          {
+                            label: "Carteira de Vacina",
+                            type: "Carteira de Vacina",
+                            document: selectedStudent.documents.vaccineCard,
+                          },
+                        ].map((item) => (
+                          <div
+                            key={item.type}
+                            className="flex items-center justify-between rounded-lg border p-3 hover:bg-slate-50"
+                          >
+                            <div className="flex-1">
+                              <span className="font-medium text-slate-900">{item.label}</span>
+                              {item.document.status && item.document.uploadDate && (
+                                <p className="mt-1 text-xs text-slate-500">
+                                  Enviado em {safeDate(item.document.uploadDate)}
                                 </p>
                               )}
-                          </div>
-                          <div className="flex items-center gap-2 ml-3">
-                            {selectedStudent.documents.birthCertificate
-                              .status ? (
-                              <>
-                                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                                  ✓ Enviado
+                            </div>
+                            <div className="ml-3 flex items-center gap-2">
+                              {item.document.status ? (
+                                <>
+                                  <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                                    Enviado
+                                  </Badge>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() =>
+                                      setDocumentPreview({
+                                        type: item.type,
+                                        doc: item.document,
+                                      })
+                                    }
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <Badge variant="outline" className="text-red-600">
+                                  Pendente
                                 </Badge>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() =>
-                                    setDocumentPreview({
-                                      type: "Certidão de Nascimento",
-                                      doc: selectedStudent.documents
-                                        .birthCertificate,
-                                    })
-                                  }
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                              </>
-                            ) : (
-                              <Badge variant="outline" className="text-red-600">
-                                ✗ Pendente
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* CPF */}
-                        <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-slate-50">
-                          <div className="flex-1">
-                            <span className="font-medium text-slate-900">
-                              CPF
-                            </span>
-                            {selectedStudent.documents.cpf.status &&
-                              selectedStudent.documents.cpf.uploadDate && (
-                                <p className="text-xs text-slate-500 mt-1">
-                                  Enviado em{" "}
-                                  {formatDate(
-                                    selectedStudent.documents.cpf.uploadDate
-                                  )}
-                                </p>
                               )}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 ml-3">
-                            {selectedStudent.documents.cpf.status ? (
-                              <>
-                                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                                  ✓ Enviado
-                                </Badge>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() =>
-                                    setDocumentPreview({
-                                      type: "CPF",
-                                      doc: selectedStudent.documents.cpf,
-                                    })
-                                  }
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                              </>
-                            ) : (
-                              <Badge variant="outline" className="text-red-600">
-                                ✗ Pendente
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Cartão de Vacinação */}
-                        <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-slate-50">
-                          <div className="flex-1">
-                            <span className="font-medium text-slate-900">
-                              Cartão de Vacinação
-                            </span>
-                            {selectedStudent.documents.vaccineCard.status &&
-                              selectedStudent.documents.vaccineCard
-                                .uploadDate && (
-                                <p className="text-xs text-slate-500 mt-1">
-                                  Enviado em{" "}
-                                  {formatDate(
-                                    selectedStudent.documents.vaccineCard
-                                      .uploadDate
-                                  )}
-                                </p>
-                              )}
-                          </div>
-                          <div className="flex items-center gap-2 ml-3">
-                            {selectedStudent.documents.vaccineCard.status ? (
-                              <>
-                                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                                  ✓ Enviado
-                                </Badge>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() =>
-                                    setDocumentPreview({
-                                      type: "Cartão de Vacinação",
-                                      doc: selectedStudent.documents
-                                        .vaccineCard,
-                                    })
-                                  }
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                              </>
-                            ) : (
-                              <Badge variant="outline" className="text-red-600">
-                                ✗ Pendente
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
+                        ))}
                       </div>
                     </TabsContent>
 
-                    {/* Frequência Tab */}
-                    <TabsContent value="attendance" className="space-y-4 mt-4">
-                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <TabsContent value="attendance" className="mt-4 space-y-4">
+                      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
                         <div className="flex items-center justify-between">
-                          <span className="text-slate-700 font-medium">
-                            Taxa de Frequência
-                          </span>
+                          <span className="font-medium text-slate-700">Taxa de Frequência</span>
                           <span className="text-2xl font-bold text-blue-600">
                             {selectedStudent.attendanceDates.percentage}%
                           </span>
                         </div>
                       </div>
 
-                      <div className="space-y-2 text-sm text-slate-600">
-                        <p>
-                          {selectedStudent.attendanceDates.percentage >= 85
-                            ? "✓ Frequência em dia"
-                            : "⚠ Atenção necessária com a frequência"}
-                        </p>
-                        <p>
-                          {selectedStudent.attendanceDates.percentage >= 90
-                            ? "Excelente desempenho de frequência!"
-                            : "Procure melhorar o comparecimento"}
-                        </p>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                        Registros de frequência ainda não foram disponibilizados nesta tela.
                       </div>
-
-                      {selectedStudent.attendanceDates.absenceDates.length >
-                        0 && (
-                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1">
-                              <p className="font-medium text-red-900 text-sm mb-2">
-                                Datas de Falta:
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                {selectedStudent.attendanceDates.absenceDates.map(
-                                  (date, idx) => (
-                                    <Badge
-                                      key={idx}
-                                      variant="outline"
-                                      className="bg-red-100 text-red-800 border-red-300"
-                                    >
-                                      {formatDate(date)}
-                                    </Badge>
-                                  )
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {selectedStudent.attendanceDates.absenceDates.length ===
-                        0 && (
-                        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                          <p className="text-green-800 text-sm">
-                            ✓ Nenhuma falta registrada
-                          </p>
-                        </div>
-                      )}
                     </TabsContent>
                   </Tabs>
 
-                  <div className="flex gap-3 mt-6 pt-6 border-t">
+                  <div className="mt-6 flex gap-3 border-t pt-6">
                     <Button
                       variant="outline"
                       className="flex-1"
@@ -1162,16 +775,14 @@ export default function MinhasTurmas() {
                     >
                       Fechar
                     </Button>
-                    <Button className="flex-1">Editar Informações</Button>
                   </div>
                 </>
               )}
 
-              {/* Document Preview */}
               {documentPreview && (
                 <>
                   <DialogHeader>
-                    <div className="flex items-center justify-between w-full">
+                    <div className="flex w-full items-center justify-between">
                       <DialogTitle>{documentPreview.type}</DialogTitle>
                       <button
                         onClick={() => setDocumentPreview(null)}
@@ -1183,40 +794,45 @@ export default function MinhasTurmas() {
                     </div>
                   </DialogHeader>
 
-                  <div className="space-y-4 mt-6">
-                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border">
+                  <div className="mt-6 space-y-4">
+                    <div className="flex items-center justify-between rounded-lg border bg-slate-50 p-4">
                       <div>
                         <p className="font-medium text-slate-900">
-                          {documentPreview.doc.fileName ||
-                            `${documentPreview.type}.pdf`}
+                          {documentPreview.doc.fileName || `${documentPreview.type}.pdf`}
                         </p>
                         {documentPreview.doc.uploadDate && (
-                          <p className="text-xs text-slate-500 mt-1">
-                            Enviado em{" "}
-                            {formatDate(documentPreview.doc.uploadDate)}
+                          <p className="mt-1 text-xs text-slate-500">
+                            Enviado em {safeDate(documentPreview.doc.uploadDate)}
                           </p>
                         )}
                       </div>
-                      <Button size="sm" variant="outline" className="gap-2">
-                        <Download className="w-4 h-4" />
-                        Baixar
-                      </Button>
+                      {documentPreview.doc.fileUrl ? (
+                        <Button size="sm" variant="outline" className="gap-2" asChild>
+                          <a
+                            href={documentPreview.doc.fileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <Download className="h-4 w-4" />
+                            Abrir
+                          </a>
+                        </Button>
+                      ) : (
+                        <Badge variant="outline">Arquivo indisponível</Badge>
+                      )}
                     </div>
 
-                    <div className="bg-slate-100 rounded-lg p-8 flex items-center justify-center h-64 border-2 border-dashed border-slate-300">
+                    <div className="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-100 p-8">
                       <div className="text-center">
-                        <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                        <p className="text-slate-600 text-sm">
-                          Prévia do documento
-                        </p>
-                        <p className="text-slate-400 text-xs mt-1">
-                          Clique em "Baixar" para visualizar o documento
-                          completo
+                        <FileText className="mx-auto mb-3 h-12 w-12 text-slate-400" />
+                        <p className="text-sm text-slate-600">Prévia não disponível</p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          Use o botão acima para abrir o documento real.
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex gap-3 pt-4 border-t">
+                    <div className="flex gap-3 border-t pt-4">
                       <Button
                         variant="outline"
                         className="flex-1"
@@ -1224,10 +840,23 @@ export default function MinhasTurmas() {
                       >
                         Voltar
                       </Button>
-                      <Button className="flex-1 gap-2">
-                        <Download className="w-4 h-4" />
-                        Baixar Documento
-                      </Button>
+                      {documentPreview.doc.fileUrl ? (
+                        <Button className="flex-1 gap-2" asChild>
+                          <a
+                            href={documentPreview.doc.fileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <Download className="h-4 w-4" />
+                            Abrir Documento
+                          </a>
+                        </Button>
+                      ) : (
+                        <Button className="flex-1 gap-2" disabled>
+                          <Download className="h-4 w-4" />
+                          Documento indisponível
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </>
