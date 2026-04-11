@@ -64,39 +64,25 @@ import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
 import { SidebarNav } from "@/components/layout/SidebarNav";
 import { getDashboardNavItems } from "@/lib/sidebarNavItems";
 import { Link, useLocation } from "react-router-dom";
+import { fetchWithAuth } from "@/lib/api";
+import { API_ROUTES } from "@/lib/routes";
 
-// Mock data
-const classes = [
-  {
-    id: 1,
-    name: "Turma A - Nível 1",
-    level: 1,
-    levelName: "Nível I",
-    schedule: "Sábados, 9h às 11h",
-    students: 15,
-    room: "Sala 1",
-  },
-  {
-    id: 2,
-    name: "Turma B - Nível 2",
-    level: 2,
-    levelName: "Nível II",
-    schedule: "Sábados, 9h às 11h",
-    students: 12,
-    room: "Sala 2",
-  },
-];
+interface AttendanceStudent {
+  id: string;
+  name: string;
+  birthDate?: string;
+  baptismDate?: string;
+}
 
-const todayStudents = [
-  { id: 1, name: "Ana Carolina Souza", present: true },
-  { id: 2, name: "Bruno Santos Lima", present: true },
-  { id: 3, name: "Clara Oliveira", present: false },
-  { id: 4, name: "Daniel Pereira", present: true },
-  { id: 5, name: "Elena Maria Costa", present: true },
-  { id: 6, name: "Felipe Rodrigues", present: false },
-  { id: 7, name: "Gabriela Fernandes", present: true },
-  { id: 8, name: "Henrique Almeida", present: true },
-];
+interface AttendanceClass {
+  id: string;
+  name: string;
+  level: number;
+  levelName: string;
+  schedule: string;
+  room: string;
+  students: AttendanceStudent[];
+}
 
 const todayTopic = {
   title: "Os Mandamentos do Amor",
@@ -110,45 +96,27 @@ const todayTopic = {
   ],
 };
 
-// Lista de catequizandos com datas de aniversário e batismo (mock)
-const catechumens: { id: number; name: string; birthDate: string; baptismDate?: string }[] = [
-  { id: 1, name: "Ana Carolina Souza", birthDate: "2015-03-22", baptismDate: "2016-02-14" },
-  { id: 2, name: "Bruno Santos Lima", birthDate: "2015-07-15", baptismDate: "2016-08-21" },
-  { id: 3, name: "Clara Oliveira", birthDate: "2015-11-08", baptismDate: "2016-12-10" },
-  { id: 4, name: "Daniel Pereira", birthDate: "2016-01-20", baptismDate: "2017-03-05" },
-  { id: 5, name: "Elena Maria Costa", birthDate: "2015-05-10", baptismDate: "2016-06-19" },
-  { id: 6, name: "Felipe Rodrigues", birthDate: "2016-02-14", baptismDate: "2017-04-02" },
-  { id: 7, name: "Gabriela Fernandes", birthDate: "2015-08-30", baptismDate: "2016-10-16" },
-  { id: 8, name: "Henrique Almeida", birthDate: "2016-04-03", baptismDate: "2017-05-14" },
-  { id: 9, name: "Isabela Martins", birthDate: "2014-09-12", baptismDate: "2015-11-01" },
-  { id: 10, name: "João Paulo Silva", birthDate: "2014-06-25", baptismDate: "2015-08-30" },
-  { id: 11, name: "Karina Souza", birthDate: "2014-12-08", baptismDate: "2016-02-07" },
-  { id: 12, name: "Lucas Gomes", birthDate: "2014-03-17", baptismDate: "2015-05-24" },
-  { id: 13, name: "Mariana Cardoso", birthDate: "2014-07-22", baptismDate: "2015-09-20" },
-  { id: 14, name: "Nicolas Ribeiro", birthDate: "2013-05-30", baptismDate: "2014-07-13" },
-  { id: 15, name: "Olivia Santos", birthDate: "2013-09-14", baptismDate: "2014-11-02" },
-];
-
 export default function CatechistDashboard() {
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
-  const [selectedClass, setSelectedClass] = useState(classes[0]);
-  const [attendance, setAttendance] = useState<Record<number, boolean>>(
-    Object.fromEntries(todayStudents.map((s) => [s.id, s.present]))
-  );
+  const [classes, setClasses] = useState<AttendanceClass[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [selectedMeetingDate, setSelectedMeetingDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [attendanceByMeeting, setAttendanceByMeeting] = useState<Record<string, Record<string, boolean>>>({});
+  const [loadingClasses, setLoadingClasses] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [communicationOpen, setCommunicationOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [saveAttendanceDialogOpen, setSaveAttendanceDialogOpen] = useState(false);
-  const [attendanceSaved, setAttendanceSaved] = useState(false);
   const [conductPdfFile, setConductPdfFile] = useState<File | null>(null);
   const [conductPdfName, setConductPdfName] = useState<string>("");
   const [conductPdfDialogOpen, setConductPdfDialogOpen] = useState(false);
   const [messageRecipient, setMessageRecipient] = useState<string>("admin");
   const [messageText, setMessageText] = useState("");
   const [savedAttendances, setSavedAttendances] = useState<
-    Array<{ date: string; classId: number; attendance: Record<number, boolean> }>
+    Array<{ date: string; classId: string; attendance: Record<string, boolean> }>
   >([]);
+  const ATTENDANCE_STORAGE_KEY = "catequese.attendance.byMeeting";
   const [messages, setMessages] = useState(
     [
       {
@@ -183,6 +151,106 @@ export default function CatechistDashboard() {
   ];
   
   const location = useLocation();
+
+  const getLevelName = (level: number) => {
+    switch (level) {
+      case 1:
+        return "Nível I";
+      case 2:
+        return "Nível II";
+      case 3:
+        return "Nível III";
+      default:
+        return `Nível ${level}`;
+    }
+  };
+
+  const loadClasses = async () => {
+    setLoadingClasses(true);
+    try {
+      const response = await fetchWithAuth(`${API_ROUTES.turmas}?limit=1000&offset=0`);
+
+      if (!response.ok) {
+        throw new Error("Não foi possível carregar as turmas");
+      }
+
+      const data = await response.json();
+      const list = Array.isArray(data?.turmas) ? data.turmas : [];
+
+      const mappedClasses: AttendanceClass[] = list.map((turma: any) => ({
+        id: String(turma.id),
+        name: String(turma.nome || "Turma"),
+        level: Number(turma.ano || 0),
+        levelName: getLevelName(Number(turma.ano || 0)),
+        schedule: String(turma.horario || ""),
+        room: String(turma.sala || ""),
+        students: Array.isArray(turma.catequizandos)
+          ? turma.catequizandos.map((student: any) => ({
+              id: String(student.id),
+              name: String(student.nome || ""),
+              birthDate: student.dataNascimento || undefined,
+              baptismDate: student.dataBatismo || undefined,
+            }))
+          : [],
+      }));
+
+      setClasses(mappedClasses);
+      setSelectedClassId((prev) => prev || mappedClasses[0]?.id || "");
+    } catch (error) {
+      console.error("Erro ao carregar turmas da chamada:", error);
+      setClasses([]);
+      setSelectedClassId("");
+    } finally {
+      setLoadingClasses(false);
+    }
+  };
+
+  const selectedClass = useMemo(
+    () => classes.find((cls) => cls.id === selectedClassId) ?? null,
+    [classes, selectedClassId]
+  );
+
+  const selectedClassStudents = selectedClass?.students ?? [];
+
+  const attendanceKey = useMemo(() => {
+    if (!selectedClassId || !selectedMeetingDate) {
+      return "";
+    }
+
+    return `${selectedClassId}__${selectedMeetingDate}`;
+  }, [selectedClassId, selectedMeetingDate]);
+
+  const attendance = useMemo(() => {
+    if (!attendanceKey) {
+      return {} as Record<string, boolean>;
+    }
+
+    const existing = attendanceByMeeting[attendanceKey];
+    if (existing) {
+      return existing;
+    }
+
+    return Object.fromEntries(selectedClassStudents.map((s) => [s.id, false]));
+  }, [attendanceByMeeting, attendanceKey, selectedClassStudents]);
+
+  const attendanceSaved = useMemo(
+    () => savedAttendances.some((item) => item.classId === selectedClassId && item.date === selectedMeetingDate),
+    [savedAttendances, selectedClassId, selectedMeetingDate]
+  );
+
+  const catechumens = useMemo(
+    () =>
+      classes
+        .flatMap((cls) => cls.students)
+        .filter((student) => Boolean(student.birthDate))
+        .map((student) => ({
+          id: student.id,
+          name: student.name,
+          birthDate: student.birthDate as string,
+          baptismDate: student.baptismDate,
+        })),
+    [classes]
+  );
   
   // Detecta se está em rota de admin ou catequista
   const baseRoute = location.pathname.startsWith('/admin') ? '/admin' : '/catequista';
@@ -296,6 +364,58 @@ export default function CatechistDashboard() {
     } catch {}
   }, []);
 
+  useEffect(() => {
+    void loadClasses();
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(ATTENDANCE_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as Array<{ date: string; classId: string; attendance: Record<string, boolean> }>;
+      if (!Array.isArray(parsed)) {
+        return;
+      }
+
+      setSavedAttendances(parsed);
+      const rebuilt = parsed.reduce<Record<string, Record<string, boolean>>>((acc, item) => {
+        acc[`${item.classId}__${item.date}`] = item.attendance;
+        return acc;
+      }, {});
+      setAttendanceByMeeting(rebuilt);
+    } catch {
+      // Ignore storage parsing issues and start with a clean state.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!attendanceKey) {
+      return;
+    }
+
+    setAttendanceByMeeting((prev) => {
+      if (prev[attendanceKey]) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [attendanceKey]: Object.fromEntries(selectedClassStudents.map((student) => [student.id, false])),
+      };
+    });
+  }, [attendanceKey, selectedClassStudents]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ATTENDANCE_STORAGE_KEY, JSON.stringify(savedAttendances));
+    } catch {
+      // Ignore storage write failures.
+    }
+  }, [savedAttendances]);
+
   const recipientOptions = [
     { id: "admin", label: "Coordenação" },
     { id: "pais", label: "Pais da turma" },
@@ -356,14 +476,24 @@ export default function CatechistDashboard() {
     }
   };
 
-  const toggleAttendance = (studentId: number) => {
-    setAttendance((prev) => ({
-      ...prev,
-      [studentId]: !prev[studentId],
-    }));
+  const toggleAttendance = (studentId: string) => {
+    if (!attendanceKey || attendanceSaved) {
+      return;
+    }
+
+    setAttendanceByMeeting((prev) => {
+      const current = prev[attendanceKey] || Object.fromEntries(selectedClassStudents.map((s) => [s.id, false]));
+      return {
+        ...prev,
+        [attendanceKey]: {
+          ...current,
+          [studentId]: !current[studentId],
+        },
+      };
+    });
   };
 
-  const presentCount = Object.values(attendance).filter(Boolean).length;
+  const presentCount = selectedClassStudents.filter((student) => Boolean(attendance[student.id])).length;
 
   return (
     <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>
@@ -463,17 +593,28 @@ export default function CatechistDashboard() {
             </div>
 
             {/* Class Selector */}
-            <div className="flex gap-2">
-              {classes.map((cls) => (
-                <Button
-                  key={cls.id}
-                  variant={selectedClass.id === cls.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedClass(cls)}
-                >
-                  {cls.name}
-                </Button>
-              ))}
+            <div className="flex flex-col gap-2 md:items-end">
+              <div className="flex flex-wrap gap-2">
+                {classes.map((cls) => (
+                  <Button
+                    key={cls.id}
+                    variant={selectedClass?.id === cls.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedClassId(cls.id)}
+                  >
+                    {cls.name}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Encontro:</span>
+                <Input
+                  type="date"
+                  value={selectedMeetingDate}
+                  onChange={(e) => setSelectedMeetingDate(e.target.value)}
+                  className="h-9 w-[190px]"
+                />
+              </div>
             </div>
           </div>
           <div className="grid gap-6 lg:grid-cols-3">
@@ -485,15 +626,21 @@ export default function CatechistDashboard() {
                       <div>
                         <CardTitle>Lista de Chamada</CardTitle>
                         <CardDescription>
-                          <Badge className={getLevelColor(selectedClass.level)}>
-                            {selectedClass.levelName}
-                          </Badge>
-                          <span className="ml-2">{selectedClass.schedule}</span>
+                          {selectedClass ? (
+                            <>
+                              <Badge className={getLevelColor(selectedClass.level)}>
+                                {selectedClass.levelName}
+                              </Badge>
+                              <span className="ml-2">{selectedClass.schedule}</span>
+                            </>
+                          ) : (
+                            <span>Nenhuma turma disponível</span>
+                          )}
                         </CardDescription>
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-primary">
-                          {presentCount}/{todayStudents.length}
+                          {presentCount}/{selectedClassStudents.length}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           Presentes
@@ -503,7 +650,13 @@ export default function CatechistDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      {todayStudents.map((student) => (
+                      {loadingClasses ? (
+                        <div className="rounded-lg border p-4 text-sm text-muted-foreground">Carregando turma...</div>
+                      ) : selectedClassStudents.length === 0 ? (
+                        <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+                          Nenhum catequizando encontrado para esta turma.
+                        </div>
+                      ) : selectedClassStudents.map((student) => (
                         <div
                           key={student.id}
                           className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
@@ -515,6 +668,7 @@ export default function CatechistDashboard() {
                           <div className="flex items-center gap-3">
                             <Checkbox
                               checked={attendance[student.id]}
+                              disabled={attendanceSaved}
                               onCheckedChange={() =>
                                 toggleAttendance(student.id)
                               }
@@ -541,7 +695,7 @@ export default function CatechistDashboard() {
                       className="mt-4 w-full" 
                       size="lg"
                       onClick={() => setSaveAttendanceDialogOpen(true)}
-                      disabled={attendanceSaved}
+                      disabled={attendanceSaved || !selectedClass || selectedClassStudents.length === 0}
                     >
                       {attendanceSaved ? "Chamada Salva" : "Salvar Chamada"}
                     </Button>
@@ -1055,10 +1209,10 @@ export default function CatechistDashboard() {
             </div>
             <div className="rounded-lg bg-blue-50 p-4 border border-blue-200">
               <p className="text-sm text-blue-900">
-                <strong>Data:</strong> {format(new Date(), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                <strong>Data:</strong> {format(new Date(`${selectedMeetingDate}T00:00:00`), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
               </p>
               <p className="text-sm text-blue-900 mt-2">
-                <strong>Presentes:</strong> {presentCount}/{todayStudents.length} catequizandos
+                <strong>Presentes:</strong> {presentCount}/{selectedClassStudents.length} catequizandos
               </p>
             </div>
           </div>
@@ -1072,15 +1226,24 @@ export default function CatechistDashboard() {
             <Button 
               variant="default"
               onClick={() => {
-                setSavedAttendances([
-                  ...savedAttendances,
-                  {
-                    date: format(new Date(), "yyyy-MM-dd"),
-                    classId: selectedClass.id,
-                    attendance: { ...attendance }
-                  }
-                ]);
-                setAttendanceSaved(true);
+                if (!selectedClass || !attendanceKey) {
+                  return;
+                }
+
+                setSavedAttendances((prev) => {
+                  const withoutCurrent = prev.filter(
+                    (item) => !(item.classId === selectedClass.id && item.date === selectedMeetingDate)
+                  );
+
+                  return [
+                    ...withoutCurrent,
+                    {
+                      date: selectedMeetingDate,
+                      classId: selectedClass.id,
+                      attendance: { ...attendance },
+                    },
+                  ];
+                });
                 setSaveAttendanceDialogOpen(false);
               }}
             >
