@@ -6,6 +6,8 @@ export const API_ROUTES = {
   catequistasInscricoes: "/api/catequistas/inscricoes",
   catequistasInscricoesApprove: (id: number | string) => `/api/catequistas/inscricoes/${id}/approve`,
   catequistasInscricoesReject: (id: number | string) => `/api/catequistas/inscricoes/${id}/reject`,
+  cronogramaEventos: "/api/cronograma/eventos",
+  cronogramaEventosPublicos: "/api/cronograma/eventos/publicos",
   auth: {
     login: "/api/auth/login",
     register: "/api/auth/register",

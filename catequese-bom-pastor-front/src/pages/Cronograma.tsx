@@ -1,6 +1,10 @@
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -11,217 +15,254 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  compareAsc,
-  endOfMonth,
-  format,
-  getDaysInMonth,
-  getDaysInYear,
-  isSameMonth,
-  isSameYear,
-  parseISO,
-  startOfMonth,
-  startOfYear,
-} from "date-fns";
-import { ptBR } from "date-fns/locale";
-import {
-  BookOpen,
-  Calendar as CalendarIcon,
-  Calendar as CalendarNav,
-  ClipboardList,
-  Cross,
-  DollarSign,
-  LogOut,
-  Menu,
-  Music,
-  Pencil,
-  Plus,
-  Trash2,
-  Users,
-  X,
-} from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { fetchWithAuth } from "@/lib/api";
+import { API_ROUTES } from "@/lib/routes";
 import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
 import { SidebarNav } from "@/components/layout/SidebarNav";
 import { getDashboardNavItems } from "@/lib/sidebarNavItems";
-import { Link, useLocation } from "react-router-dom";
+import {
+  AlertCircle,
+  Calendar as CalendarIcon,
+  Calendar as CalendarNav,
+  Clock,
+  Cross,
+  LogOut,
+  MapPin,
+  Menu,
+  Plus,
+  Users,
+} from "lucide-react";
 
-interface Lesson {
+type ViewMode = "day" | "month" | "year";
+
+interface EventItem {
   id: string;
   title: string;
-  description?: string;
+  description: string;
+  date: string;
+  type: "TURMA" | "GERAL";
+  turmaName: string | null;
 }
 
-type Schedule = Record<string, Lesson[]>; // key: yyyy-MM-dd
+interface EventForm {
+  title: string;
+  description: string;
+  audience: "comunidade" | "pais-catequistas";
+}
 
-const STORAGE_KEY = "cronograma_schedule";
+function normalizeRole(value: string | null): "admin" | "catequista" | "responsavel" | "guest" {
+  const role = String(value || "").toLowerCase().trim();
+
+  if (role === "admin" || role === "administrador" || role === "adminstrador") {
+    return "admin";
+  }
+
+  if (role === "catequista" || role === "catechist") {
+    return "catequista";
+  }
+
+  if (role === "responsavel" || role === "responsável" || role === "parent") {
+    return "responsavel";
+  }
+
+  return "guest";
+}
+
+function toDateKey(dateIso: string): string {
+  const parsed = new Date(dateIso);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  return format(parsed, "yyyy-MM-dd");
+}
+
+function mapEvent(item: any): EventItem {
+  return {
+    id: String(item?.id || ""),
+    title: String(item?.titulo || "Sem título"),
+    description: String(item?.descricao || ""),
+    date: String(item?.data || ""),
+    type: item?.tipo === "TURMA" ? "TURMA" : "GERAL",
+    turmaName: item?.turma?.nome ? String(item.turma.nome) : null,
+  };
+}
 
 export default function Cronograma() {
-  const [date, setDate] = useState<Date>(new Date());
-  const [schedule, setSchedule] = useState<Schedule>({});
-  const [isAdmin, setIsAdmin] = useState(false);
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
-  const [viewMode, setViewMode] = useState<"day" | "month" | "year">("month");
-  const [editing, setEditing] = useState<{
-    mode: "add" | "edit";
-    lesson?: Lesson;
-  } | null>(null);
-  const [form, setForm] = useState<{ title: string; description: string }>({
-    title: "",
-    description: "",
-  });
   const location = useLocation();
 
+  const baseRoute = location.pathname.startsWith("/admin") ? "/admin" : "/catequista";
+  const isAdminRoute = baseRoute === "/admin";
+
+  const [date, setDate] = useState<Date>(new Date());
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState<EventForm>({
+    title: "",
+    description: "",
+    audience: "comunidade",
+  });
+  const canManageEvents = isAdminRoute && isAdmin;
+
   useEffect(() => {
-    try {
-      setIsAdmin((localStorage.getItem("role") || "guest") === "admin");
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setSchedule(JSON.parse(raw));
-      else seedDemo();
-    } catch {}
+    const role = normalizeRole(localStorage.getItem("userRole"));
+    setIsAdmin(role === "admin");
   }, []);
 
-  const selectedKey = useMemo(() => format(date, "yyyy-MM-dd"), [date]);
-  const lessonsForDay = schedule[selectedKey] || [];
+  const loadEvents = async () => {
+    setLoading(true);
+    setError(null);
 
-  function persist(next: Schedule) {
-    setSchedule(next);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {}
-  }
+      const response = await fetchWithAuth(`${API_ROUTES.cronogramaEventos}?limit=1000&offset=0`);
 
-  function seedDemo() {
-    const todayKey = format(new Date(), "yyyy-MM-dd");
-    const nextSat = nextWeekday(new Date(), 6);
-    const nextSatKey = format(nextSat, "yyyy-MM-dd");
-    const demo: Schedule = {
-      [todayKey]: [
-        {
-          id: cryptoId(),
-          title: "Boas-vindas e oração inicial",
-          description: "Acolhida das crianças",
-        },
-        {
-          id: cryptoId(),
-          title: "Tema: Os Mandamentos do Amor",
-          description: "Cap. 12 – dinâmica em grupos",
-        },
-      ],
-      [nextSatKey]: [
-        {
-          id: cryptoId(),
-          title: "Leitura: Parábola do Semeador",
-          description: "Mt 13,1-23",
-        },
-      ],
-    };
-    persist(demo);
-  }
+      if (!response.ok) {
+        throw new Error("Não foi possível carregar os eventos.");
+      }
 
-  function cryptoId() {
-    return Math.random().toString(36).slice(2, 10);
-  }
-
-  function nextWeekday(from: Date, weekday: number) {
-    const d = new Date(from);
-    d.setDate(d.getDate() + ((7 + weekday - d.getDay()) % 7 || 7));
-    return d;
-  }
-
-  function startAdd() {
-    setEditing({ mode: "add" });
-    setForm({ title: "", description: "" });
-  }
-
-  function startEdit(lesson: Lesson) {
-    setEditing({ mode: "edit", lesson });
-    setForm({ title: lesson.title, description: lesson.description || "" });
-  }
-
-  function saveForm() {
-    if (!form.title.trim()) return;
-    const key = selectedKey;
-    const list = schedule[key] ? [...schedule[key]] : [];
-    if (editing?.mode === "add") {
-      list.push({
-        id: cryptoId(),
-        title: form.title.trim(),
-        description: form.description.trim(),
-      });
-    } else if (editing?.mode === "edit" && editing.lesson) {
-      const idx = list.findIndex((l) => l.id === editing.lesson!.id);
-      if (idx >= 0)
-        list[idx] = {
-          ...list[idx],
-          title: form.title.trim(),
-          description: form.description.trim(),
-        };
+      const data = await response.json();
+      const list = Array.isArray(data?.eventos) ? data.eventos : [];
+      setEvents(list.map(mapEvent));
+    } catch (loadError) {
+      console.error("Erro ao carregar cronograma:", loadError);
+      setError("Não foi possível carregar os eventos do cronograma.");
+      setEvents([]);
+    } finally {
+      setLoading(false);
     }
-    persist({ ...schedule, [key]: list });
-    setEditing(null);
-  }
+  };
 
-  function deleteLesson(id: string, keyOverride?: string) {
-    const key = keyOverride || selectedKey;
-    const list = (schedule[key] || []).filter((l) => l.id !== id);
-    const next = { ...schedule };
-    if (list.length) next[key] = list;
-    else delete next[key];
-    persist(next);
-  }
+  useEffect(() => {
+    loadEvents();
+  }, []);
 
-  const monthRange = useMemo(
-    () => ({ start: startOfMonth(date), end: endOfMonth(date) }),
-    [date]
-  );
+  const eventKeys = useMemo(() => {
+    return new Set(events.map((event) => toDateKey(event.date)).filter(Boolean));
+  }, [events]);
 
-  const monthKeys = useMemo(() => {
-    return Object.keys(schedule)
-      .filter((key) => isSameMonth(parseISO(key), date))
-      .sort((a, b) => compareAsc(parseISO(a), parseISO(b)));
-  }, [schedule, date]);
+  const selectedKey = useMemo(() => format(date, "yyyy-MM-dd"), [date]);
 
-  const yearKeys = useMemo(() => {
-    return Object.keys(schedule)
-      .filter((key) => isSameYear(parseISO(key), date))
-      .sort((a, b) => compareAsc(parseISO(a), parseISO(b)));
-  }, [schedule, date]);
+  const eventsForDay = useMemo(() => {
+    return events
+      .filter((event) => toDateKey(event.date) === selectedKey)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [events, selectedKey]);
 
-  const yearGrouped = useMemo(() => {
-    const grouped: Record<string, string[]> = {};
-    yearKeys.forEach((k) => {
-      const monthLabel = format(parseISO(k), "MMMM", { locale: ptBR });
-      if (!grouped[monthLabel]) grouped[monthLabel] = [];
-      grouped[monthLabel].push(k);
-    });
-    Object.keys(grouped).forEach((m) =>
-      grouped[m].sort((a, b) => compareAsc(parseISO(a), parseISO(b)))
-    );
+  const monthEvents = useMemo(() => {
+    const targetMonth = date.getMonth();
+    const targetYear = date.getFullYear();
+
+    return events
+      .filter((event) => {
+        const parsed = new Date(event.date);
+        return parsed.getMonth() === targetMonth && parsed.getFullYear() === targetYear;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [date, events]);
+
+  const yearEvents = useMemo(() => {
+    const targetYear = date.getFullYear();
+
+    return events
+      .filter((event) => new Date(event.date).getFullYear() === targetYear)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [date, events]);
+
+  const groupedYearEvents = useMemo(() => {
+    const grouped: Record<string, EventItem[]> = {};
+
+    for (const event of yearEvents) {
+      const parsed = new Date(event.date);
+      const monthLabel = format(parsed, "MMMM", { locale: ptBR });
+      if (!grouped[monthLabel]) {
+        grouped[monthLabel] = [];
+      }
+      grouped[monthLabel].push(event);
+    }
+
     return grouped;
-  }, [yearKeys]);
+  }, [yearEvents]);
 
   const coverage = useMemo(() => {
     if (viewMode === "year") {
-      const total = getDaysInYear(date);
-      const covered = yearKeys.length;
-      return { covered, total, percent: Math.round((covered / total) * 100) };
+      const coveredDays = new Set(yearEvents.map((event) => toDateKey(event.date))).size;
+      return {
+        covered: coveredDays,
+        total: 365,
+        percent: Math.min(100, Math.round((coveredDays / 365) * 100)),
+      };
     }
-    if (viewMode === "month") {
-      const total = getDaysInMonth(date);
-      const covered = monthKeys.length;
-      return { covered, total, percent: Math.round((covered / total) * 100) };
-    }
-    const total = 1;
-    const covered = lessonsForDay.length > 0 ? 1 : 0;
-    return { covered, total, percent: covered * 100 };
-  }, [viewMode, date, yearKeys.length, monthKeys.length, lessonsForDay.length]);
 
-  // Detecta se está em rota de admin ou catequista
-  const baseRoute = location.pathname.startsWith('/admin') ? '/admin' : '/catequista';
-  const isAdminRoute = baseRoute === '/admin';
+    if (viewMode === "month") {
+      const totalDays = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      const coveredDays = new Set(monthEvents.map((event) => toDateKey(event.date))).size;
+      return {
+        covered: coveredDays,
+        total: totalDays,
+        percent: Math.min(100, Math.round((coveredDays / totalDays) * 100)),
+      };
+    }
+
+    const covered = eventsForDay.length > 0 ? 1 : 0;
+    return {
+      covered,
+      total: 1,
+      percent: covered * 100,
+    };
+  }, [date, eventsForDay.length, monthEvents, viewMode, yearEvents]);
+
+  const createEvent = async () => {
+    if (!form.title.trim()) {
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await fetchWithAuth(API_ROUTES.cronogramaEventos, {
+        method: "POST",
+        body: JSON.stringify({
+          titulo: form.title.trim(),
+          descricao: form.description.trim() || undefined,
+          data: date.toISOString(),
+          tipo: form.audience === "comunidade" ? "GERAL" : "TURMA",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Falha ao criar evento.");
+      }
+
+      setForm({ title: "", description: "", audience: "comunidade" });
+      setShowCreateForm(false);
+      await loadEvents();
+    } catch (submitError) {
+      console.error("Erro ao criar evento:", submitError);
+      setError("Não foi possível criar o evento.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
-    <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>
+    <div
+      className={`flex min-h-screen bg-background transition-[padding] duration-300 ${
+        sidebarOpen ? "lg:pl-64" : "lg:pl-0"
+      }`}
+    >
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-card transition-transform duration-300 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -233,15 +274,9 @@ export default function Cronograma() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
                 <Cross className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="font-display text-lg font-semibold">
-                Catequese
-              </span>
+              <span className="font-display text-lg font-semibold">Catequese</span>
             </Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-            >
+            <Button variant="ghost" size="icon" onClick={toggleSidebar}>
               <Menu className="h-5 w-5" />
             </Button>
           </div>
@@ -252,7 +287,9 @@ export default function Cronograma() {
                 <CalendarNav className="h-5 w-5 text-gold-dark" />
               </div>
               <div>
-                <p className="font-medium">{isAdminRoute ? 'Área do Admin' : 'Área do Catequista'}</p>
+                <p className="font-medium">
+                  {isAdminRoute ? "Área do Admin" : "Área do Catequista"}
+                </p>
               </div>
             </div>
           </div>
@@ -260,11 +297,7 @@ export default function Cronograma() {
           <SidebarNav items={getDashboardNavItems(isAdminRoute)} pathname={location.pathname} />
 
           <div className="border-t p-4">
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-destructive"
-              asChild
-            >
+            <Button variant="ghost" className="w-full justify-start text-destructive" asChild>
               <Link to="/">
                 <LogOut className="mr-3 h-4 w-4" />
                 Sair
@@ -299,10 +332,19 @@ export default function Cronograma() {
           <div className="mx-auto max-w-7xl">
             <div className="mb-8">
               <h1 className="text-4xl font-bold text-slate-900">Cronograma</h1>
-              <p className="text-slate-600">
-                Veja e organize os conteúdos previstos por dia
-              </p>
+              <p className="text-slate-600">Veja os eventos e acompanhe as datas importantes</p>
             </div>
+
+            {error && (
+              <Card className="mb-6 border-red-200">
+                <CardContent className="py-4">
+                  <div className="flex items-center gap-2 text-red-700">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>{error}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap gap-2">
@@ -331,7 +373,7 @@ export default function Cronograma() {
                       ? "Cobertura do ano"
                       : viewMode === "month"
                       ? "Cobertura do mês"
-                      : "Conteúdos do dia"}
+                      : "Eventos do dia"}
                   </span>
                   <span>
                     {coverage.covered}/{coverage.total} ({coverage.percent}%)
@@ -358,121 +400,127 @@ export default function Cronograma() {
                     mode="single"
                     locale={ptBR}
                     selected={date}
-                    onSelect={(d) => d && setDate(d)}
+                    onSelect={(selected) => selected && setDate(selected)}
                     className="rounded-md border"
+                    modifiers={{
+                      withEvents: (d) => eventKeys.has(format(d, "yyyy-MM-dd")),
+                    }}
+                    modifiersClassNames={{
+                      withEvents: "bg-primary/15 font-semibold text-primary",
+                    }}
                   />
                   <CardDescription className="mt-3">
-                    Selecionado:{" "}
-                    {format(date, "EEEE, dd 'de' MMMM 'de' yyyy", {
-                      locale: ptBR,
-                    })}
+                    Selecionado: {format(date, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                   </CardDescription>
                 </CardContent>
               </Card>
 
-              <Card
-                className={`lg:col-span-2 ${
-                  viewMode === "day" ? "" : "opacity-70"
-                }`}
-              >
+              <Card className={`lg:col-span-2 ${viewMode === "day" ? "" : "opacity-90"}`}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle>Conteúdos do dia</CardTitle>
+                      <CardTitle>Eventos do dia</CardTitle>
                       <CardDescription>
-                        {lessonsForDay.length} item(s) para{" "}
-                        {format(date, "dd/MM/yyyy")}
+                        {eventsForDay.length} item(s) para {format(date, "dd/MM/yyyy")}
                       </CardDescription>
                     </div>
-                    {isAdmin && (
-                      <Button onClick={startAdd} className="gap-2">
-                        <Plus className="h-4 w-4" /> Adicionar
+                    {canManageEvents && (
+                      <Button onClick={() => setShowCreateForm((prev) => !prev)} className="gap-2">
+                        <Plus className="h-4 w-4" /> Adicionar evento
                       </Button>
                     )}
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {lessonsForDay.length === 0 ? (
+                    {loading ? (
                     <div className="rounded-lg border border-dashed p-6 text-center text-sm text-slate-500">
-                      Nenhum conteúdo cadastrado para este dia.
+                      Carregando eventos...
+                    </div>
+                  ) : eventsForDay.length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-6 text-center text-sm text-slate-500">
+                      Nenhum evento cadastrado para este dia.
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {lessonsForDay.map((l) => (
-                        <div
-                          key={l.id}
-                          className="flex items-start justify-between rounded-lg border p-3"
-                        >
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">Aula</Badge>
-                              <p className="font-medium text-slate-900">
-                                {l.title}
-                              </p>
-                            </div>
-                            {l.description && (
-                              <p className="mt-1 text-sm text-slate-600">
-                                {l.description}
-                              </p>
-                            )}
+                      {eventsForDay.map((event) => (
+                        <div key={event.id} className="rounded-lg border p-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline">
+                              {event.type === "GERAL" ? "Comunidade" : "Pais e Catequistas"}
+                            </Badge>
+                            {event.turmaName && <Badge>{event.turmaName}</Badge>}
+                            <p className="font-medium text-slate-900">{event.title}</p>
                           </div>
-                          {isAdmin && (
-                            <div className="ml-3 flex gap-2">
-                              <Button
-                                size="icon"
-                                variant="outline"
-                                className="h-8 w-8"
-                                onClick={() => startEdit(l)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="destructive"
-                                className="h-8 w-8"
-                                onClick={() => deleteLesson(l.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                            <span className="inline-flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              {format(new Date(event.date), "HH:mm")}
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin className="h-4 w-4" />
+                              {event.type === "GERAL"
+                                ? "Visível na comunidade"
+                                : "Visível para pais e catequistas"}
+                            </span>
+                          </div>
+                          {event.description && (
+                            <p className="mt-2 text-sm text-slate-700">{event.description}</p>
                           )}
                         </div>
                       ))}
                     </div>
                   )}
 
-                  {isAdmin && editing && (
+                  {canManageEvents && showCreateForm && (
                     <div className="mt-6 rounded-lg border p-4">
                       <p className="mb-3 font-medium">
-                        {editing.mode === "add"
-                          ? "Adicionar conteúdo"
-                          : "Editar conteúdo"}
+                        Novo evento para {format(date, "dd/MM/yyyy")}
                       </p>
                       <div className="grid gap-3">
                         <Input
-                          placeholder="Título"
+                          placeholder="Título do evento"
                           value={form.title}
-                          onChange={(e) =>
-                            setForm((f) => ({ ...f, title: e.target.value }))
-                          }
+                          onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
                         />
                         <Textarea
                           placeholder="Descrição (opcional)"
                           value={form.description}
                           onChange={(e) =>
-                            setForm((f) => ({
-                              ...f,
-                              description: e.target.value,
-                            }))
+                            setForm((prev) => ({ ...prev, description: e.target.value }))
                           }
                         />
+                        <Select
+                          value={form.audience}
+                          onValueChange={(value: "comunidade" | "pais-catequistas") =>
+                            setForm((prev) => ({ ...prev, audience: value }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a visibilidade" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="comunidade">
+                              Comunidade (aparece na página Início)
+                            </SelectItem>
+                            <SelectItem value="pais-catequistas">
+                              Apenas pais e catequistas
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                         <div className="flex gap-2">
-                          <Button onClick={saveForm} className="gap-2">
-                            {editing.mode === "add" ? "Salvar" : "Atualizar"}
+                          <Button onClick={createEvent} disabled={submitting}>
+                            {submitting ? "Salvando..." : "Salvar evento"}
                           </Button>
                           <Button
                             variant="outline"
-                            onClick={() => setEditing(null)}
+                            onClick={() => {
+                              setShowCreateForm(false);
+                              setForm({
+                                title: "",
+                                description: "",
+                                audience: "comunidade",
+                              });
+                            }}
                           >
                             Cancelar
                           </Button>
@@ -483,109 +531,39 @@ export default function Cronograma() {
                 </CardContent>
               </Card>
 
-              <Card
-                className={`lg:col-span-3 ${
-                  viewMode === "month" ? "" : "opacity-80"
-                }`}
-              >
+              <Card className={`lg:col-span-3 ${viewMode === "month" ? "" : "opacity-90"}`}>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Encontros do mês</CardTitle>
-                      <CardDescription>
-                        {format(monthRange.start, "MMMM 'de' yyyy", {
-                          locale: ptBR,
-                        })}
-                      </CardDescription>
-                    </div>
-                  </div>
+                  <CardTitle>Eventos do mês</CardTitle>
+                  <CardDescription>
+                    {format(date, "MMMM 'de' yyyy", { locale: ptBR })}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {monthKeys.length === 0 ? (
+                  {loading ? (
                     <div className="rounded-lg border border-dashed p-6 text-center text-sm text-slate-500">
-                      Nenhum encontro cadastrado neste mês.
+                      Carregando eventos...
+                    </div>
+                  ) : monthEvents.length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-6 text-center text-sm text-slate-500">
+                      Nenhum evento cadastrado neste mês.
                     </div>
                   ) : (
-                    <div className="space-y-6">
-                      {monthKeys.map((key) => (
-                        <div key={key} className="rounded-lg border p-4">
-                          <div className="mb-3 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                variant="outline"
-                                className="text-slate-700"
-                              >
-                                {format(parseISO(key), "EEEE, dd 'de' MMMM", {
-                                  locale: ptBR,
-                                })}
-                              </Badge>
-                            </div>
-                            {isAdmin && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setDate(parseISO(key));
-                                  setEditing({ mode: "add" });
-                                  setForm({ title: "", description: "" });
-                                }}
-                              >
-                                <Plus className="mr-2 h-4 w-4" /> Adicionar para
-                                o dia
-                              </Button>
-                            )}
+                    <div className="space-y-3">
+                      {monthEvents.map((event) => (
+                        <div key={event.id} className="rounded-lg border p-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline">
+                              {format(new Date(event.date), "EEEE, dd 'de' MMMM", {
+                                locale: ptBR,
+                              })}
+                            </Badge>
+                            <Badge variant="secondary">
+                              {event.type === "GERAL" ? "Comunidade" : "Pais e Catequistas"}
+                            </Badge>
+                            <p className="font-medium text-slate-900">{event.title}</p>
                           </div>
-
-                          {(schedule[key] || []).length === 0 ? (
-                            <div className="rounded-md border border-dashed p-4 text-sm text-slate-500">
-                              Sem conteúdos para este dia.
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              {(schedule[key] || []).map((l) => (
-                                <div
-                                  key={l.id}
-                                  className="flex items-start justify-between rounded-lg border p-3"
-                                >
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="outline">Aula</Badge>
-                                      <p className="font-medium text-slate-900">
-                                        {l.title}
-                                      </p>
-                                    </div>
-                                    {l.description && (
-                                      <p className="mt-1 text-sm text-slate-600">
-                                        {l.description}
-                                      </p>
-                                    )}
-                                  </div>
-                                  {isAdmin && (
-                                    <div className="ml-3 flex gap-2">
-                                      <Button
-                                        size="icon"
-                                        variant="outline"
-                                        className="h-8 w-8"
-                                        onClick={() => {
-                                          setDate(parseISO(key));
-                                          startEdit(l);
-                                        }}
-                                      >
-                                        <Pencil className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        size="icon"
-                                        variant="destructive"
-                                        className="h-8 w-8"
-                                        onClick={() => deleteLesson(l.id, key)}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
+                          {event.description && (
+                            <p className="mt-1 text-sm text-slate-700">{event.description}</p>
                           )}
                         </div>
                       ))}
@@ -594,139 +572,65 @@ export default function Cronograma() {
                 </CardContent>
               </Card>
 
-              <Card
-                className={`lg:col-span-3 ${
-                  viewMode === "year" ? "" : "opacity-90"
-                }`}
-              >
+              <Card className={`lg:col-span-3 ${viewMode === "year" ? "" : "opacity-90"}`}>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Encontros do ano</CardTitle>
-                      <CardDescription>
-                        {format(startOfYear(date), "yyyy")}
-                      </CardDescription>
-                    </div>
-                  </div>
+                  <CardTitle>Eventos do ano</CardTitle>
+                  <CardDescription>{format(date, "yyyy")}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {yearKeys.length === 0 ? (
+                  {loading ? (
                     <div className="rounded-lg border border-dashed p-6 text-center text-sm text-slate-500">
-                      Nenhum encontro cadastrado neste ano.
+                      Carregando eventos...
+                    </div>
+                  ) : yearEvents.length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-6 text-center text-sm text-slate-500">
+                      Nenhum evento cadastrado neste ano.
                     </div>
                   ) : (
                     <div className="space-y-6">
-                      {Object.entries(yearGrouped).map(([monthLabel, keys]) => (
-                        <div key={monthLabel} className="rounded-lg border p-4">
+                      {Object.entries(groupedYearEvents).map(([month, monthItems]) => (
+                        <div key={month} className="rounded-lg border p-4">
                           <div className="mb-3 flex items-center gap-2">
-                            <Badge
-                              variant="outline"
-                              className="text-slate-700 capitalize"
-                            >
-                              {monthLabel}
+                            <Badge variant="outline" className="capitalize">
+                              {month}
                             </Badge>
                             <span className="text-xs text-slate-500">
-                              {keys.length} dia(s)
+                              {monthItems.length} evento(s)
                             </span>
                           </div>
-
-                          {keys.map((key) => (
-                            <div
-                              key={key}
-                              className="mt-3 rounded-md border p-3"
-                            >
-                              <div className="mb-2 flex items-center justify-between">
+                          <div className="space-y-3">
+                            {monthItems.map((event) => (
+                              <div key={event.id} className="rounded-md border p-3">
                                 <div className="flex items-center gap-2">
-                                  <Badge
-                                    variant="outline"
-                                    className="text-slate-700"
-                                  >
-                                    {format(
-                                      parseISO(key),
-                                      "EEEE, dd 'de' MMMM",
-                                      { locale: ptBR }
-                                    )}
+                                  <Badge variant="secondary">
+                                    {format(new Date(event.date), "dd/MM/yyyy")}
                                   </Badge>
+                                  <Badge variant="outline">
+                                    {event.type === "GERAL"
+                                      ? "Comunidade"
+                                      : "Pais e Catequistas"}
+                                  </Badge>
+                                  <p className="font-medium text-slate-900">{event.title}</p>
                                 </div>
-                                {isAdmin && (
-                                  <div className="flex gap-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        setDate(parseISO(key));
-                                        setEditing({ mode: "add" });
-                                        setForm({ title: "", description: "" });
-                                      }}
-                                    >
-                                      <Plus className="mr-2 h-4 w-4" />{" "}
-                                      Adicionar para o dia
-                                    </Button>
-                                  </div>
+                                {event.description && (
+                                  <p className="mt-1 text-sm text-slate-700">{event.description}</p>
                                 )}
                               </div>
-
-                              {(schedule[key] || []).length === 0 ? (
-                                <div className="rounded-md border border-dashed p-3 text-sm text-slate-500">
-                                  Sem conteúdos para este dia.
-                                </div>
-                              ) : (
-                                <div className="space-y-3">
-                                  {(schedule[key] || []).map((l) => (
-                                    <div
-                                      key={l.id}
-                                      className="flex items-start justify-between rounded-lg border p-3"
-                                    >
-                                      <div>
-                                        <div className="flex items-center gap-2">
-                                          <Badge variant="outline">Aula</Badge>
-                                          <p className="font-medium text-slate-900">
-                                            {l.title}
-                                          </p>
-                                        </div>
-                                        {l.description && (
-                                          <p className="mt-1 text-sm text-slate-600">
-                                            {l.description}
-                                          </p>
-                                        )}
-                                      </div>
-                                      {isAdmin && (
-                                        <div className="ml-3 flex gap-2">
-                                          <Button
-                                            size="icon"
-                                            variant="outline"
-                                            className="h-8 w-8"
-                                            onClick={() => {
-                                              setDate(parseISO(key));
-                                              startEdit(l);
-                                            }}
-                                          >
-                                            <Pencil className="h-4 w-4" />
-                                          </Button>
-                                          <Button
-                                            size="icon"
-                                            variant="destructive"
-                                            className="h-8 w-8"
-                                            onClick={() =>
-                                              deleteLesson(l.id, key)
-                                            }
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
                   )}
                 </CardContent>
               </Card>
+            </div>
+
+            <div className="mt-6 rounded-lg border bg-card p-4 text-sm text-slate-600">
+              <div className="inline-flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Eventos de cronograma são sincronizados com o backend em tempo real.
+              </div>
             </div>
           </div>
         </main>

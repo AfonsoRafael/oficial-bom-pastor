@@ -1,6 +1,8 @@
 import bomPastor from "@/assets/bom-pastor.jpg";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
+import { API_ROUTES } from "@/lib/routes";
+import { fetchPublic } from "@/lib/api";
 import {
   Card,
   CardContent,
@@ -24,7 +26,7 @@ import {
   Users,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 const features = [
@@ -66,29 +68,14 @@ const features = [
   },
 ];
 
-const upcomingEvents = [
-  {
-    date: "21",
-    month: "DEZ",
-    title: "Missa de Natal das Crianças",
-    time: "10h00",
-    description: "Celebração especial com a participação dos catequizandos",
-  },
-  {
-    date: "06",
-    month: "JAN",
-    title: "Início do Ano Catequético",
-    time: "09h00",
-    description: "Abertura oficial das atividades de 2025",
-  },
-  {
-    date: "15",
-    month: "FEV",
-    title: "Retiro de Primeira Comunhão",
-    time: "08h00 - 17h00",
-    description: "Dia especial de preparação para os catequizandos do Nível 3",
-  },
-];
+interface UpcomingEvent {
+  id: string;
+  date: string;
+  month: string;
+  title: string;
+  time: string;
+  description: string;
+}
 
 const levels = [
   {
@@ -138,8 +125,57 @@ const levels = [
 export default function Index() {
   const [showPix, setShowPix] = useState(false);
   const [expandedLevel, setExpandedLevel] = useState<number | null>(null);
+  const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
+  const [loadingUpcomingEvents, setLoadingUpcomingEvents] = useState(true);
   const { toast } = useToast();
   const pixKey = "catequese@exemplo.com";
+
+  useEffect(() => {
+    const loadUpcomingEvents = async () => {
+      setLoadingUpcomingEvents(true);
+
+      try {
+        const response = await fetchPublic(`${API_ROUTES.cronogramaEventosPublicos}?limit=6`);
+
+        if (!response.ok) {
+          setUpcomingEvents([]);
+          return;
+        }
+
+        const data = await response.json();
+        const eventos = Array.isArray(data?.eventos) ? data.eventos : [];
+
+        const mapped = eventos.map((event: any) => {
+          const rawDate = new Date(event?.data);
+          const validDate = Number.isNaN(rawDate.getTime()) ? new Date() : rawDate;
+
+          return {
+            id: String(event?.id || Math.random().toString(36).slice(2, 10)),
+            date: String(validDate.getDate()).padStart(2, "0"),
+            month: validDate
+              .toLocaleString("pt-BR", { month: "short" })
+              .replace(".", "")
+              .toUpperCase(),
+            title: String(event?.titulo || "Evento da Comunidade"),
+            time: validDate.toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            description: String(event?.descricao || "Evento da comunidade paroquial."),
+          } satisfies UpcomingEvent;
+        });
+
+        setUpcomingEvents(mapped);
+      } catch (error) {
+        console.error("Erro ao carregar próximos eventos:", error);
+        setUpcomingEvents([]);
+      } finally {
+        setLoadingUpcomingEvents(false);
+      }
+    };
+
+    loadUpcomingEvents();
+  }, []);
 
   const copyPixKey = () => {
     navigator.clipboard.writeText(pixKey);
@@ -312,9 +348,25 @@ export default function Index() {
             </p>
           </div>
           <div className="mx-auto grid max-w-4xl gap-4">
-            {upcomingEvents.map((event, index) => (
+            {loadingUpcomingEvents && (
+              <Card>
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  Carregando próximos eventos...
+                </CardContent>
+              </Card>
+            )}
+
+            {!loadingUpcomingEvents && upcomingEvents.length === 0 && (
+              <Card>
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  Nenhum próximo evento da comunidade disponível no momento.
+                </CardContent>
+              </Card>
+            )}
+
+            {!loadingUpcomingEvents && upcomingEvents.map((event, index) => (
               <Card
-                key={event.title}
+                key={event.id}
                 variant="interactive"
                 className="animate-slide-up"
                 style={{ animationDelay: `${index * 0.1}s` }}
