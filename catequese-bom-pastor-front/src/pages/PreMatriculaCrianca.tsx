@@ -430,7 +430,7 @@ export default function PreMatriculaCrianca() {
                     <div>
                       <p className="font-semibold text-amber-900 text-sm">Importante</p>
                       <p className="text-amber-800 text-sm mt-1">
-                        O preenchimento deste formulário <strong>não garante a vaga</strong>. A coordenação entrará em contato para confirmar a matrícula.
+                        O preenchimento deste formulário <strong>não garante a vaga</strong>. A coordenação entrará em contato por email para confirmar a matrícula.
                       </p>
                     </div>
                   </div>

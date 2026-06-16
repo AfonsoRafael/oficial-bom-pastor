@@ -20,7 +20,7 @@ interface ContactMessage {
   quantity: string;
   deliveryDate: string;
   observation: string;
-  createdAt: string;
+  criadoEm: string;
   read: boolean;
 }
 
@@ -90,7 +90,7 @@ export function ContactFormDialog({
         quantity: formData.quantity,
         deliveryDate: formData.deliveryDate,
         observation: formData.observation,
-        createdAt: new Date().toISOString(),
+        criadoEm: new Date().toISOString(),
         read: false,
       };
 

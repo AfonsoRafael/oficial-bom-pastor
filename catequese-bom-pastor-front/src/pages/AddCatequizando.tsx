@@ -72,7 +72,7 @@ interface PreMatricula {
   email: string;
   telefone: string;
   status: PreMatriculaStatus;
-  createdAt: string;
+  criadoEm: string;
 }
 
 export default function AddCatequizando() {
@@ -130,7 +130,7 @@ export default function AddCatequizando() {
         email: preMatricula.email,
         telefone: preMatricula.telefone,
         status: preMatricula.status,
-        createdAt: preMatricula.createdAt,
+        criadoEm: preMatricula.criadoEm,
       });
 
       // Carregar turmas
@@ -582,7 +582,7 @@ export default function AddCatequizando() {
                                   <div>
                                     <p className="font-medium">{preMatricula.nomeCatequizando}</p>
                                     <p className="text-sm text-slate-500">
-                                      Pré-matrícula em {new Date(preMatricula.createdAt).toLocaleDateString("pt-BR")}
+                                      Pré-matrícula em {new Date(preMatricula.criadoEm).toLocaleDateString("pt-BR")}
                                     </p>
                                   </div>
                                 </div>

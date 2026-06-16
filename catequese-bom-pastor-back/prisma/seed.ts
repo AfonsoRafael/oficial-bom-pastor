@@ -96,7 +96,6 @@ async function main() {
       horario: 'Sábado 14:00',
       sala: 'Sala 1',
       administradorId: admin.id,
-      catequistaId: catequista1.id,
     },
   });
   console.log('✅ Turma criada:', turma2024.nome);
@@ -111,10 +110,32 @@ async function main() {
       horario: 'Domingo 16:00',
       sala: 'Sala 2',
       administradorId: admin.id,
-      catequistaId: catequista2.id,
     },
   });
   console.log('✅ Turma criada:', turma2025.nome);
+
+  // Vincular catequistas às turmas
+  await prisma.turmaCatequista.upsert({
+    where: { turmaId_catequistaId: { turmaId: turma2024.id, catequistaId: catequista1.id } },
+    update: {},
+    create: {
+      turmaId: turma2024.id,
+      catequistaId: catequista1.id,
+      categoria: 'Principal', // Ou outra categoria padrão
+    },
+  });
+  console.log('✅ Catequista 1 vinculada à Turma 2024');
+
+  await prisma.turmaCatequista.upsert({
+    where: { turmaId_catequistaId: { turmaId: turma2025.id, catequistaId: catequista2.id } },
+    update: {},
+    create: {
+      turmaId: turma2025.id,
+      catequistaId: catequista2.id,
+      categoria: 'Principal', // Ou outra categoria padrão
+    },
+  });
+  console.log('✅ Catequista 2 vinculada à Turma 2025');
 
   // Criar catequizandos
   const catequizando1 = await prisma.catequizando.upsert({

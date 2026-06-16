@@ -38,8 +38,8 @@ model User {
   telefone      String?
   role          Role      @default(PARENT)
   senha         String
-  firstAccessComplete Boolean @default(false)
-  createdAt     DateTime  @default(now())
+  primeiroAcesso Boolean @default(false)
+  criadoEm     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   // Relações
@@ -53,7 +53,7 @@ model Catequista {
   userId        String    @unique
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   turmas        Turma[]   @relation("CatechistasEmTurma")
-  createdAt     DateTime  @default(now())
+  criadoEm     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
 
@@ -64,7 +64,7 @@ model Responsavel {
   alunos        Aluno[]
   inscricoes    Inscricao[]
   pagamentos    Pagamento[]
-  createdAt     DateTime  @default(now())
+  criadoEm     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
 
@@ -81,7 +81,7 @@ model Turma {
   inscricoes    Inscricao[]
   eventos       Evento[]
   materiais     Material[]
-  createdAt     DateTime  @default(now())
+  criadoEm     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
 
@@ -96,7 +96,7 @@ model Aluno {
   responsavel   Responsavel @relation(fields: [responsavelId], references: [id], onDelete: Cascade)
   inscricoes    Inscricao[]
   observacoes   String?
-  createdAt     DateTime  @default(now())
+  criadoEm     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
 
@@ -118,7 +118,7 @@ model Inscricao {
   status        InscricaoStatus @default(SUBMITTED)
   documentosUrl String[]  // JSON array de URLs de documentos
   observacoes   String?
-  createdAt     DateTime  @default(now())
+  criadoEm     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   pagamentos    Pagamento[]
 
@@ -151,7 +151,7 @@ model Pagamento {
   receiptUrl    String?
   dataPagamento DateTime?
   descricao     String?
-  createdAt     DateTime  @default(now())
+  criadoEm     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
 
@@ -164,7 +164,7 @@ model Material {
   turmaId       String?   // NULL = material geral
   turma         Turma?    @relation(fields: [turmaId], references: [id], onDelete: SetNull)
   visibilidade  String    @default("geral") // "geral" ou "turma"
-  createdAt     DateTime  @default(now())
+  criadoEm     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
 
@@ -177,7 +177,7 @@ model Documento {
   visibilidade  String    @default("parent") // "parent", "turma", "geral"
   turmaId       String?
   turma         Turma?    @relation("DocumentosTurma", fields: [turmaId], references: [id], onDelete: SetNull)
-  createdAt     DateTime  @default(now())
+  criadoEm     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
 
@@ -195,7 +195,7 @@ model Evento {
   tipo          TipoEvento @default(GERAL)
   turmaId       String?
   turma         Turma?    @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  createdAt     DateTime  @default(now())
+  criadoEm     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
 
@@ -206,7 +206,7 @@ model Galeria {
   descricao     String?
   visibilidade  String    @default("geral")
   imagens       Imagem[]
-  createdAt     DateTime  @default(now())
+  criadoEm     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
 
@@ -216,7 +216,7 @@ model Imagem {
   galeria       Galeria   @relation(fields: [galeiraId], references: [id], onDelete: Cascade)
   fileUrl       String
   titulo        String?
-  createdAt     DateTime  @default(now())
+  criadoEm     DateTime  @default(now())
 }
 
 // Música
@@ -226,7 +226,7 @@ model Musica {
   autor         String?
   linkExterno   String?   // YouTube, Drive, etc
   notas         String?
-  createdAt     DateTime  @default(now())
+  criadoEm     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
 
@@ -239,7 +239,7 @@ model LojaItem {
   estoque       Int
   imagemUrl     String?
   ordens        OrdemLoja[] @relation("ItensOrdem")
-  createdAt     DateTime  @default(now())
+  criadoEm     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
 
@@ -250,7 +250,7 @@ model OrdemLoja {
   total         Float
   status        String    @default("pending") // "pending", "paid", "shipped", "delivered"
   pagamentoId   String?
-  createdAt     DateTime  @default(now())
+  criadoEm     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
 ```
@@ -279,7 +279,7 @@ model OrdemLoja {
   - Resposta: `{ message: "Senha atualizada" }`
   
 - `GET /auth/me` - Perfil do usuário autenticado
-  - Resposta: `{ id, email, nome, role, firstAccessComplete }`
+  - Resposta: `{ id, email, nome, role, primeiroAcesso }`
 
 ### Usuários e Papéis
 - `GET /users` - Listar usuários (ADMIN only)

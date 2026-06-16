@@ -62,7 +62,7 @@ interface InscricaoCatequista {
   sacramentos?: string | null;
   alergias?: string | null;
   status: InscricaoStatus;
-  createdAt: string;
+  criadoEm: string;
   decisaoEm?: string | null;
   observacoesAdmin?: string | null;
   decisaoPor?: {
@@ -145,7 +145,7 @@ export default function AdminInscricoesCatequistas() {
           sacramentos: item.sacramentos || null,
           alergias: item.alergias || null,
           status: item.status,
-          createdAt: item.createdAt,
+          criadoEm: item.criadoEm,
           decisaoEm: item.decisaoEm || null,
           observacoesAdmin: item.observacoesAdmin || null,
           decisaoPor: item.decisaoPor
@@ -385,7 +385,7 @@ export default function AdminInscricoesCatequistas() {
                 <TableCell>
                   <div className="space-y-1">
                     <div className="font-medium">{inscricao.nome}</div>
-                    <div className="text-xs text-muted-foreground">Enviada em {formatDate(inscricao.createdAt)}</div>
+                    <div className="text-xs text-muted-foreground">Enviada em {formatDate(inscricao.criadoEm)}</div>
                   </div>
                 </TableCell>
                 <TableCell>
