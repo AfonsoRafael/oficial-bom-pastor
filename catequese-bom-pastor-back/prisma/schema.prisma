@@ -11,63 +11,60 @@ datasource db {
 }
 
 model Administrador {
-  id                  String   @id @default(cuid())
-  email               String   @unique
-  nome                String
-  telefone            String?
-  senha               String
-  firstAccessComplete Boolean  @default(false)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id             String   @id @default(uuid()) @map("cod_administrador")
+  email          String   @unique @map("dsc_email")
+  nome           String   @map("dsc_nome")
+  telefone       String?  @map("dsc_telefone")
+  senha          String   @map("dsc_senha")
+  primeiroAcesso Boolean  @default(false) @map("ind_primeiro_acesso")
+  criadoEm       DateTime @default(now()) @map("dat_criado_em")
+  atualizadoEm   DateTime @updatedAt @map("dat_atualizado_em")
 
-  // Relações
-  turmasCriadas             Turma[]             @relation("createdBy")
-  preMatriculasDecididas    PreMatricula[]
+  turmasCriadas                  Turma[]               @relation("createdBy")
+  preMatriculasDecididas         PreMatricula[]
   inscricoesCatequistasDecididas InscricaoCatequista[]
 
   @@map("administrador")
 }
 
 model Responsavel {
-  id                  String         @id @default(cuid())
-  email               String         @unique
-  nome                String
-  telefone            String?
-  senha               String
-  firstAccessComplete Boolean        @default(false)
-  catequizandos       Catequizando[]
-  inscricoes          Inscricao[]
-  pagamentos          Pagamento[]
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  id             String         @id @default(uuid()) @map("cod_responsavel")
+  email          String         @unique @map("dsc_email")
+  nome           String      @map("dsc_nome")
+  telefone       String?    @map("dsc_telefone")
+  senha          String     @map("dsc_senha")
+  primeiroAcesso Boolean        @default(false) @map("ind_primeiro_acesso")
+  catequizandos  Catequizando[] 
+  inscricoes     Inscricao[]
+  pagamentos     Pagamento[]
+  criadoEm       DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   @@map("responsaveis")
 }
 
-// Turma (classe)
 model Turma {
-  id              String         @id @default(cuid())
-  nome            String
-  ano             Int
-  horario         String? // Ex: "Sexta 19:00"
-  sala            String?
-  administradorId String
-  administrador   Administrador  @relation("createdBy", fields: [administradorId], references: [id])
+  id               String            @id @default(uuid()) @map("cod_turma")
+  nome             String
+  ano              Int
+  horario          String?
+  sala             String?
+  administradorId  String
+  administrador    Administrador     @relation("createdBy", fields: [administradorId], references: [id])
   catequistasTurma TurmaCatequista[]
-  catequizandos   Catequizando[]
-  inscricoes      Inscricao[]
-  eventos         Evento[]
-  materiais       Material[]
-  documentos      Documento[]    @relation("DocumentosTurma")
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  catequizandos    Catequizando[]
+  inscricoes       Inscricao[]
+  eventos          Evento[]
+  materiais        Material[]
+  documentos       Documento[]       @relation("DocumentosTurma")
+  criadoEm         DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   @@map("turmas")
 }
 
-// Catequizando (criança)
 model Catequizando {
-  id             String                  @id @default(cuid())
+  id             String                  @id @default(uuid()) @map("cod_catequizando")
   nome           String
   dataNascimento DateTime
   dataBatismo    DateTime?
@@ -82,7 +79,7 @@ model Catequizando {
   inscricoes     Inscricao[]
   documentos     CatequizandoDocumento[]
   observacoes    String?
-  createdAt      DateTime                @default(now())
+  criadoEm       DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
 
   @@map("catequizandos")
@@ -101,7 +98,7 @@ enum InscricaoCatequistaStatus {
 }
 
 model PreMatricula {
-  id                     String             @id @default(cuid())
+  id                     String             @id @default(uuid()) @map("cod_pre_matricula")
   status                 PreMatriculaStatus @default(PENDING)
   nomeCatequizando       String
   alergiasProblemasSaude String?
@@ -117,37 +114,36 @@ model PreMatricula {
   decisaoPorId           String?
   decisaoPor             Administrador?     @relation(fields: [decisaoPorId], references: [id], onDelete: SetNull)
   observacoesAdmin       String?
-  createdAt              DateTime           @default(now())
+  criadoEm               DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
   @@map("pre_matriculas")
 }
 
 model InscricaoCatequista {
-  id                     String                   @id @default(cuid())
-  status                 InscricaoCatequistaStatus @default(PENDING)
-  nome                   String
-  dataNascimento         DateTime
-  dataBatismo            DateTime?
-  email                  String
-  telefone               String
-  casado                 String
-  casadaIgrejaCatolica   String?
-  sacramentos            String?
-  alergias               String?
-  ComprovanteResidencia  String?
-  DocumentoCpf           String?
-  decisaoEm              DateTime?
-  decisaoPorId           String?
-  decisaoPor             Administrador?            @relation(fields: [decisaoPorId], references: [id], onDelete: SetNull)
-  observacoesAdmin       String?
-  createdAt              DateTime                 @default(now())
-  updatedAt              DateTime                 @updatedAt
+  id                    String                    @id @default(uuid()) @map("cod_inscricao_catequista")
+  status                InscricaoCatequistaStatus @default(PENDING)
+  nome                  String
+  dataNascimento        DateTime
+  dataBatismo           DateTime?
+  email                 String
+  telefone              String
+  casado                String
+  casadaIgrejaCatolica  String?
+  sacramentos           String?
+  alergias              String?
+  ComprovanteResidencia String?
+  DocumentoCpf          String?
+  decisaoEm             DateTime?
+  decisaoPorId          String?
+  decisaoPor            Administrador?            @relation(fields: [decisaoPorId], references: [id], onDelete: SetNull)
+  observacoesAdmin      String?
+  criadoEm              DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
 
   @@map("inscricoes_catequistas")
 }
 
-// Inscrição
 enum InscricaoStatus {
   SUBMITTED
   APPROVED
@@ -161,14 +157,14 @@ enum TipoDocumentoCatequizando {
 }
 
 model CatequizandoDocumento {
-  id             String                    @id @default(cuid())
+  id             String                    @id @default(uuid()) @map("cod_documento")
   catequizandoId String
   catequizando   Catequizando              @relation(fields: [catequizandoId], references: [id], onDelete: Cascade)
   tipo           TipoDocumentoCatequizando
   status         Boolean                   @default(false)
   uploadDate     DateTime?
   fileUrl        String?
-  createdAt      DateTime                  @default(now())
+  criadoEm       DateTime                  @default(now())
   updatedAt      DateTime                  @updatedAt
 
   @@unique([catequizandoId, tipo])
@@ -176,7 +172,7 @@ model CatequizandoDocumento {
 }
 
 model Inscricao {
-  id             String          @id @default(cuid())
+  id             String          @id @default(uuid()) @map("cod_inscricao")
   catequizandoId String
   catequizando   Catequizando    @relation(fields: [catequizandoId], references: [id], onDelete: Cascade)
   turmaId        String
@@ -184,9 +180,9 @@ model Inscricao {
   responsavelId  String
   responsavel    Responsavel     @relation(fields: [responsavelId], references: [id], onDelete: Cascade)
   status         InscricaoStatus @default(SUBMITTED)
-  documentosUrl  String[] // JSON array de URLs de documentos
+  documentosUrl  String[]
   observacoes    String?
-  createdAt      DateTime        @default(now())
+  criadoEm       DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   pagamentos     Pagamento[]
 
@@ -194,7 +190,6 @@ model Inscricao {
   @@map("inscricoes")
 }
 
-// Pagamento
 enum PaymentMethod {
   CASH
   PIX
@@ -209,7 +204,7 @@ enum PaymentStatus {
 }
 
 model Pagamento {
-  id            String        @id @default(cuid())
+  id            String        @id @default(uuid()) @map("cod_pagamento")
   inscricaoId   String?
   inscricao     Inscricao?    @relation(fields: [inscricaoId], references: [id], onDelete: SetNull)
   responsavelId String?
@@ -220,39 +215,38 @@ model Pagamento {
   receiptUrl    String?
   dataPagamento DateTime?
   descricao     String?
-  createdAt     DateTime      @default(now())
+  criadoEm      DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
   @@map("pagamentos")
 }
 
-// Material (apostilas, videos, etc)
 model Material {
-  id           String   @id @default(cuid())
+  id           String   @id @default(uuid()) @map("cod_material")
   titulo       String
   descricao    String?
   fileUrl      String
   turmaId      String? // NULL = material geral
   turma        Turma?   @relation(fields: [turmaId], references: [id], onDelete: SetNull)
   visibilidade String   @default("geral") // "geral" ou "turma"
-  createdAt    DateTime @default(now())
+  criadoEm     DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@map("materiais")
 }
 
 model Catequista {
-  id                  String   @id @default(cuid())
-  nome                String
-  email               String   @unique
-  senha               String
-  telefone            String?
-  endereco            String?
-  bio                 String?
-  firstAccessComplete Boolean  @default(false)
-  turmas              TurmaCatequista[]
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id             String            @id @default(uuid()) @map("cod_catequista")
+  nome           String
+  email          String            @unique
+  senha          String
+  telefone       String?
+  endereco       String?
+  bio            String?
+  primeiroAcesso Boolean           @default(false)
+  turmas         TurmaCatequista[]
+  criadoEm       DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   @@map("catequistas")
 }
@@ -263,114 +257,109 @@ enum CategoriaCatequistaTurma {
 }
 
 model TurmaCatequista {
-  id           String                    @id @default(cuid())
+  id           String                   @id @default(uuid()) @map("cod_turma_catequista")
   turmaId      String
   catequistaId String
   categoria    CategoriaCatequistaTurma @default(CATEQUISTA)
-  turma        Turma                     @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  catequista   Catequista                @relation(fields: [catequistaId], references: [id], onDelete: Cascade)
-  createdAt    DateTime                  @default(now())
-  updatedAt    DateTime                  @updatedAt
+  turma        Turma                    @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  catequista   Catequista               @relation(fields: [catequistaId], references: [id], onDelete: Cascade)
+  criadoEm     DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
 
   @@unique([turmaId, catequistaId])
   @@map("turmas_catequistas")
 }
 
-// Documento
 model Documento {
-  id           String   @id @default(cuid())
+  id           String   @id @default(uuid()) @map("cod_documento")
   titulo       String
   descricao    String?
   fileUrl      String
   visibilidade String   @default("parent") // "parent", "turma", "geral"
   turmaId      String?
   turma        Turma?   @relation("DocumentosTurma", fields: [turmaId], references: [id], onDelete: SetNull)
-  createdAt    DateTime @default(now())
+  criadoEm     DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@map("documentos")
 }
 
-// Evento (cronograma/calendário)
 enum TipoEvento {
   TURMA
   GERAL
 }
 
 model Evento {
-  id        String     @id @default(cuid())
+  id        String     @id @default(uuid()) @map("cod_evento")
   titulo    String
   descricao String?
   data      DateTime
   tipo      TipoEvento @default(GERAL)
   turmaId   String?
   turma     Turma?     @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  createdAt DateTime   @default(now())
+  criadoEm  DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
   @@map("eventos")
 }
 
-// Galeria de Imagens
 model Galeria {
-  id           String   @id @default(cuid())
+  id           String   @id @default(uuid()) @map("cod_galeria")
   titulo       String
   descricao    String?
   visibilidade String   @default("geral")
   imagens      Imagem[]
-  createdAt    DateTime @default(now())
+  criadoEm     DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@map("galerias")
 }
 
 model Imagem {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid()) @map("cod_imagem")
   galeiraId String
   galeria   Galeria  @relation(fields: [galeiraId], references: [id], onDelete: Cascade)
   fileUrl   String
   titulo    String?
-  createdAt DateTime @default(now())
+  criadoEm  DateTime @default(now())
 
   @@map("imagens")
 }
 
-// Música
 model Musica {
-  id          String   @id @default(cuid())
+  id          String   @id @default(uuid()) @map("cod_musica")
   titulo      String
   autor       String?
-  linkExterno String? // YouTube, Drive, etc
+  linkExterno String?
   notas       String?
-  createdAt   DateTime @default(now())
+  criadoEm    DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@map("musicas")
 }
 
-// Loja
 model LojaItem {
-  id        String      @id @default(cuid())
+  id        String      @id @default(uuid()) @map("cod_loja_item")
   nome      String
   descricao String?
   preco     Float
   estoque   Int
   imagemUrl String?
   ordens    OrdemLoja[] @relation("ItensOrdem")
-  createdAt DateTime    @default(now())
+  criadoEm  DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
   @@map("loja_items")
 }
 
 model OrdemLoja {
-  id            String     @id @default(cuid())
+  id            String     @id @default(uuid()) @map("cod_ordem_loja")
   responsavelId String
   itens         LojaItem[] @relation("ItensOrdem")
   total         Float
-  status        String     @default("pending") // "pending", "paid", "shipped", "delivered"
+  status        String     @default("pending")
   pagamentoId   String?
-  createdAt     DateTime   @default(now())
+  criadoEm      DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
   @@map("ordem_loja")

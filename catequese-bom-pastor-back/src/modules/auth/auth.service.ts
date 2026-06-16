@@ -73,7 +73,7 @@ export class AuthService {
           role: userRole,
           roleLegacy: legacyRole,
           tipoUsuario: userRole,
-          firstAccessComplete: admin.firstAccessComplete,
+          primeiroAcesso: admin.primeiroAcesso,
         },
         ...tokens,
       };
@@ -98,7 +98,7 @@ export class AuthService {
         role: userRole,
         roleLegacy: legacyRole,
         tipoUsuario: userRole,
-        firstAccessComplete: responsavel.firstAccessComplete,
+        primeiroAcesso: responsavel.primeiroAcesso,
       },
       ...tokens,
     };
@@ -128,7 +128,7 @@ export class AuthService {
           role: USER_ROLES.ADMINISTRADOR,
           roleLegacy: legacyRole,
           tipoUsuario: USER_ROLES.ADMINISTRADOR,
-          firstAccessComplete: admin.firstAccessComplete,
+          primeiroAcesso: admin.primeiroAcesso,
         },
         ...tokens,
       };
@@ -156,7 +156,7 @@ export class AuthService {
           role: USER_ROLES.RESPONSAVEL,
           roleLegacy: legacyRole,
           tipoUsuario: USER_ROLES.RESPONSAVEL,
-          firstAccessComplete: responsavel.firstAccessComplete,
+          primeiroAcesso: responsavel.primeiroAcesso,
         },
         ...tokens,
       };
@@ -187,7 +187,7 @@ export class AuthService {
         role: USER_ROLES.CATEQUISTA,
         roleLegacy: legacyRole,
         tipoUsuario: USER_ROLES.CATEQUISTA,
-        firstAccessComplete: catequista.firstAccessComplete,
+        primeiroAcesso: catequista.primeiroAcesso,
       },
       ...tokens,
     };
@@ -216,8 +216,8 @@ export class AuthService {
         email: true,
         nome: true,
         telefone: true,
-        firstAccessComplete: true,
-        createdAt: true,
+        primeiroAcesso: true,
+        criadoEm: true,
       },
     });
 
@@ -232,8 +232,8 @@ export class AuthService {
         email: true,
         nome: true,
         telefone: true,
-        firstAccessComplete: true,
-        createdAt: true,
+        primeiroAcesso: true,
+        criadoEm: true,
       },
     });
 
@@ -248,8 +248,8 @@ export class AuthService {
         email: true,
         nome: true,
         telefone: true,
-        firstAccessComplete: true,
-        createdAt: true,
+        primeiroAcesso: true,
+        criadoEm: true,
       },
     });
 

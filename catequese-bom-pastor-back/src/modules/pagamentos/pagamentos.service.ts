@@ -17,7 +17,7 @@ export class PagamentosService {
         include: { inscricao: { include: { turma: true, catequizando: true } }, responsavel: true },
         take: limit,
         skip: offset,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { criadoEm: 'desc' },
       }),
       this.prisma.pagamento.count({ where }),
     ]);

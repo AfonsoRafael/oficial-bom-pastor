@@ -39,7 +39,7 @@ export class CatequizandosService {
         },
         take: limit,
         skip: offset,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { criadoEm: 'desc' },
       }),
       this.prisma.catequizando.count({ where }),
     ]);

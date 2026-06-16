@@ -6,7 +6,7 @@ CREATE TABLE "turmas_catequistas" (
   "turmaId" TEXT NOT NULL,
   "catequistaId" TEXT NOT NULL,
   "categoria" "CategoriaCatequistaTurma" NOT NULL DEFAULT 'CATEQUISTA',
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "turmas_catequistas_pkey" PRIMARY KEY ("id")
 );
@@ -24,7 +24,7 @@ ALTER TABLE "turmas_catequistas"
   FOREIGN KEY ("catequistaId") REFERENCES "catequistas"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Backfill da estrutura antiga (1 catequista por turma) para a nova tabela N:N
-INSERT INTO "turmas_catequistas" ("id", "turmaId", "catequistaId", "categoria", "createdAt", "updatedAt")
+INSERT INTO "turmas_catequistas" ("id", "turmaId", "catequistaId", "categoria", "criadoEm", "updatedAt")
 SELECT
   md5(random()::text || clock_timestamp()::text || t."id"),
   t."id",

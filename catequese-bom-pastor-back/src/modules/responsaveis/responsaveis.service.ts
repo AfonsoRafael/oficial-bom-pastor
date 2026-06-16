@@ -20,7 +20,7 @@ export class ResponsaveisService {
         },
         take: limit,
         skip: offset,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { criadoEm: 'desc' },
       }),
       this.prisma.responsavel.count(),
     ]);

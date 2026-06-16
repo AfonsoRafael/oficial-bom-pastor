@@ -17,7 +17,7 @@ export class InscricoesService {
         include: { catequizando: true, turma: true, responsavel: true },
         take: limit,
         skip: offset,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { criadoEm: 'desc' },
       }),
       this.prisma.inscricao.count({ where }),
     ]);

@@ -34,7 +34,7 @@ export class TurmasService {
         },
         take: limit,
         skip: offset,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { criadoEm: 'desc' },
       }),
       this.prisma.turma.count({ where }),
     ]);

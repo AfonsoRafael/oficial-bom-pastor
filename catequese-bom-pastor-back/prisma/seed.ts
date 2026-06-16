@@ -13,13 +13,13 @@ async function main() {
     update: {
       senha: adminPassword,
       nome: 'Administrador',
-      firstAccessComplete: true,
+      primeiroAcesso: true,
     },
     create: {
       email: 'admin@catequese.com',
       nome: 'Administrador',
       senha: adminPassword,
-      firstAccessComplete: true,
+      primeiroAcesso: true,
     },
   });
   console.log('✅ Admin criado:', admin.email);
@@ -32,14 +32,14 @@ async function main() {
       nome: 'João Silva',
       telefone: '11988888888',
       senha: parentPassword,
-      firstAccessComplete: true,
+      primeiroAcesso: true,
     },
     create: {
       email: 'pai@catequese.com',
       nome: 'João Silva',
       telefone: '11988888888',
       senha: parentPassword,
-      firstAccessComplete: true,
+      primeiroAcesso: true,
     },
   });
   console.log('✅ Responsável criado:', responsavel.email);
@@ -51,7 +51,7 @@ async function main() {
     update: {
       senha: catequistaPassword1,
       nome: 'Ana Silva',
-      firstAccessComplete: true,
+      primeiroAcesso: true,
     },
     create: {
       nome: 'Ana Silva',
@@ -60,7 +60,7 @@ async function main() {
       telefone: '11977777777',
       endereco: 'Rua das Acácias, 100 - São Paulo, SP',
       bio: 'Catequista experiente com 10 anos de dedicação ao ensino da fé',
-      firstAccessComplete: true,
+      primeiroAcesso: true,
     },
   });
   console.log('✅ Catequista criada:', catequista1.email);
@@ -71,7 +71,7 @@ async function main() {
     update: {
       senha: catequistaPassword2,
       nome: 'Carlos Mendes',
-      firstAccessComplete: true,
+      primeiroAcesso: true,
     },
     create: {
       nome: 'Carlos Mendes',
@@ -80,7 +80,7 @@ async function main() {
       telefone: '11966666666',
       endereco: 'Avenida Brasil, 200 - São Paulo, SP',
       bio: 'Especialista em catequese infantil',
-      firstAccessComplete: true,
+      primeiroAcesso: true,
     },
   });
   console.log('✅ Catequista criada:', catequista2.email);

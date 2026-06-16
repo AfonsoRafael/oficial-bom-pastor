@@ -15,7 +15,7 @@ export class CatequistasService {
 
   async findAll() {
     const catequistas = await this.prisma.catequista.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { criadoEm: 'desc' },
     });
 
     return { catequistas };
@@ -95,7 +95,7 @@ export class CatequistasService {
         include: {
           decisaoPor: true,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { criadoEm: 'desc' },
         take: safeLimit,
         skip: safeOffset,
       }),
@@ -192,7 +192,7 @@ export class CatequistasService {
             email: inscricao.email,
             senha: temporaryPasswordHash,
             telefone: inscricao.telefone,
-            firstAccessComplete: false,
+            primeiroAcesso: false,
           },
         });
       }

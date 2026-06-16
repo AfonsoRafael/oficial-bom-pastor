@@ -28,7 +28,7 @@ export class PreMatriculasService {
         },
         take: limit,
         skip: offset,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { criadoEm: 'desc' },
       }),
       this.prisma.preMatricula.count({ where }),
     ]);

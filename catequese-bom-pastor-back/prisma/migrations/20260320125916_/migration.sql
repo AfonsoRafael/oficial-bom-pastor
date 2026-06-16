@@ -23,8 +23,8 @@ CREATE TABLE "administrador" (
     "nome" TEXT NOT NULL,
     "telefone" TEXT,
     "senha" TEXT NOT NULL,
-    "firstAccessComplete" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "primeiroAcesso" BOOLEAN NOT NULL DEFAULT false,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "administrador_pkey" PRIMARY KEY ("id")
@@ -37,8 +37,8 @@ CREATE TABLE "responsaveis" (
     "nome" TEXT NOT NULL,
     "telefone" TEXT,
     "senha" TEXT NOT NULL,
-    "firstAccessComplete" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "primeiroAcesso" BOOLEAN NOT NULL DEFAULT false,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "responsaveis_pkey" PRIMARY KEY ("id")
@@ -53,7 +53,7 @@ CREATE TABLE "turmas" (
     "sala" TEXT,
     "administradorId" TEXT NOT NULL,
     "catequistaId" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "turmas_pkey" PRIMARY KEY ("id")
@@ -72,7 +72,7 @@ CREATE TABLE "catequizandos" (
     "turmaId" TEXT,
     "responsavelId" TEXT NOT NULL,
     "observacoes" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "catequizandos_pkey" PRIMARY KEY ("id")
@@ -95,7 +95,7 @@ CREATE TABLE "pre_matriculas" (
     "decisaoEm" TIMESTAMP(3),
     "decisaoPorId" TEXT,
     "observacoesAdmin" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "pre_matriculas_pkey" PRIMARY KEY ("id")
@@ -109,7 +109,7 @@ CREATE TABLE "catequizando_documentos" (
     "status" BOOLEAN NOT NULL DEFAULT false,
     "uploadDate" TIMESTAMP(3),
     "fileUrl" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "catequizando_documentos_pkey" PRIMARY KEY ("id")
@@ -124,7 +124,7 @@ CREATE TABLE "inscricoes" (
     "status" "InscricaoStatus" NOT NULL DEFAULT 'SUBMITTED',
     "documentosUrl" TEXT[],
     "observacoes" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "inscricoes_pkey" PRIMARY KEY ("id")
@@ -141,7 +141,7 @@ CREATE TABLE "pagamentos" (
     "receiptUrl" TEXT,
     "dataPagamento" TIMESTAMP(3),
     "descricao" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "pagamentos_pkey" PRIMARY KEY ("id")
@@ -155,7 +155,7 @@ CREATE TABLE "materiais" (
     "fileUrl" TEXT NOT NULL,
     "turmaId" TEXT,
     "visibilidade" TEXT NOT NULL DEFAULT 'geral',
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "materiais_pkey" PRIMARY KEY ("id")
@@ -170,8 +170,8 @@ CREATE TABLE "catequistas" (
     "telefone" TEXT,
     "endereco" TEXT,
     "bio" TEXT,
-    "firstAccessComplete" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "primeiroAcesso" BOOLEAN NOT NULL DEFAULT false,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "catequistas_pkey" PRIMARY KEY ("id")
@@ -185,7 +185,7 @@ CREATE TABLE "documentos" (
     "fileUrl" TEXT NOT NULL,
     "visibilidade" TEXT NOT NULL DEFAULT 'parent',
     "turmaId" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "documentos_pkey" PRIMARY KEY ("id")
@@ -199,7 +199,7 @@ CREATE TABLE "eventos" (
     "data" TIMESTAMP(3) NOT NULL,
     "tipo" "TipoEvento" NOT NULL DEFAULT 'GERAL',
     "turmaId" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "eventos_pkey" PRIMARY KEY ("id")
@@ -211,7 +211,7 @@ CREATE TABLE "galerias" (
     "titulo" TEXT NOT NULL,
     "descricao" TEXT,
     "visibilidade" TEXT NOT NULL DEFAULT 'geral',
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "galerias_pkey" PRIMARY KEY ("id")
@@ -223,7 +223,7 @@ CREATE TABLE "imagens" (
     "galeiraId" TEXT NOT NULL,
     "fileUrl" TEXT NOT NULL,
     "titulo" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "imagens_pkey" PRIMARY KEY ("id")
 );
@@ -235,7 +235,7 @@ CREATE TABLE "musicas" (
     "autor" TEXT,
     "linkExterno" TEXT,
     "notas" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "musicas_pkey" PRIMARY KEY ("id")
@@ -249,7 +249,7 @@ CREATE TABLE "loja_items" (
     "preco" DOUBLE PRECISION NOT NULL,
     "estoque" INTEGER NOT NULL,
     "imagemUrl" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "loja_items_pkey" PRIMARY KEY ("id")
@@ -262,7 +262,7 @@ CREATE TABLE "ordem_loja" (
     "total" DOUBLE PRECISION NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'pending',
     "pagamentoId" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "ordem_loja_pkey" PRIMARY KEY ("id")
