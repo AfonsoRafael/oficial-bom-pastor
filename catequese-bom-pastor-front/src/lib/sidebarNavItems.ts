@@ -17,8 +17,8 @@ export const ADMIN_NAV_ITEMS: SidebarNavItem[] = [
   { label: "Chamada", to: "/admin/chamada", icon: ClipboardList },
   { label: "Minhas Turmas", to: "/admin/minhas-turmas", icon: Users },
   { label: "Cronograma", to: "/admin/cronograma", icon: Calendar },
-  { label: "Material", to: "/admin/material", icon: BookOpen },
-  { label: "Músicas", to: "/admin/musicas", icon: Music },
+  // { label: "Material", to: "/admin/material", icon: BookOpen },
+  // { label: "Músicas", to: "/admin/musicas", icon: Music },
   { label: "Contabilidade", to: "/admin/contabilidade", icon: DollarSign },
   { label: "Histórico", to: "/admin/historico", icon: Calendar },
 ];
@@ -27,15 +27,15 @@ export const CATECHIST_NAV_ITEMS: SidebarNavItem[] = [
   { label: "Chamada", to: "/catequista/chamada", icon: ClipboardList },
   { label: "Minhas Turmas", to: "/catequista/minhas-turmas", icon: Users },
   { label: "Cronograma", to: "/catequista/cronograma", icon: Calendar },
-  { label: "Material", to: "/catequista/material", icon: BookOpen },
-  { label: "Músicas", to: "/catequista/musicas", icon: Music },
+  // { label: "Material", to: "/catequista/material", icon: BookOpen },
+  // { label: "Músicas", to: "/catequista/musicas", icon: Music },
 ];
 
 export const PARENT_NAV_ITEMS: SidebarNavItem[] = [
   { label: "Meus Filhos", to: "/pais", icon: Users },
   { label: "Documentos", to: "/pais/documentos", icon: FileText },
   { label: "Cronograma", to: "/pais/cronograma", icon: Calendar },
-  { label: "Galeria", to: "/pais/galeria", icon: Camera },
+  // { label: "Galeria", to: "/pais/galeria", icon: Camera },
 ];
 
 export function getDashboardNavItems(isAdminRoute: boolean): SidebarNavItem[] {
