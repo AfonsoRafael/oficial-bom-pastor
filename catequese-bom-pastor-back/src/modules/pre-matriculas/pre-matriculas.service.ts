@@ -79,6 +79,7 @@ export class PreMatriculasService {
         CertificadoBatismo: certificadoBatismoUrl,
         ComprovanteEndereco: comprovanteEnderecoUrl,
         CertidaoDeNascimento: certidaoDeNascimentoUrl,
+        status: 'PENDING',
       },
       include: {
         decisaoPor: true,

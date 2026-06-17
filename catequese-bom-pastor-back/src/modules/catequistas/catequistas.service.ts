@@ -61,11 +61,12 @@ export class CatequistasService {
         email: dto.email,
         telefone: dto.telefone,
         casado: dto.casado,
-        casadaIgrejaCatolica: dto.casadaIgrejaCatolica ?? null,
+        casadaIgrejaCatolica: dto.casadaIgrejaCatolica,
         sacramentos: dto.sacramentos ?? null,
         alergias: dto.alergias ?? null,
         ComprovanteResidencia: comprovanteResidenciaUrl ?? null,
         DocumentoCpf: documentoCpfUrl ?? null,
+        status: 'PENDING',
       },
       include: {
         decisaoPor: true,

@@ -295,6 +295,74 @@ async function main() {
   });
   console.log('✅ Música criada:', musica.titulo);
 
+  // Criar itens da lojinha
+  console.log('🛍️ Criando itens da lojinha...');
+  const items = [
+    {
+      id: 'seed-item-1',
+      nome: 'Camiseta da Catequese',
+      descricao: 'Camiseta oficial com logo Bom Pastor',
+      preco: 45.0,
+      estoque: 50,
+      imagemUrl: '🎽',
+    },
+    {
+      id: 'seed-item-2',
+      nome: 'Caneca Personalizada',
+      descricao: 'Caneca com versículos bíblicos',
+      preco: 30.0,
+      estoque: 30,
+      imagemUrl: '☕',
+    },
+    {
+      id: 'seed-item-3',
+      nome: 'Terço Infantil',
+      descricao: 'Terço colorido para crianças',
+      preco: 15.0,
+      estoque: 100,
+      imagemUrl: '📿',
+    },
+    {
+      id: 'seed-item-4',
+      nome: 'Chaveiro Bom Pastor',
+      descricao: 'Chaveiro com imagem do Bom Pastor',
+      preco: 10.0,
+      estoque: 200,
+      imagemUrl: '🔑',
+    },
+    {
+      id: 'seed-item-5',
+      nome: 'Apostila de Catequese',
+      descricao: 'Material didático completo',
+      preco: 25.0,
+      estoque: 150,
+      imagemUrl: '📖',
+    },
+    {
+      id: 'seed-item-6',
+      nome: 'Kit de Adesivos',
+      descricao: 'Adesivos religiosos infantis',
+      preco: 12.0,
+      estoque: 80,
+      imagemUrl: '✨',
+    },
+  ];
+
+  for (const item of items) {
+    await prisma.lojaItem.upsert({
+      where: { id: item.id },
+      update: {
+        nome: item.nome,
+        descricao: item.descricao,
+        preco: item.preco,
+        estoque: item.estoque,
+        imagemUrl: item.imagemUrl,
+      },
+      create: item,
+    });
+  }
+  console.log('✅ Itens da lojinha criados');
+
   console.log('\n🎉 Seed concluído!');
   console.log('\n📝 Credenciais de acesso:');
   console.log('   Admin: admin@catequese.com / 123');

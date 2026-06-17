@@ -1,5 +1,4 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { TipoEvento } from '@prisma/client';
 import { USER_ROLES, UserRole } from '../../common/constants/user-roles';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateEventoDto } from './dto/evento.dto';
@@ -13,7 +12,7 @@ export class CronogramaService {
 
     const eventos = await this.prisma.evento.findMany({
       where: {
-        tipo: TipoEvento.GERAL,
+        tipo: 'GERAL',
         data: {
           gte: new Date(),
         },
@@ -90,7 +89,7 @@ export class CronogramaService {
         titulo: dto.titulo,
         descricao: dto.descricao ?? null,
         data: new Date(dto.data),
-        tipo: dto.tipo ?? TipoEvento.GERAL,
+        tipo: dto.tipo ?? 'GERAL',
         turmaId: dto.turmaId ?? null,
       },
       include: {
@@ -112,7 +111,7 @@ export class CronogramaService {
     if (userRole === USER_ROLES.CATEQUISTA) {
       return {
         OR: [
-          { tipo: TipoEvento.GERAL },
+          { tipo: 'GERAL' },
           {
             turma: {
               catequistasTurma: {
@@ -128,7 +127,7 @@ export class CronogramaService {
 
     return {
       OR: [
-        { tipo: TipoEvento.GERAL },
+        { tipo: 'GERAL' },
         {
           turma: {
             catequizandos: {

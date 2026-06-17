@@ -1,5 +1,4 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TipoEvento } from '@prisma/client';
 import { IsDateString, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateEventoDto {
@@ -17,10 +16,10 @@ export class CreateEventoDto {
   @IsDateString()
   data: string;
 
-  @ApiPropertyOptional({ enum: TipoEvento, default: TipoEvento.GERAL })
+  @ApiPropertyOptional({ example: 'GERAL', default: 'GERAL' })
   @IsOptional()
-  @IsEnum(TipoEvento)
-  tipo?: TipoEvento;
+  @IsString()
+  tipo?: string;
 
   @ApiPropertyOptional({ example: 'clx123...' })
   @IsOptional()

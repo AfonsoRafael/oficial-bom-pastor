@@ -2,6 +2,8 @@ import milagresPaes from "@/assets/milagres-paes.jpg";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ContactFormDialog } from "@/components/ContactFormDialog";
 import { Button } from "@/components/ui/button";
+import { fetchPublic } from "@/lib/api";
+import { API_ROUTES } from "@/lib/routes";
 import {
   Card,
   CardContent,
@@ -18,49 +20,20 @@ import {
   PackageOpen,
   QrCode,
   ShoppingBag,
+  Loader2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 
-const products = [
-  {
-    name: "Camiseta da Catequese",
-    description: "Camiseta oficial com logo Bom Pastor",
-    price: "R$ 45,00",
-    image: "🎽",
-  },
-  {
-    name: "Caneca Personalizada",
-    description: "Caneca com versículos bíblicos",
-    price: "R$ 30,00",
-    image: "☕",
-  },
-  {
-    name: "Terço Infantil",
-    description: "Terço colorido para crianças",
-    price: "R$ 15,00",
-    image: "📿",
-  },
-  {
-    name: "Chaveiro Bom Pastor",
-    description: "Chaveiro com imagem do Bom Pastor",
-    price: "R$ 10,00",
-    image: "🔑",
-  },
-  {
-    name: "Apostila de Catequese",
-    description: "Material didático completo",
-    price: "R$ 25,00",
-    image: "📖",
-  },
-  {
-    name: "Kit de Adesivos",
-    description: "Adesivos religiosos infantis",
-    price: "R$ 12,00",
-    image: "✨",
-  },
-];
+interface Product {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  preco: number;
+  estoque: number;
+  imagemUrl: string | null;
+}
 
 const donationNeeds = [
   {
@@ -81,16 +54,53 @@ const donationNeeds = [
 ];
 
 export default function Lojinha() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showPix, setShowPix] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
   const { toast } = useToast();
   const pixKey = "catequese@paroquia.org.br";
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      setLoading(true);
+      try {
+        const response = await fetchPublic((API_ROUTES as any).lojinhaItems || "/lojinha/items");
+        
+        if (!response.ok) {
+          throw new Error("Falha ao carregar produtos");
+        }
+        
+        const data = await response.json();
+        const items = Array.isArray(data) ? data : data.items || [];
+        setProducts(items);
+      } catch (error) {
+        console.error("Erro ao carregar itens da loja:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Não foi possível carregar os produtos da loja no momento.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, [toast]);
 
   const copyPixKey = () => {
     navigator.clipboard.writeText(pixKey);
     toast({
       title: "Chave PIX copiada!",
       description: "A chave foi copiada para a área de transferência.",
+    });
+  };
+
+  const handleAddToCart = (product: Product) => {
+    toast({
+      title: "Produto selecionado",
+      description: `${product.nome} adicionado ao seu carrinho (Simulação).`,
     });
   };
 
@@ -147,33 +157,49 @@ export default function Lojinha() {
               Produtos exclusivos da Catequese Bom Pastor
             </p>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {products.map((product, index) => (
-              <Card
-                key={product.name}
-                variant="interactive"
-                className="animate-slide-up"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <CardHeader className="text-center">
-                  <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-5xl">
-                    {product.image}
-                  </div>
-                  <CardTitle className="text-xl">{product.name}</CardTitle>
-                  <CardDescription>{product.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="text-center space-y-4">
-                  <p className="font-display text-2xl font-bold text-primary">
-                    {product.price}
-                  </p>
-                  <Button variant="default" className="w-full">
-                    <ShoppingBag className="mr-2 h-4 w-4" />
-                    Adicionar ao Carrinho
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+          ) : products.length === 0 ? (
+            <div className="text-center py-20 text-muted-foreground">
+              Nenhum produto disponível no momento.
+            </div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {products.map((product, index) => (
+                <Card
+                  key={product.id}
+                  variant="interactive"
+                  className="animate-slide-up"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <CardHeader className="text-center">
+                    <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-5xl">
+                      {product.imagemUrl || "🎁"}
+                    </div>
+                    <CardTitle className="text-xl">{product.nome}</CardTitle>
+                    <CardDescription>{product.descricao}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-center space-y-4">
+                    <p className="font-display text-2xl font-bold text-primary">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.preco)}
+                    </p>
+                    <Button 
+                      variant="default" 
+                      className="w-full"
+                      onClick={() => handleAddToCart(product)}
+                      disabled={product.estoque <= 0}
+                    >
+                      <ShoppingBag className="mr-2 h-4 w-4" />
+                      {product.estoque > 0 ? "Adicionar ao Carrinho" : "Esgotado"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

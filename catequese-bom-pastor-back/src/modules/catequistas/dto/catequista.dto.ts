@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
 
 export class CreateCatequistaDto {
   @ApiProperty()
@@ -98,16 +98,16 @@ export class CreateCatequistaInscricaoDto {
     description: 'Se a pessoa e casada',
     example: 'SIM',
   })
-  @IsString()
-  casado: string;
+  @IsBoolean()
+  casado: boolean;
 
   @ApiPropertyOptional({
     description: 'Se a pessoa e casada na Igreja Catolica (informar quando casado = SIM)',
     example: 'SIM',
   })
   @IsOptional()
-  @IsString()
-  casadaIgrejaCatolica?: string;
+  @IsBoolean()
+  casadaIgrejaCatolica?: boolean;
 
   @ApiPropertyOptional({
     description: 'Sacramentos recebidos pelo candidato',
