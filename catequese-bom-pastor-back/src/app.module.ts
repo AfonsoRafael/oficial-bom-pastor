@@ -16,12 +16,12 @@ import { CronogramaModule } from './modules/cronograma/cronograma.module';
 import { CalendarioModule } from './modules/calendario/calendario.module';
 import { GaleriaModule } from './modules/galeria/galeria.module';
 import { MusicasModule } from './modules/musicas/musicas.module';
-import { LojaModule } from './modules/loja/loja.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
 import { CatequistasModule } from './modules/catequistas/catequistas.module';
 import { PreMatriculasModule } from './modules/pre-matriculas/pre-matriculas.module';
+import { ItensLojaModule } from './modules/loja/loja.module';
 
 @Module({
   imports: [
@@ -54,7 +54,7 @@ import { PreMatriculasModule } from './modules/pre-matriculas/pre-matriculas.mod
     CalendarioModule,
     GaleriaModule,
     MusicasModule,
-    LojaModule,
+    ItensLojaModule,
     UploadsModule,
     DashboardModule,
     CatequistasModule,

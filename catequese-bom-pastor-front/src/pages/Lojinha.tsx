@@ -65,14 +65,14 @@ export default function Lojinha() {
     const loadProducts = async () => {
       setLoading(true);
       try {
-        const response = await fetchPublic((API_ROUTES as any).lojinhaItems || "/lojinha/items");
+        const response = await fetchPublic((API_ROUTES as any).lojinhaItems || "/api/loja/itens");
         
         if (!response.ok) {
           throw new Error("Falha ao carregar produtos");
         }
         
         const data = await response.json();
-        const items = Array.isArray(data) ? data : data.items || [];
+        const items = Array.isArray(data) ? data : data.itens || [];
         setProducts(items);
       } catch (error) {
         console.error("Erro ao carregar itens da loja:", error);
