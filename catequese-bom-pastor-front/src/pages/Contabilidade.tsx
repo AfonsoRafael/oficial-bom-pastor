@@ -33,6 +33,10 @@ import {
   TrendingUp,
   Users,
   X,
+  Plus,
+  Trash2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
@@ -42,6 +46,14 @@ import { Link, useLocation } from "react-router-dom";
 
 type Sale = { id: string; product: string; qty: number; price: number };
 type Purchase = { id: string; item: string; qty: number; cost: number };
+type Product = {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  stock: number;
+  isActive: boolean;
+};
 
 const Contabilidade = () => {
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
@@ -52,7 +64,15 @@ const Contabilidade = () => {
     window.location.href = "/login";
   };
 
-  // Dados da lojinha (vendas)
+  // Estado do Catálogo de Produtos da Loja
+  const [products, setProducts] = useState<Product[]>([
+    { id: "PROD-001", name: "Camiseta da Catequese", category: "Vestuário", price: 45.0, stock: 15, isActive: true },
+    { id: "PROD-002", name: "Terço Infantil", category: "Artigos Religiosos", price: 15.0, stock: 40, isActive: true },
+    { id: "PROD-003", name: "Caneca Personalizada", category: "Lembranças", price: 30.0, stock: 0, isActive: true },
+    { id: "PROD-004", name: "Bíblia Sagrada Jovem", category: "Livros", price: 60.0, stock: 5, isActive: false },
+  ]);
+
+  // Histórico de Vendas
   const [sales, setSales] = useState<Sale[]>([
     { id: "S-001", product: "Camiseta", qty: 2, price: 45 },
     { id: "S-002", product: "Terço Infantil", qty: 3, price: 15 },
@@ -65,6 +85,44 @@ const Contabilidade = () => {
     { id: "P-002", item: "Material Escolar", qty: 20, cost: 3 },
   ]);
 
+  // --- Funções de Gerenciamento de Produtos ---
+  const handleAddProduct = () => {
+    setProducts((prev) => [
+      ...prev,
+      {
+        id: `PROD-${String(prev.length + 1).padStart(3, "0")}`,
+        name: "Novo Produto",
+        category: "Geral",
+        price: 0,
+        stock: 0,
+        isActive: true,
+      },
+    ]);
+  };
+
+  const handleUpdateProduct = (id: string, field: keyof Product, value: any) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+    );
+  };
+
+  const handleToggleActive = (id: string) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, isActive: !p.isActive } : p))
+    );
+  };
+
+  const handleDeleteProduct = (id: string) => {
+    if (confirm("Tem certeza que deseja excluir permanentemente este produto do catálogo?")) {
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+    }
+  };
+
+  const handleSaveChanges = () => {
+    alert("Alterações do catálogo salvas com sucesso!");
+  };
+
+  // --- Cálculos Financeiros ---
   const totalRevenue = useMemo(
     () => sales.reduce((acc, s) => acc + s.qty * s.price, 0),
     [sales]
@@ -80,7 +138,6 @@ const Contabilidade = () => {
     [totalRevenue, totalPlanned]
   );
 
-  // Dados mockados de transações gerais
   const transactions = [
     { id: 1, date: "2024-01-15", description: "Materiais didáticos", type: "despesa", value: 150.00, category: "Material" },
     { id: 2, date: "2024-01-10", description: "Mensalidade - Turma A", type: "receita", value: 450.00, category: "Mensalidade" },
@@ -104,6 +161,8 @@ const Contabilidade = () => {
     [sales]
   );
 
+  const totalItemsCadastrados = products.length;
+
   return (
     <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>
       {/* Sidebar */}
@@ -113,7 +172,6 @@ const Contabilidade = () => {
         } `}
       >
         <div className="flex h-full flex-col">
-          {/* Logo */}
           <div className="flex h-16 items-center justify-between border-b px-4">
             <Link to="/" className="flex items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
@@ -123,16 +181,11 @@ const Contabilidade = () => {
                 Catequese
               </span>
             </Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-            >
+            <Button variant="ghost" size="icon" onClick={toggleSidebar}>
               <Menu className="h-5 w-5" />
             </Button>
           </div>
 
-          {/* User Info */}
           <div className="border-b p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
@@ -146,7 +199,6 @@ const Contabilidade = () => {
 
           <SidebarNav items={ADMIN_NAV_ITEMS} pathname={location.pathname} />
 
-          {/* Logout */}
           <div className="border-t p-4">
             <Button
               variant="nav"
@@ -170,7 +222,6 @@ const Contabilidade = () => {
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
-        {/* Top Bar */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4">
           <Button
             variant="ghost"
@@ -186,18 +237,16 @@ const Contabilidade = () => {
           <div className="w-10" />
         </header>
 
-        {/* Content */}
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
           <Tabs defaultValue="geral" className="space-y-6">
             <TabsList>
               <TabsTrigger value="geral">Visão Geral</TabsTrigger>
-              <TabsTrigger value="lojinha">Lojinha</TabsTrigger>
+              <TabsTrigger value="lojinha">Gerenciar Loja</TabsTrigger>
               <TabsTrigger value="compras">Compras Previstas</TabsTrigger>
             </TabsList>
 
             {/* Tab: Visão Geral */}
             <TabsContent value="geral" className="space-y-6">
-              {/* Resumo Financeiro */}
               <div className="grid gap-4 md:grid-cols-3">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -245,7 +294,6 @@ const Contabilidade = () => {
                 </Card>
               </div>
 
-              {/* Resumo da Lojinha e Compras */}
               <div className="grid gap-4 md:grid-cols-3">
                 <Card>
                   <CardHeader>
@@ -255,7 +303,7 @@ const Contabilidade = () => {
                   </CardHeader>
                   <CardContent>
                     <p className="text-2xl font-bold">{totalItemsVendidos}</p>
-                    <p className="text-sm text-muted-foreground">Itens vendidos</p>
+                    <p className="text-sm text-muted-foreground">Itens vendidos histórico</p>
                   </CardContent>
                 </Card>
 
@@ -294,17 +342,12 @@ const Contabilidade = () => {
                   <CardDescription>Receita da lojinha - Compras previstas</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p
-                    className={`text-2xl font-bold ${
-                      balance >= 0 ? "text-green-600" : "text-red-600"
-                    }`}
-                  >
+                  <p className={`text-2xl font-bold ${balance >= 0 ? "text-green-600" : "text-red-600"}`}>
                     R$ {balance.toFixed(2).replace(".", ",")}
                   </p>
                 </CardContent>
               </Card>
 
-              {/* Tabela de Transações */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -340,15 +383,11 @@ const Contabilidade = () => {
                           <TableCell>{transaction.description}</TableCell>
                           <TableCell>{transaction.category}</TableCell>
                           <TableCell>
-                            <Badge
-                              variant={transaction.type === "receita" ? "default" : "destructive"}
-                            >
+                            <Badge variant={transaction.type === "receita" ? "default" : "destructive"}>
                               {transaction.type === "receita" ? "Receita" : "Despesa"}
                             </Badge>
                           </TableCell>
-                          <TableCell className={`text-right font-medium ${
-                            transaction.type === "receita" ? "text-green-600" : "text-red-600"
-                          }`}>
+                          <TableCell className={`text-right font-medium ${transaction.type === "receita" ? "text-green-600" : "text-red-600"}`}>
                             {transaction.type === "receita" ? "+" : "-"} R$ {transaction.value.toFixed(2)}
                           </TableCell>
                         </TableRow>
@@ -359,116 +398,161 @@ const Contabilidade = () => {
               </Card>
             </TabsContent>
 
-            {/* Tab: Lojinha */}
+            {/* Tab: Lojinha (Painel Administrativo do Catálogo) */}
             <TabsContent value="lojinha" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Vendas da Lojinha</CardTitle>
-                  <CardDescription>Edição rápida dos registros de vendas</CardDescription>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <CardTitle>Catálogo de Produtos</CardTitle>
+                      <CardDescription>
+                        Gerenciamento completo do inventário da lojinha da Paróquia/Catequese.
+                      </CardDescription>
+                    </div>
+                    <Button onClick={handleAddProduct} className="w-full sm:w-auto">
+                      <Plus className="mr-2 h-4 w-4" /> Adicionar Produto
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Produto</TableHead>
-                        <TableHead>Qtde</TableHead>
-                        <TableHead>Preço (R$)</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sales.map((s, idx) => (
-                        <TableRow key={s.id}>
-                          <TableCell>
-                            <Input
-                              value={s.product}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                setSales((prev) =>
-                                  prev.map((row, i) =>
-                                    i === idx ? { ...row, product: v } : row
-                                  )
-                                );
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell className="w-32">
-                            <Input
-                              type="number"
-                              value={s.qty}
-                              onChange={(e) => {
-                                const v = Number(e.target.value);
-                                setSales((prev) =>
-                                  prev.map((row, i) =>
-                                    i === idx ? { ...row, qty: v } : row
-                                  )
-                                );
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell className="w-40">
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={s.price}
-                              onChange={(e) => {
-                                const v = Number(e.target.value);
-                                setSales((prev) =>
-                                  prev.map((row, i) =>
-                                    i === idx ? { ...row, price: v } : row
-                                  )
-                                );
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            R$ {(s.qty * s.price).toFixed(2).replace(".", ",")}
-                          </TableCell>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-24">Cód.</TableHead>
+                          <TableHead className="min-w-[200px]">Nome do Produto</TableHead>
+                          <TableHead className="w-44">Categoria</TableHead>
+                          <TableHead className="w-32">Preço (R$)</TableHead>
+                          <TableHead className="w-28">Estoque</TableHead>
+                          <TableHead className="w-32">Status</TableHead>
+                          <TableHead className="w-28 text-right">Ações</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        setSales((prev) => [
-                          ...prev,
-                          {
-                            id: `S-${String(prev.length + 1).padStart(3, "0")}`,
-                            product: "Novo Produto",
-                            qty: 1,
-                            price: 0,
-                          },
-                        ])
-                      }
-                    >
-                      Adicionar venda
+                      </TableHeader>
+                      <TableBody>
+                        {products.map((product) => {
+                          let badgeVariant: "default" | "secondary" | "destructive" = "default";
+                          let badgeLabel = "Ativo";
+
+                          if (!product.isActive) {
+                            badgeVariant = "secondary";
+                            badgeLabel = "Inativo";
+                          } else if (product.stock === 0) {
+                            badgeVariant = "destructive";
+                            badgeLabel = "Sem Estoque";
+                          }
+
+                          return (
+                            <TableRow key={product.id} className={!product.isActive ? "opacity-60 bg-muted/20" : ""}>
+                              <TableCell className="font-mono text-xs font-semibold text-muted-foreground">
+                                {product.id}
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={product.name}
+                                  className="h-8 border-transparent hover:border-input focus-visible:border-input"
+                                  onChange={(e) => handleUpdateProduct(product.id, "name", e.target.value)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={product.category}
+                                  className="h-8 border-transparent hover:border-input focus-visible:border-input"
+                                  onChange={(e) => handleUpdateProduct(product.id, "category", e.target.value)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <div className="relative">
+                                  <span className="absolute left-2 top-1.5 text-xs text-muted-foreground">R$</span>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={product.price || ""}
+                                    className="h-8 pl-7 border-transparent hover:border-input focus-visible:border-input"
+                                    onChange={(e) => handleUpdateProduct(product.id, "price", Number(e.target.value))}
+                                  />
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  value={product.stock}
+                                  className={`h-8 border-transparent hover:border-input focus-visible:border-input font-medium ${
+                                    product.stock === 0 && product.isActive ? "text-destructive font-bold" : ""
+                                  }`}
+                                  onChange={(e) => handleUpdateProduct(product.id, "stock", Number(e.target.value))}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={badgeVariant}>{badgeLabel}</Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    title={product.isActive ? "Desativar Produto" : "Ativar Produto"}
+                                    onClick={() => handleToggleActive(product.id)}
+                                  >
+                                    {product.isActive ? (
+                                      <Eye className="h-4 w-4 text-amber-600" />
+                                    ) : (
+                                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                    title="Excluir Produto"
+                                    onClick={() => handleDeleteProduct(product.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  <div className="mt-4 flex justify-end">
+                    <Button onClick={handleSaveChanges}>
+                      Salvar todas as alterações
                     </Button>
-                    <Button>Salvar alterações</Button>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Resumo de Vendas</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>Total de itens vendidos:</span>
-                      <span className="font-bold">{totalItemsVendidos}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Receita total:</span>
-                      <span className="font-bold text-green-600">
-                        R$ {totalRevenue.toFixed(2).replace(".", ",")}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Itens Totais Registrados</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">{totalItemsCadastrados}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {products.filter((p) => p.isActive).length} ativos e {products.filter((p) => !p.isActive).length} desativados.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Alertas de Reposição</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-destructive">
+                      {products.filter((p) => p.isActive && p.stock === 0).length}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Produtos ativos que encontram-se esgotados no momento.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
 
             {/* Tab: Compras Previstas */}

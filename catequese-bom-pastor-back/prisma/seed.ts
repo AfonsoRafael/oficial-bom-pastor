@@ -365,7 +365,7 @@ async function main() {
 
   console.log('\n🎉 Seed concluído!');
   console.log('\n📝 Credenciais de acesso:');
-  console.log('   Admin: admin@catequese.com / 123');
+  console.log('   Admin: admin@catequese.com / admin123');
   console.log('   Responsável: pai@catequese.com / parent123');
   console.log('   Catequista Ana: ana.catequista@catequese.com / ana123');
   console.log('   Catequista Carlos: carlos.catequista@catequese.com / carlos123');
