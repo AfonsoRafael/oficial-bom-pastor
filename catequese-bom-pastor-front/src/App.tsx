@@ -27,6 +27,7 @@ import AdminInscricoesCatequistas from "./pages/AdminInscricoesCatequistas";
 import PreMatriculaCrianca from "./pages/PreMatriculaCrianca";
 import PrimeiroAcesso from "./pages/PrimeiroAcesso";
 import Sobre from "./pages/Sobre";
+import ProtectedRoute from "./components/auth/protectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -37,50 +38,52 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/sobre" element={<Sobre />} />
-          <Route path="/lojinha" element={<Lojinha />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/esqueci-senha" element={<EsqueciSenha />} />
-          <Route path="/inscricao" element={<Inscricao />} />
-          <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
-          <Route path="/pre-matricula" element={<PreMatriculaCrianca />} />
-          
-          {/* Rotas Pais */}
-          <Route path="/pais" element={<ParentDashboard />} />
-          <Route path="/pais/documentos" element={<ParentDocumentos />} />
-          <Route path="/pais/cronograma" element={<ParentCronograma />} />
-          <Route path="/pais/galeria" element={<ParentGaleria />} />
-          
-          {/* Rotas Admin */}
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route 
-            path="/admin/add-catequizando" 
-            element={
-                <AddCatequizando />
-            } 
-          />
-          <Route path="/admin/inscricoes-catequistas" element={<AdminInscricoesCatequistas />} />
-          <Route path="/admin/chamada" element={<CatechistDashboard />} />
-          <Route path="/admin/minhas-turmas" element={<MinhasTurmas />} />
-          <Route path="/admin/cronograma" element={<Cronograma />} />
-          <Route path="/admin/material" element={<Material />} />
-          <Route path="/admin/musicas" element={<Musicas />} />
-          <Route path="/admin/contabilidade" element={<Contabilidade />} />
-          <Route path="/admin/historico" element={<Historico />} />
-          
-          {/* Rotas Catequista */}
-          <Route path="/catequista" element={<CatechistDashboard />} />
-          <Route path="/catequista/chamada" element={<CatechistDashboard />} />
-          <Route path="/catequista/minhas-turmas" element={<MinhasTurmas />} />
-          <Route path="/catequista/cronograma" element={<Cronograma />} />
-          <Route path="/catequista/material" element={<Material />} />
-          <Route path="/catequista/musicas" element={<Musicas />} />
-          
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/sobre" element={<Sobre />} />
+            <Route path="/lojinha" element={<Lojinha />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+            <Route path="/inscricao" element={<Inscricao />} />
+            <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
+            <Route path="/pre-matricula" element={<PreMatriculaCrianca />} />
+            <Route element={<ProtectedRoute />} >
+
+              {/* Rotas Pais */}
+              <Route path="/pais" element={<ParentDashboard />} />
+              <Route path="/pais/documentos" element={<ParentDocumentos />} />
+              <Route path="/pais/cronograma" element={<ParentCronograma />} />
+              <Route path="/pais/galeria" element={<ParentGaleria />} />
+
+              {/* Rotas Admin */}
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route
+                path="/admin/add-catequizando"
+                element={
+                  <AddCatequizando />
+                }
+              />
+              <Route path="/admin/inscricoes-catequistas" element={<AdminInscricoesCatequistas />} />
+              <Route path="/admin/chamada" element={<CatechistDashboard />} />
+              <Route path="/admin/minhas-turmas" element={<MinhasTurmas />} />
+              <Route path="/admin/cronograma" element={<Cronograma />} />
+              <Route path="/admin/material" element={<Material />} />
+              <Route path="/admin/musicas" element={<Musicas />} />
+              <Route path="/admin/contabilidade" element={<Contabilidade />} />
+              <Route path="/admin/historico" element={<Historico />} />
+
+              {/* Rotas Catequista */}
+              <Route path="/catequista" element={<CatechistDashboard />} />
+              <Route path="/catequista/chamada" element={<CatechistDashboard />} />
+              <Route path="/catequista/minhas-turmas" element={<MinhasTurmas />} />
+              <Route path="/catequista/cronograma" element={<Cronograma />} />
+              <Route path="/catequista/material" element={<Material />} />
+              <Route path="/catequista/musicas" element={<Musicas />} />
+            </Route>
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

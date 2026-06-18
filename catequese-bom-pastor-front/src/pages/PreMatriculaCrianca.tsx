@@ -527,17 +527,17 @@ export default function PreMatriculaCrianca() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="alergiasProblemasSaude">Alergias / problemas de saúde (opcional)</Label>
+                      <Label htmlFor="alergiasProblemasSaude">Alergias / problemas de saúde</Label>
                       <Textarea
                         id="alergiasProblemasSaude"
                         value={data.alergiasProblemasSaude ?? ""}
                         onChange={(e) => setField("alergiasProblemasSaude", e.target.value)}
-                        placeholder="Informe alergias, medicações ou cuidados especiais"
+                        placeholder="Se sim, informe alergias, medicações ou cuidados especiais"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="sacramentosPais">Sacramentos dos pais (opcional)</Label>
+                      <Label htmlFor="sacramentosPais">Sacramentos dos pais</Label>
                       <Input
                         id="sacramentosPais"
                         value={data.sacramentosPais ?? ""}
@@ -616,7 +616,7 @@ export default function PreMatriculaCrianca() {
                 </div>
 
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 md:p-5">
-                  <h3 className="mb-3 text-base font-semibold text-amber-900">Confirmacoes obrigatorias</h3>
+                  <h3 className="mb-3 text-base font-semibold text-amber-900">Confirmações obrigatórias</h3>
                   <div className="space-y-3">
                     <div className="flex items-start gap-2">
                       <Checkbox
