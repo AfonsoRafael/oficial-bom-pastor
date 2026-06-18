@@ -24,6 +24,7 @@ services:
       dockerfile: Dockerfile
       target: builder
     container_name: catequese_api
+    working_dir: /app
     environment:
       NODE_ENV: development
       PORT: 3000
