@@ -28,6 +28,7 @@ import PreMatriculaCrianca from "./pages/PreMatriculaCrianca";
 import PrimeiroAcesso from "./pages/PrimeiroAcesso";
 import Sobre from "./pages/Sobre";
 import ProtectedRoute from "./components/auth/protectedRoute";
+import Photos from "./pages/Photos";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
               <Route path="/admin/cronograma" element={<Cronograma />} />
               <Route path="/admin/material" element={<Material />} />
               <Route path="/admin/musicas" element={<Musicas />} />
+              <Route path="admin/fotos" element={<Photos />} />
               <Route path="/admin/contabilidade" element={<Contabilidade />} />
               <Route path="/admin/historico" element={<Historico />} />
 

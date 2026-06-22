@@ -19,6 +19,7 @@ export const ADMIN_NAV_ITEMS: SidebarNavItem[] = [
   { label: "Cronograma", to: "/admin/cronograma", icon: Calendar },
   // { label: "Material", to: "/admin/material", icon: BookOpen },
   // { label: "Músicas", to: "/admin/musicas", icon: Music },
+  { label: "Fotos", to: "/admin/fotos", icon: Camera },
   { label: "Contabilidade", to: "/admin/contabilidade", icon: DollarSign },
   { label: "Histórico", to: "/admin/historico", icon: Calendar },
 ];
