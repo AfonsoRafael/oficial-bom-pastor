@@ -75,6 +75,8 @@ export default function Login() {
       // Redireciona baseado no role (normalizar para minúsculas)
       const role = String(data.user.role || "").toLowerCase().trim();
       if (role === "admin" || role === "administrador" || role === "adminstrador") {
+
+console.log("redirecioneli,f");
         navigate("/admin");
       } else if (role === "catequista" || role === "catechist") {
         navigate("/catequista");
