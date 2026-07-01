@@ -16,7 +16,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
 import { ADMIN_NAV_ITEMS } from "@/lib/sidebarNavItems";
+import { Link, useLocation } from "react-router-dom";
 import {
+  Cross,
+  LogOut,
   Menu,
   Plus,
   Trash2,
@@ -38,7 +41,8 @@ interface HomePagePhoto {
 }
 
 export default function Photos() {
-  const { isSidebarOpen, toggleSidebar } = usePersistentSidebar();
+  const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
+  const location = useLocation();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -182,35 +186,100 @@ export default function Photos() {
   };
 
   return (
-    <div className="flex min-h-screen bg-muted/20">
-      <SidebarNav items={ADMIN_NAV_ITEMS} isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-
-      <main className="flex-1 p-6 md:p-8 lg:p-10 transition-all duration-300">
-        
-        {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-5 mb-6">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={toggleSidebar}>
+    <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-card transition-transform duration-300 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex h-full flex-col">
+          <div className="flex h-16 items-center justify-between border-b px-4">
+            <Link to="/" className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
+                <Cross className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <span className="font-display text-lg font-semibold">Catequese</span>
+            </Link>
+            <Button variant="ghost" size="icon" onClick={toggleSidebar}>
               <Menu className="h-5 w-5" />
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                <ImageIcon className="h-7 w-7 text-primary" /> Galeria da Tela Inicial
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                Gerencie as fotos, destaques e banners que os visitantes e pais visualizam na Home.
-              </p>
+          </div>
+
+          <div className="border-b p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
+                <ImageIcon className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <p className="font-medium">Área do Admin</p>
             </div>
           </div>
 
-          <Button onClick={handleOpenCreateModal} className="w-full sm:w-auto h-11 shadow-sm">
-            <Plus className="mr-2 h-5 w-5" /> Adicionar Foto
-          </Button>
+          <SidebarNav items={ADMIN_NAV_ITEMS} pathname={location.pathname} />
+
+          <div className="border-t p-4">
+            <Button
+              variant="nav"
+              className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => {
+                try {
+                  localStorage.removeItem("role");
+                } catch {}
+                window.location.href = "/login";
+              }}
+            >
+              <LogOut className="mr-3 h-4 w-4" />
+              Sair
+            </Button>
+          </div>
         </div>
+      </aside>
+
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-foreground/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <div className="flex-1">
+        <header className="sticky top-0 z-40 border-b bg-card">
+          <div className="flex h-16 items-center justify-between px-4 md:px-6">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={sidebarOpen ? "lg:hidden" : ""}
+                onClick={toggleSidebar}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="flex items-center gap-2 text-xl font-semibold">
+                  <ImageIcon className="h-6 w-6 text-primary" /> Galeria da Tela Inicial
+                </h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Gerencie as fotos, destaques e banners que os visitantes e pais visualizam na Home.
+                </p>
+              </div>
+            </div>
+
+            <Button onClick={handleOpenCreateModal} className="hidden h-11 shadow-sm sm:inline-flex">
+              <Plus className="mr-2 h-5 w-5" /> Adicionar Foto
+            </Button>
+          </div>
+        </header>
+
+        <main className="p-4 md:p-6 lg:p-8">
+          <div className="mx-auto max-w-7xl space-y-6">
+            <div className="flex justify-end sm:hidden">
+              <Button onClick={handleOpenCreateModal} className="h-11 w-full shadow-sm">
+                <Plus className="mr-2 h-5 w-5" /> Adicionar Foto
+              </Button>
+            </div>
 
         {/* Modal Dinâmico de Formulário */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingPhoto ? "Editar Imagem de Destaque" : "Nova Imagem de Destaque"}
@@ -292,16 +361,16 @@ export default function Photos() {
           </DialogContent>
         </Dialog>
 
-        {/* Grid de Banners/Cards */}
-        {photos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-16 text-center bg-background">
-            <ImageIcon className="h-12 w-12 text-muted-foreground/60 mb-3" />
-            <h3 className="text-lg font-semibold">Nenhuma foto cadastrada</h3>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {photos.map((photo) => (
-              <Card key={photo.id} className="overflow-hidden flex flex-col group border shadow-sm hover:shadow-md transition-all">
+            {/* Grid de Banners/Cards */}
+            {photos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed bg-background p-16 text-center">
+                <ImageIcon className="mb-3 h-12 w-12 text-muted-foreground/60" />
+                <h3 className="text-lg font-semibold">Nenhuma foto cadastrada</h3>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {photos.map((photo) => (
+                  <Card key={photo.id} className="group flex flex-col overflow-hidden border shadow-sm transition-all hover:shadow-md">
                 
                 <div className="relative aspect-video w-full bg-muted overflow-hidden">
                   <img
@@ -366,11 +435,13 @@ export default function Photos() {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
-            ))}
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
