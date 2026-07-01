@@ -625,13 +625,6 @@ export default function Cronograma() {
                 </CardContent>
               </Card>
             </div>
-
-            <div className="mt-6 rounded-lg border bg-card p-4 text-sm text-slate-600">
-              <div className="inline-flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Eventos de cronograma são sincronizados com o backend em tempo real.
-              </div>
-            </div>
           </div>
         </main>
       </div>

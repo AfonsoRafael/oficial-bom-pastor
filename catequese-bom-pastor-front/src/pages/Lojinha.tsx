@@ -21,6 +21,8 @@ import {
   QrCode,
   ShoppingBag,
   Loader2,
+  Trash2,
+  ShoppingCart,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -33,6 +35,12 @@ interface Product {
   preco: number;
   estoque: number;
   imagemUrl: string | null;
+}
+
+// Interface para controlar a quantidade no carrinho
+interface CartItem {
+  product: Product;
+  quantity: number;
 }
 
 const donationNeeds = [
@@ -58,6 +66,11 @@ export default function Lojinha() {
   const [loading, setLoading] = useState(true);
   const [showPix, setShowPix] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
+  
+  // Estados para controlar o carrinho
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [showCartDropdown, setShowCartDropdown] = useState(false);
+
   const { toast } = useToast();
   const pixKey = "catequese@paroquia.org.br";
 
@@ -97,11 +110,37 @@ export default function Lojinha() {
     });
   };
 
+  // Lógica real de adicionar ao carrinho
   const handleAddToCart = (product: Product) => {
-    toast({
-      title: "Produto selecionado",
-      description: `${product.nome} adicionado ao seu carrinho (Simulação).`,
+    setCart((prevCart) => {
+      const existingItem = prevCart.find((item) => item.product.id === product.id);
+      if (existingItem) {
+        return prevCart.map((item) =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      return [...prevCart, { product, quantity: 1 }];
     });
+
+    toast({
+      title: "Adicionado ao carrinho",
+      description: `${product.nome} foi adicionado com sucesso.`,
+    });
+  };
+
+  // Remover item do carrinho
+  const handleRemoveFromCart = (productId: string) => {
+    setCart((prevCart) => prevCart.filter((item) => item.product.id !== productId));
+  };
+
+  // Cálculos do carrinho
+  const cartTotalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const cartTotalPrice = cart.reduce((acc, item) => acc + item.product.preco * item.quantity, 0);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
   return (
@@ -184,7 +223,7 @@ export default function Lojinha() {
                   </CardHeader>
                   <CardContent className="text-center space-y-4">
                     <p className="font-display text-2xl font-bold text-primary">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.preco)}
+                      {formatCurrency(product.preco)}
                     </p>
                     <Button 
                       variant="default" 
@@ -203,8 +242,79 @@ export default function Lojinha() {
         </div>
       </section>
 
+      {/* Botão de Carrinho Flutuante e Janela de Conteúdo */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button
+          size="lg"
+          className="h-14 w-14 rounded-full shadow-2xl relative bg-primary text-primary-foreground hover:bg-primary/95"
+          onClick={() => setShowCartDropdown(!showCartDropdown)}
+        >
+          <ShoppingCart className="h-6 w-6" />
+          {cartTotalItems > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground animate-scale-in">
+              {cartTotalItems}
+            </span>
+          )}
+        </Button>
+
+        {/* Janela Suspensa do Carrinho */}
+        {showCartDropdown && (
+          <div className="absolute bottom-16 right-0 w-80 md:w-96 rounded-xl border border-border bg-card p-4 shadow-2xl animate-slide-up text-card-foreground">
+            <h3 className="font-display text-lg font-bold mb-3 pb-2 border-b border-border flex items-center justify-between">
+              <span>Seu Carrinho</span>
+              <span className="text-xs font-normal text-muted-foreground">{cartTotalItems} itens</span>
+            </h3>
+
+            {cart.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                O carrinho está vazio.
+              </div>
+            ) : (
+              <>
+                <div className="max-h-60 overflow-y-auto space-y-3 pr-1">
+                  {cart.map((item) => (
+                    <div key={item.product.id} className="flex items-center justify-between gap-2 text-sm">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{item.product.nome}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.quantity}x {formatCurrency(item.product.preco)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">{formatCurrency(item.product.preco * item.quantity)}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                          onClick={() => handleRemoveFromCart(item.product.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-border space-y-3">
+                  <div className="flex items-center justify-between font-bold text-base">
+                    <span>Total:</span>
+                    <span className="text-primary">{formatCurrency(cartTotalPrice)}</span>
+                  </div>
+                  <Button className="w-full bg-gold hover:bg-gold-dark text-black font-semibold" onClick={() => {
+                    toast({ title: "Checkout", description: "Integre aqui com a sua página ou modal de pagamento!" });
+                  }}>
+                    Finalizar Pedido
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Donation Needs Section */}
       <section className="bg-muted/50 py-16 md:py-24">
+        {/* ... Resto do seu código de doações permanece igual ... */}
         <div className="container px-4 md:px-6">
           <div className="mb-12 text-center">
             <h2 className="mb-4 font-display text-3xl font-bold text-foreground md:text-4xl">
