@@ -11,8 +11,8 @@ import {
 import type { SidebarNavItem } from "@/components/layout/SidebarNav";
 
 export const ADMIN_NAV_ITEMS: SidebarNavItem[] = [
-  { label: "Gerenciar Turmas", to: "/admin", icon: Users },
-  { label: "Adicionar Catequizando", to: "/admin/add-catequizando", icon: Users },
+  { label: "Turmas", to: "/admin", icon: Users },
+  { label: "Catequizandos", to: "/admin/add-catequizando", icon: Users },
   { label: "Inscrições de Catequista", to: "/admin/inscricoes-catequistas", icon: ClipboardList },
   { label: "Chamada", to: "/admin/chamada", icon: ClipboardList },
   { label: "Minhas Turmas", to: "/admin/minhas-turmas", icon: Users },

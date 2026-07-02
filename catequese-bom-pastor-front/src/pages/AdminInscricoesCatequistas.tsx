@@ -32,6 +32,7 @@ import {
   Users,
   X,
   XCircle,
+  Plus,
 } from "lucide-react";
 
 type InscricaoStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -71,6 +72,21 @@ interface InscricaoCatequista {
   } | null;
 }
 
+// Novas interfaces para o controle de Reuniões e Presença
+interface PresencaReuniao {
+  catequistaId: string;
+  nome: string;
+  confirmado: "PENDENTE" | "CONFIRMADO" | "RECUSADO";
+}
+
+interface Reuniao {
+  id: string;
+  titulo: string;
+  dataHora: string;
+  pauta: string;
+  presencas: PresencaReuniao[];
+}
+
 const NO_TURMA_VALUE = "__NO_TURMA__";
 const CATEGORIA_CATEQUISTA_VALUE = "catequista";
 const CATEGORIA_AUXILIAR_VALUE = "auxiliar";
@@ -80,6 +96,13 @@ function formatDate(value?: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("pt-BR");
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
 export default function AdminInscricoesCatequistas() {
@@ -93,11 +116,18 @@ export default function AdminInscricoesCatequistas() {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [inscricoes, setInscricoes] = useState<InscricaoCatequista[]>([]);
   const [turmas, setTurmas] = useState<Turma[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<InscricaoStatus | "ALL">("PENDING");
+  const [selectedStatus, setSelectedStatus] = useState<InscricaoStatus | "ALL" | "REUNIOES">("PENDING");
+  
+  // Estados para Modal de Aprovação
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [inscricaoToApprove, setInscricaoToApprove] = useState<InscricaoCatequista | null>(null);
   const [selectedTurmaId, setSelectedTurmaId] = useState<string>(NO_TURMA_VALUE);
   const [selectedCategoriaTurma, setSelectedCategoriaTurma] = useState<string>(CATEGORIA_CATEQUISTA_VALUE);
+
+  // Novos Estados para o fluxo de Reuniões
+  const [reunioes, setReunioes] = useState<Reuniao[]>([]);
+  const [reuniaoDialogOpen, setReuniaoDialogOpen] = useState(false);
+  const [novaReuniao, setNovaReuniao] = useState({ titulo: "", dataHora: "", pauta: "" });
 
   const isAdminRoute = location.pathname.startsWith("/admin");
   useEffect(() => {
@@ -113,6 +143,8 @@ export default function AdminInscricoesCatequistas() {
 
     void carregarTurmas();
     carregarDados();
+    // Simulação ou chamada real para buscar reuniões agendadas
+    carregarReunioes();
   }, [isAdminRoute]);
 
   const carregarDados = async () => {
@@ -224,11 +256,27 @@ export default function AdminInscricoesCatequistas() {
     }
   };
 
+  // Mock ou chamada API para preencher as reuniões organizadas
+  const carregarReunioes = () => {
+    // Exemplo estrutural mockado inicial
+    setReunioes([
+      {
+        id: "1",
+        titulo: "Planejamento Semestral da Catequese",
+        dataHora: "2026-08-10T19:30",
+        pauta: "Definição do calendário litúrgico e distribuição dos materiais didáticos.",
+        presencas: [
+          { catequistaId: "101", nome: "Maria Silva", confirmado: "CONFIRMADO" },
+          { catequistaId: "102", nome: "João Santos", confirmado: "PENDENTE" },
+        ],
+      },
+    ]);
+  };
+
   const filteredInscricoes = useMemo(() => {
-    if (selectedStatus === "ALL") {
+    if (selectedStatus === "ALL" || selectedStatus === "REUNIOES") {
       return inscricoes;
     }
-
     return inscricoes.filter((inscricao) => inscricao.status === selectedStatus);
   }, [inscricoes, selectedStatus]);
 
@@ -241,11 +289,14 @@ export default function AdminInscricoesCatequistas() {
     };
   }, [inscricoes]);
 
+  const catequistasAprovados = useMemo(() => {
+    return inscricoes.filter((item) => item.status === "APPROVED");
+  }, [inscricoes]);
+
   const selectedTurma = useMemo(() => {
     if (selectedTurmaId === NO_TURMA_VALUE) {
       return null;
     }
-
     return turmas.find((turma) => turma.id === selectedTurmaId) ?? null;
   }, [selectedTurmaId, turmas]);
 
@@ -258,7 +309,6 @@ export default function AdminInscricoesCatequistas() {
 
   const closeApproveDialog = (open: boolean) => {
     setApproveDialogOpen(open);
-
     if (!open) {
       setInscricaoToApprove(null);
       setSelectedTurmaId(NO_TURMA_VALUE);
@@ -268,10 +318,7 @@ export default function AdminInscricoesCatequistas() {
 
   const handleApprove = async () => {
     const currentInscricao = inscricaoToApprove;
-
-    if (!currentInscricao) {
-      return;
-    }
+    if (!currentInscricao) return;
 
     setActionLoadingId(currentInscricao.id);
     try {
@@ -347,16 +394,71 @@ export default function AdminInscricoesCatequistas() {
     }
   };
 
+  // Cadastra nova reunião e injeta automaticamente todos os catequistas ativos
+  const handleAgendarReuniao = () => {
+    if (!novaReuniao.titulo || !novaReuniao.dataHora) {
+      toast({
+        variant: "destructive",
+        title: "Campos obrigatórios",
+        description: "Preencha o título e a data/hora da reunião.",
+      });
+      return;
+    }
+
+    const novasPresencas: PresencaReuniao[] = catequistasAprovados.map((cat) => ({
+      catequistaId: cat.id,
+      nome: cat.nome,
+      confirmado: "PENDENTE",
+    }));
+
+    const agendamento: Reuniao = {
+      id: String(Date.now()),
+      titulo: novaReuniao.titulo,
+      dataHora: novaReuniao.dataHora,
+      pauta: novaReuniao.pauta,
+      presencas: novasPresencas,
+    };
+
+    setReunioes([agendamento, ...reunioes]);
+    setReuniaoDialogOpen(false);
+    setNovaReuniao({ titulo: "", dataHora: "", pauta: "" });
+
+    toast({
+      title: "Reunião Agendada",
+      description: "A reunião foi criada e a lista de chamada gerada com sucesso.",
+    });
+  };
+
+  // Altera dinamicamente o status de presença de um catequista na reunião
+  const handleAlterarPresenca = (reuniaoId: string, catequistaId: string, novoStatus: "PENDENTE" | "CONFIRMADO" | "RECUSADO") => {
+    setReunioes(
+      reunioes.map((reuniao) => {
+        if (reuniao.id !== reuniaoId) return reuniao;
+        return {
+          ...reuniao,
+          presencas: reuniao.presencas.map((p) =>
+            p.catequistaId === catequistaId ? { ...p, confirmado: novoStatus } : p
+          ),
+        };
+      })
+    );
+
+    toast({
+      title: "Presença atualizada",
+      description: "O status da confirmação foi alterado.",
+    });
+  };
+
   const statusBadge = (status: InscricaoStatus) => {
-    if (status === "APPROVED") {
-      return <Badge className="bg-green-600">Aprovada</Badge>;
-    }
-
-    if (status === "REJECTED") {
-      return <Badge variant="destructive">Reprovada</Badge>;
-    }
-
+    if (status === "APPROVED") return <Badge className="bg-green-600">Aprovada</Badge>;
+    if (status === "REJECTED") return <Badge variant="destructive">Reprovada</Badge>;
     return <Badge className="bg-orange-600">Pendente</Badge>;
+  };
+
+  const statusPresencaBadge = (status: "PENDENTE" | "CONFIRMADO" | "RECUSADO") => {
+    if (status === "CONFIRMADO") return <Badge className="bg-green-600">Confirmado</Badge>;
+    if (status === "RECUSADO") return <Badge variant="destructive">Recusou</Badge>;
+    return <Badge variant="secondary">Pendente</Badge>;
   };
 
   const renderTable = (items: InscricaoCatequista[]) => (
@@ -522,7 +624,7 @@ export default function AdminInscricoesCatequistas() {
                 <Menu className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-xl font-semibold">Inscrições de Catequista</h1>
+                <h1 className="text-xl font-semibold">Catequistas</h1>
                 <p className="text-sm text-muted-foreground">
                   Revisão separada com aprovação e reprovação administrativas
                 </p>
@@ -533,175 +635,297 @@ export default function AdminInscricoesCatequistas() {
 
         <main className="p-4 md:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl space-y-6">
-        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
-              <ShieldCheck className="h-4 w-4" />
-              Área administrativa
+            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+                  <ShieldCheck className="h-4 w-4" />
+                  Área administrativa
+                </div>
+                <h1 className="text-3xl font-bold text-foreground">Catequistas</h1>
+                <p className="mt-2 text-muted-foreground">
+                  Revisão separada das inscrições públicas de catequista e controle de reuniões internas.
+                </p>
+              </div>
             </div>
-            <h1 className="text-3xl font-bold text-foreground">Inscrições de Catequista</h1>
-            <p className="mt-2 text-muted-foreground">
-              Revisão separada das inscrições públicas de catequista, com aprovação e reprovação próprias.
-            </p>
-          </div>
-        </div>
 
-        <div className="mb-6 grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total</CardDescription>
-              <CardTitle className="text-2xl">{counts.total}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Pendentes</CardDescription>
-              <CardTitle className="text-2xl text-orange-600">{counts.pending}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Aprovadas</CardDescription>
-              <CardTitle className="text-2xl text-green-600">{counts.approved}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Reprovadas</CardDescription>
-              <CardTitle className="text-2xl text-red-600">{counts.rejected}</CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
+            <div className="mb-6 grid gap-4 md:grid-cols-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Total</CardDescription>
+                  <CardTitle className="text-2xl">{counts.total}</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Pendentes</CardDescription>
+                  <CardTitle className="text-2xl text-orange-600">{counts.pending}</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Aprovadas</CardDescription>
+                  <CardTitle className="text-2xl text-green-600">{counts.approved}</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Reprovadas</CardDescription>
+                  <CardTitle className="text-2xl text-red-600">{counts.rejected}</CardTitle>
+                </CardHeader>
+              </Card>
+            </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Fila de análise</CardTitle>
-            <CardDescription>
-              Cada inscrição é tratada de forma independente do fluxo de catequizando.
-            </CardDescription>
-            <p className="text-sm text-muted-foreground">
-              Revise, aprove ou reprova as inscrições recebidas pelo formulário público. A aprovação cria o cadastro de catequista; a alocação em turma é feita depois.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <Tabs value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as InscricaoStatus | "ALL")} className="space-y-4">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="PENDING">Pendentes</TabsTrigger>
-                <TabsTrigger value="APPROVED">Aprovadas</TabsTrigger>
-                <TabsTrigger value="REJECTED">Reprovadas</TabsTrigger>
-                <TabsTrigger value="ALL">Todas</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value={selectedStatus} className="m-0">
-                {loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                ) : (
-                  renderTable(filteredInscricoes)
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <div>
+                  <CardTitle>Painel de Controle</CardTitle>
+                  <CardDescription>
+                    Gerenciamento de solicitações e chamadas para reuniões com a equipe.
+                  </CardDescription>
+                </div>
+                {selectedStatus === "REUNIOES" && (
+                  <Button className="gap-2" onClick={() => setReuniaoDialogOpen(true)}>
+                    <Plus className="h-4 w-4" /> Marcar Reunião
+                  </Button>
                 )}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-        <Dialog open={approveDialogOpen} onOpenChange={closeApproveDialog}>
-          <DialogContent className="sm:max-w-xl">
-            <DialogHeader>
-              <DialogTitle>Aprovar inscrição de catequista</DialogTitle>
-              <DialogDescription>
-                Selecione uma turma para alocar o novo catequista agora ou conclua a aprovação sem vínculo.
-              </DialogDescription>
-            </DialogHeader>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as any)} className="space-y-4">
+                  <TabsList className="grid w-full grid-cols-5">
+                    <TabsTrigger value="PENDING">Pendentes</TabsTrigger>
+                    <TabsTrigger value="APPROVED">Aprovadas</TabsTrigger>
+                    <TabsTrigger value="REJECTED">Reprovadas</TabsTrigger>
+                    <TabsTrigger value="ALL">Todas</TabsTrigger>
+                    <TabsTrigger value="REUNIOES" className="bg-primary/10 text-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                      <Calendar className="mr-2 h-4 w-4" /> Reuniões
+                    </TabsTrigger>
+                  </TabsList>
 
-            <div className="space-y-4">
-              <div className="rounded-lg border bg-muted/30 p-4 text-sm">
-                <div className="font-medium text-foreground">{inscricaoToApprove?.nome || "-"}</div>
-                <div className="mt-1 text-muted-foreground">{inscricaoToApprove?.email || "-"}</div>
-              </div>
+                  <TabsContent value="REUNIOES" className="space-y-6 m-0 pt-2">
+                    {reunioes.length === 0 ? (
+                      <div className="py-10 text-center text-muted-foreground border rounded-lg">
+                        Nenhuma reunião agendada no momento.
+                      </div>
+                    ) : (
+                      reunioes.map((reuniao) => (
+                        <Card key={reuniao.id} className="border-l-4 border-l-primary">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="text-lg">{reuniao.titulo}</CardTitle>
+                                <CardDescription className="flex items-center gap-1 mt-1 font-medium text-foreground">
+                                  <Calendar className="h-4 w-4 text-primary" />
+                                  {formatDateTime(reuniao.dataHora)}
+                                </CardDescription>
+                              </div>
+                            </div>
+                            {reuniao.pauta && <p className="mt-2 text-sm text-muted-foreground bg-muted/50 p-2 rounded">{reuniao.pauta}</p>}
+                          </CardHeader>
+                          <CardContent>
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                              Confirmação de Presença ({reuniao.presencas.length})
+                            </h4>
+                            <div className="overflow-hidden rounded-md border bg-background">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Catequista</TableHead>
+                                    <TableHead>Status Atual</TableHead>
+                                    <TableHead className="text-right">Mudar Presença</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {reuniao.presencas.map((p) => (
+                                    <TableRow key={p.catequistaId}>
+                                      <TableCell className="font-medium">{p.nome}</TableCell>
+                                      <TableCell>{statusPresencaBadge(p.confirmado)}</TableCell>
+                                      <TableCell className="text-right">
+                                        <div className="flex justify-end gap-1">
+                                          <Button
+                                            size="xs"
+                                            variant={p.confirmado === "CONFIRMADO" ? "default" : "outline"}
+                                            className="h-7 px-2 text-xs"
+                                            onClick={() => handleAlterarPresenca(reuniao.id, p.catequistaId, "CONFIRMADO")}
+                                          >
+                                            Confirmar
+                                          </Button>
+                                          <Button
+                                            size="xs"
+                                            variant={p.confirmado === "RECUSADO" ? "destructive" : "outline"}
+                                            className="h-7 px-2 text-xs"
+                                            onClick={() => handleAlterarPresenca(reuniao.id, p.catequistaId, "RECUSADO")}
+                                          >
+                                            Recusar
+                                          </Button>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </TabsContent>
 
-              <div className="space-y-2">
-                <Label htmlFor="turma-approve">Turma</Label>
-                <Select
-                  value={selectedTurmaId}
-                  onValueChange={setSelectedTurmaId}
-                  disabled={turmasLoading}
-                >
-                  <SelectTrigger id="turma-approve">
-                    <SelectValue placeholder="Selecione uma turma" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NO_TURMA_VALUE}>Sem alocacao</SelectItem>
-                    {turmas.map((turma) => (
-                      <SelectItem key={turma.id} value={turma.id}>
-                        {turma.nome} {turma.ano ? `- ${turma.ano}` : ""}
-                        {turma.catequistasTurma.length > 0
-                          ? ` (${turma.catequistasTurma.length} catequista(s) na turma)`
-                          : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  {/* Abas normais das inscrições */}
+                  {selectedStatus !== "REUNIOES" && (
+                    <TabsContent value={selectedStatus} className="m-0">
+                      {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                      ) : (
+                        renderTable(filteredInscricoes)
+                      )}
+                    </TabsContent>
+                  )}
+                </Tabs>
+              </CardContent>
+            </Card>
 
-              {selectedTurmaId !== NO_TURMA_VALUE ? (
-                <div className="space-y-2">
-                  <Label htmlFor="categoria-turma-approve">Categoria na turma</Label>
-                  <Select value={selectedCategoriaTurma} onValueChange={setSelectedCategoriaTurma}>
-                    <SelectTrigger id="categoria-turma-approve">
-                      <SelectValue placeholder="Selecione a categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={CATEGORIA_CATEQUISTA_VALUE}>Catequista</SelectItem>
-                      <SelectItem value={CATEGORIA_AUXILIAR_VALUE}>Auxiliar</SelectItem>
-                    </SelectContent>
-                  </Select>
+            {/* Modal para agendar Reunião */}
+            <Dialog open={reuniaoDialogOpen} onOpenChange={setReuniaoDialogOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Agendar Reunião de Catequistas</DialogTitle>
+                  <DialogDescription>
+                    Crie um novo evento. Todos os catequistas com cadastro ativo serão incluídos na chamada.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="reuniao-titulo">Título / Assunto</Label>
+                    <input
+                      id="reuniao-titulo"
+                      type="text"
+                      className="w-full flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      placeholder="Ex: Alinhamento da Primeira Eucaristia"
+                      value={novaReuniao.titulo}
+                      onChange={(e) => setNovaReuniao({ ...novaReuniao, titulo: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="reuniao-data">Data e Horário</Label>
+                    <input
+                      id="reuniao-data"
+                      type="datetime-local"
+                      className="w-full flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      value={novaReuniao.dataHora}
+                      onChange={(e) => setNovaReuniao({ ...novaReuniao, dataHora: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="reuniao-pauta">Pauta / Observações (Opcional)</Label>
+                    <textarea
+                      id="reuniao-pauta"
+                      className="w-full flex min-h-[60px] rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      placeholder="Pontos a serem discutidos..."
+                      value={novaReuniao.pauta}
+                      onChange={(e) => setNovaReuniao({ ...novaReuniao, pauta: e.target.value })}
+                    />
+                  </div>
                 </div>
-              ) : null}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setReuniaoDialogOpen(false)}>Cancelar</Button>
+                  <Button onClick={handleAgendarReuniao}>Salvar Agendamento</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
-              {selectedTurma ? (
-                <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-                  <div>
-                    <div className="text-sm font-medium text-foreground">Catequistas da turma</div>
-                    <div className="text-xs text-muted-foreground">
-                      {selectedTurma.nome} {selectedTurma.ano ? `- ${selectedTurma.ano}` : ""}
-                    </div>
+            {/* Modal de Aprovação */}
+            <Dialog open={approveDialogOpen} onOpenChange={closeApproveDialog}>
+              <DialogContent className="sm:max-w-xl">
+                <DialogHeader>
+                  <DialogTitle>Aprovar inscrição de catequista</DialogTitle>
+                  <DialogDescription>
+                    Selecione uma turma para alocar o novo catequista agora ou conclua a aprovação sem vínculo.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                  <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+                    <div className="font-medium text-foreground">{inscricaoToApprove?.nome || "-"}</div>
+                    <div className="mt-1 text-muted-foreground">{inscricaoToApprove?.email || "-"}</div>
                   </div>
 
-                  {selectedTurma.catequistasTurma.length > 0 ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="turma-approve">Turma</Label>
+                    <Select value={selectedTurmaId} onValueChange={setSelectedTurmaId} disabled={turmasLoading}>
+                      <SelectTrigger id="turma-approve">
+                        <SelectValue placeholder="Selecione uma turma" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_TURMA_VALUE}>Sem alocacao</SelectItem>
+                        {turmas.map((turma) => (
+                          <SelectItem key={turma.id} value={turma.id}>
+                            {turma.nome} {turma.ano ? `- ${turma.ano}` : ""}
+                            {turma.catequistasTurma.length > 0 ? ` (${turma.catequistasTurma.length} catequista(s) na turma)` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {selectedTurmaId !== NO_TURMA_VALUE && (
                     <div className="space-y-2">
-                      {selectedTurma.catequistasTurma.map((vinculo) => (
-                        <div key={vinculo.id} className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-sm">
-                          <span className="font-medium text-foreground">{vinculo.catequista.nome}</span>
-                          <Badge variant={vinculo.categoria === "AUXILIAR" ? "secondary" : "default"}>
-                            {vinculo.categoria === "AUXILIAR" ? "Auxiliar" : "Catequista"}
-                          </Badge>
-                        </div>
-                      ))}
+                      <Label htmlFor="categoria-turma-approve">Categoria na turma</Label>
+                      <Select value={selectedCategoriaTurma} onValueChange={setSelectedCategoriaTurma}>
+                        <SelectTrigger id="categoria-turma-approve">
+                          <SelectValue placeholder="Selecione a categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={CATEGORIA_CATEQUISTA_VALUE}>Catequista</SelectItem>
+                          <SelectItem value={CATEGORIA_AUXILIAR_VALUE}>Auxiliar</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Esta turma ainda não possui catequistas vinculados.</p>
                   )}
+
+                  {selectedTurma && (
+                    <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                      <div>
+                        <div className="text-sm font-medium text-foreground">Catequistas da turma</div>
+                        <div className="text-xs text-muted-foreground">
+                          {selectedTurma.nome} {selectedTurma.ano ? `- ${selectedTurma.ano}` : ""}
+                        </div>
+                      </div>
+
+                      {selectedTurma.catequistasTurma.length > 0 ? (
+                        <div className="space-y-2">
+                          {selectedTurma.catequistasTurma.map((vinculo) => (
+                            <div key={vinculo.id} className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-sm">
+                              <span className="font-medium text-foreground">{vinculo.catequista.nome}</span>
+                              <Badge variant={vinculo.categoria === "AUXILIAR" ? "secondary" : "default"}>
+                                {vinculo.categoria === "AUXILIAR" ? "Auxiliar" : "Catequista"}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Esta turma ainda não possui catequistas vinculados.</p>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="text-sm text-muted-foreground">
+                    É permitido ter mais de um catequista na mesma turma, com categorias diferentes.
+                  </p>
                 </div>
-              ) : null}
 
-              <p className="text-sm text-muted-foreground">
-                É permitido ter mais de um catequista na mesma turma, com categorias diferentes.
-              </p>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => closeApproveDialog(false)} disabled={actionLoadingId !== null}>
-                Cancelar
-              </Button>
-              <Button onClick={() => void handleApprove()} disabled={actionLoadingId !== null || !inscricaoToApprove}>
-                {actionLoadingId === inscricaoToApprove?.id ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                Confirmar aprovação
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => closeApproveDialog(false)} disabled={actionLoadingId !== null}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={() => void handleApprove()} disabled={actionLoadingId !== null || !inscricaoToApprove}>
+                    {actionLoadingId === inscricaoToApprove?.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Confirmar aprovação
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </main>
       </div>

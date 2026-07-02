@@ -390,13 +390,13 @@ export default function AddCatequizando() {
             <Button variant={navVariant("/admin")} className="w-full justify-start" asChild>
               <Link to="/admin">
                 <Users className="mr-3 h-4 w-4" />
-                Gerenciar Turmas
+                Turmas
               </Link>
             </Button>
             <Button variant={navVariant("/admin/add-catequizando")} className="w-full justify-start" asChild>
               <Link to="/admin/add-catequizando">
                 <UserPlus className="mr-3 h-4 w-4" />
-                Adicionar Catequizando
+                Catequizandos
               </Link>
             </Button>
             <Button variant={navVariant("/admin/inscricoes-catequistas")} className="w-full justify-start" asChild>
@@ -486,7 +486,7 @@ export default function AddCatequizando() {
             <Menu className="h-5 w-5" />
           </Button>
           <span className="font-display text-lg font-semibold">
-            Adicionar Catequizando
+            Catequizandos
           </span>
           <div className="w-10" />
         </header>
