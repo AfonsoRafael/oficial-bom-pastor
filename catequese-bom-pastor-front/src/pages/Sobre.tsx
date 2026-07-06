@@ -84,7 +84,6 @@ export default function Sobre() {
   const [galleryExpanded, setGalleryExpanded] = useState(false);
   return (
     <MainLayout>
-      {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-hero">
         <div className="absolute inset-0 bg-navy-dark/60" />
         <div
@@ -110,22 +109,20 @@ export default function Sobre() {
             </p>
           </div>
         </div>
-        {/* Decorative wave */}
         <div className="absolute bottom-0 left-0 right-0">
           <svg
             viewBox="0 0 1440 120"
-            fill="none"
             xmlns="http://www.w3.org/2000/svg"
+            className="w-full block translate-y-[1px]"
           >
             <path
               d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z"
-              fill="hsl(45 33% 97%)"
+              className="fill-background"
             />
           </svg>
         </div>
       </section>
 
-      {/* History Section */}
       <section className="py-16 md:py-24">
         <div className="container px-4 md:px-6">
           <div className="mx-auto max-w-3xl">
@@ -439,11 +436,8 @@ export default function Sobre() {
             </p>
           </div>
 
-          {/* Collapsed/Expanded Gallery */}
           <div className="mx-auto max-w-5xl">
-            {/* Preview - Always visible */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {/* Photo Placeholders - Show first 3 */}
               {[1, 2, 3].map((item) => (
                 <Card
                   key={`photo-${item}`}
@@ -470,10 +464,8 @@ export default function Sobre() {
               ))}
             </div>
 
-            {/* Expanded Content */}
             {galleryExpanded && (
               <div className="animate-in fade-in slide-in-from-top-4 duration-300">
-                {/* Additional Photos */}
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-6">
                   {[4, 5, 6].map((item) => (
                     <Card
@@ -501,7 +493,6 @@ export default function Sobre() {
                   ))}
                 </div>
 
-                {/* Video Section */}
                 <div className="mt-12 pt-12 border-t">
                   <h3 className="mb-8 text-center font-display text-2xl font-bold text-foreground">
                     Vídeos
@@ -535,7 +526,6 @@ export default function Sobre() {
               </div>
             )}
 
-            {/* Toggle Button */}
             <div className="flex justify-center mt-8">
               <Button
                 onClick={() => setGalleryExpanded(!galleryExpanded)}
@@ -550,7 +540,6 @@ export default function Sobre() {
         </div>
       </section>
 
-      {/* Team Section */}
       <section className="py-16 md:py-24">
         <div className="container px-4 md:px-6">
           <div className="mb-12 text-center">
@@ -589,7 +578,6 @@ export default function Sobre() {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="bg-primary py-16 md:py-24">
         <div className="container px-4 md:px-6">
           <div className="mx-auto max-w-2xl text-center">
