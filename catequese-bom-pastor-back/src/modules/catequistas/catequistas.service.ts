@@ -15,14 +15,44 @@ export class CatequistasService {
 
   async findAll() {
     const catequistas = await this.prisma.catequista.findMany({
-      orderBy: { criadoEm: 'desc' },
+      include: {
+        turmas: {
+          include: {
+            turma: {
+              select: {
+                id: true,
+                nome: true,
+                ano: true,
+              },
+            },
+          },
+          orderBy: { criadoEm: 'desc' },
+        },
+      },
+      orderBy: { nome: 'asc' },
     });
 
     return { catequistas };
   }
 
   async findOne(id: string) {
-    const catequista = await this.prisma.catequista.findUnique({ where: { id } });
+    const catequista = await this.prisma.catequista.findUnique({
+      where: { id },
+      include: {
+        turmas: {
+          include: {
+            turma: {
+              select: {
+                id: true,
+                nome: true,
+                ano: true,
+              },
+            },
+          },
+          orderBy: { criadoEm: 'desc' },
+        },
+      },
+    });
 
     if (!catequista) {
       throw new NotFoundException('Catequista not found');
@@ -32,6 +62,7 @@ export class CatequistasService {
   }
 
   async create(dto: CreateCatequistaDto) {
+    await this.ensureCatequistaEmailAvailable(dto.email);
     const hashedPassword = await bcrypt.hash(dto.senha, 10);
 
     return this.prisma.catequista.create({
@@ -283,6 +314,10 @@ export class CatequistasService {
       throw new NotFoundException('Catequista not found');
     }
 
+    if (dto.email && dto.email !== catequista.email) {
+      await this.ensureCatequistaEmailAvailable(dto.email, id);
+    }
+
     return this.prisma.catequista.update({
       where: { id },
       data: dto,
@@ -324,6 +359,20 @@ export class CatequistasService {
     }
 
     return String(dataUrlMatch[1] || '').toLowerCase().trim();
+  }
+
+  private async ensureCatequistaEmailAvailable(email: string, currentId?: string) {
+    const [admin, responsavel, catequista] = await Promise.all([
+      this.prisma.administrador.findUnique({ where: { email } }),
+      this.prisma.responsavel.findUnique({ where: { email } }),
+      this.prisma.catequista.findUnique({ where: { email } }),
+    ]);
+
+    const isSameCatequista = currentId && catequista?.id === currentId;
+
+    if (admin || responsavel || (catequista && !isSameCatequista)) {
+      throw new ConflictException('Este email ja esta cadastrado em outro perfil');
+    }
   }
 
   private async notifyAdmins(preMatriculaId: string, nome: string) {

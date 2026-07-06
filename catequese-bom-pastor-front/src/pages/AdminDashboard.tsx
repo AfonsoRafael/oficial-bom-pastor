@@ -804,7 +804,7 @@ export default function AdminDashboard() {
                   </Select>
                 </div>
                 <p className="mb-4 text-sm text-muted-foreground">
-                  Só catequistas aprovados aparecem nesta lista. Inscrições pendentes continuam na tela de Inscrições de Catequista até o admin aprovar e liberar a alocação em turma.
+                  Só catequistas aprovados aparecem nesta lista. Inscrições pendentes continuam na tela de Catequistas até o admin aprovar e liberar a alocação em turma.
                 </p>
 
                 <div className="rounded-md border">

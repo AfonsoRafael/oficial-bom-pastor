@@ -4,7 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -26,10 +28,12 @@ import {
   LogOut,
   Menu,
   Music,
+  Pencil,
   RefreshCw,
   ShieldCheck,
   UserPlus,
   Users,
+  Trash2,
   X,
   XCircle,
   Plus,
@@ -87,6 +91,40 @@ interface Reuniao {
   presencas: PresencaReuniao[];
 }
 
+interface TurmaResumo {
+  id: string;
+  nome: string;
+  ano: number;
+}
+
+interface CatequistaVinculo {
+  id: string;
+  categoria: "CATEQUISTA" | "AUXILIAR";
+  turma: TurmaResumo;
+}
+
+interface Catequista {
+  id: string;
+  nome: string;
+  email: string;
+  telefone?: string | null;
+  endereco?: string | null;
+  bio?: string | null;
+  primeiroAcesso?: boolean;
+  criadoEm?: string;
+  updatedAt?: string;
+  turmas: CatequistaVinculo[];
+}
+
+interface CatequistaFormState {
+  nome: string;
+  email: string;
+  senha: string;
+  telefone: string;
+  endereco: string;
+  bio: string;
+}
+
 const NO_TURMA_VALUE = "__NO_TURMA__";
 const CATEGORIA_CATEQUISTA_VALUE = "catequista";
 const CATEGORIA_AUXILIAR_VALUE = "auxiliar";
@@ -112,11 +150,25 @@ export default function AdminInscricoesCatequistas() {
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
 
   const [loading, setLoading] = useState(false);
+  const [catequistasLoading, setCatequistasLoading] = useState(false);
   const [turmasLoading, setTurmasLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [inscricoes, setInscricoes] = useState<InscricaoCatequista[]>([]);
+  const [catequistas, setCatequistas] = useState<Catequista[]>([]);
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<InscricaoStatus | "ALL" | "REUNIOES">("PENDING");
+  const [catequistaDialogOpen, setCatequistaDialogOpen] = useState(false);
+  const [editingCatequistaId, setEditingCatequistaId] = useState<string | null>(null);
+  const [catequistaSaving, setCatequistaSaving] = useState(false);
+  const [catequistaDeletingId, setCatequistaDeletingId] = useState<string | null>(null);
+  const [catequistaForm, setCatequistaForm] = useState<CatequistaFormState>({
+    nome: "",
+    email: "",
+    senha: "",
+    telefone: "",
+    endereco: "",
+    bio: "",
+  });
   
   // Estados para Modal de Aprovação
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
@@ -143,6 +195,7 @@ export default function AdminInscricoesCatequistas() {
 
     void carregarTurmas();
     carregarDados();
+    carregarCatequistas();
     // Simulação ou chamada real para buscar reuniões agendadas
     carregarReunioes();
   }, [isAdminRoute]);
@@ -253,6 +306,68 @@ export default function AdminInscricoesCatequistas() {
       });
     } finally {
       setTurmasLoading(false);
+    }
+  };
+
+  const carregarCatequistas = async () => {
+    setCatequistasLoading(true);
+    try {
+      const response = await fetchWithAuth(API_ROUTES.catequistas);
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody?.message || "Falha ao carregar catequistas");
+      }
+
+      const data = await response.json();
+      const list = Array.isArray(data?.catequistas)
+        ? data.catequistas
+        : Array.isArray(data)
+          ? data
+          : [];
+
+      setCatequistas(
+        list.map((item: any) => ({
+          id: String(item.id),
+          nome: String(item.nome || ""),
+          email: String(item.email || ""),
+          telefone: item.telefone || null,
+          endereco: item.endereco || null,
+          bio: item.bio || null,
+          primeiroAcesso: Boolean(item.primeiroAcesso),
+          criadoEm: item.criadoEm || null,
+          updatedAt: item.updatedAt || null,
+          turmas: Array.isArray(item.turmas)
+            ? item.turmas
+                .map((vinculo: any) => {
+                  if (!vinculo?.turma?.id) {
+                    return null;
+                  }
+
+                  return {
+                    id: String(vinculo.id || ""),
+                    categoria: vinculo.categoria === "AUXILIAR" ? "AUXILIAR" : "CATEQUISTA",
+                    turma: {
+                      id: String(vinculo.turma.id),
+                      nome: String(vinculo.turma.nome || ""),
+                      ano: Number(vinculo.turma.ano || 0),
+                    },
+                  };
+                })
+                .filter(Boolean)
+            : [],
+        }))
+      );
+    } catch (error: any) {
+      console.error("Erro ao carregar catequistas:", error);
+      setCatequistas([]);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error?.message || "Nao foi possivel carregar os catequistas",
+      });
+    } finally {
+      setCatequistasLoading(false);
     }
   };
 
@@ -391,6 +506,141 @@ export default function AdminInscricoesCatequistas() {
       });
     } finally {
       setActionLoadingId(null);
+    }
+  };
+
+  const openNewCatequistaDialog = () => {
+    setEditingCatequistaId(null);
+    setCatequistaForm({
+      nome: "",
+      email: "",
+      senha: "",
+      telefone: "",
+      endereco: "",
+      bio: "",
+    });
+    setCatequistaDialogOpen(true);
+  };
+
+  const openEditCatequistaDialog = (catequista: Catequista) => {
+    setEditingCatequistaId(catequista.id);
+    setCatequistaForm({
+      nome: catequista.nome,
+      email: catequista.email,
+      senha: "",
+      telefone: catequista.telefone || "",
+      endereco: catequista.endereco || "",
+      bio: catequista.bio || "",
+    });
+    setCatequistaDialogOpen(true);
+  };
+
+  const closeCatequistaDialog = (open: boolean) => {
+    setCatequistaDialogOpen(open);
+    if (!open) {
+      setEditingCatequistaId(null);
+      setCatequistaForm({
+        nome: "",
+        email: "",
+        senha: "",
+        telefone: "",
+        endereco: "",
+        bio: "",
+      });
+    }
+  };
+
+  const handleSaveCatequista = async () => {
+    if (!catequistaForm.nome.trim() || !catequistaForm.email.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Campos obrigatórios",
+        description: "Informe nome e e-mail do catequista.",
+      });
+      return;
+    }
+
+    if (!editingCatequistaId && !catequistaForm.senha.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Campo obrigatório",
+        description: "Informe uma senha para o novo catequista.",
+      });
+      return;
+    }
+
+    setCatequistaSaving(true);
+    try {
+      const isEditing = Boolean(editingCatequistaId);
+      const response = await fetchWithAuth(
+        isEditing ? `${API_ROUTES.catequistas}/${editingCatequistaId}` : API_ROUTES.catequistas,
+        {
+          method: isEditing ? "PATCH" : "POST",
+          body: JSON.stringify({
+            nome: catequistaForm.nome.trim(),
+            email: catequistaForm.email.trim(),
+            telefone: catequistaForm.telefone.trim() || undefined,
+            endereco: catequistaForm.endereco.trim() || undefined,
+            bio: catequistaForm.bio.trim() || undefined,
+            ...(isEditing ? {} : { senha: catequistaForm.senha }),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.message || "Nao foi possivel salvar o catequista");
+      }
+
+      toast({
+        title: isEditing ? "Catequista atualizado" : "Catequista cadastrado",
+        description: `${catequistaForm.nome} foi salvo com sucesso.`,
+      });
+
+      closeCatequistaDialog(false);
+      await carregarCatequistas();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error?.message || "Erro ao salvar catequista",
+      });
+    } finally {
+      setCatequistaSaving(false);
+    }
+  };
+
+  const handleDeleteCatequista = async (catequista: Catequista) => {
+    const confirmed = window.confirm(`Excluir o catequista ${catequista.nome}?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setCatequistaDeletingId(catequista.id);
+    try {
+      const response = await fetchWithAuth(`${API_ROUTES.catequistas}/${catequista.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.message || "Nao foi possivel excluir o catequista");
+      }
+
+      toast({
+        title: "Catequista excluído",
+        description: `${catequista.nome} foi removido do cadastro.`,
+      });
+
+      await carregarCatequistas();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error?.message || "Erro ao excluir catequista",
+      });
+    } finally {
+      setCatequistaDeletingId(null);
     }
   };
 
@@ -553,6 +803,97 @@ export default function AdminInscricoesCatequistas() {
     </div>
   );
 
+  const renderCatequistasTable = () => (
+    <div className="overflow-hidden rounded-lg border bg-card">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nome</TableHead>
+            <TableHead>Contato</TableHead>
+            <TableHead>Dados</TableHead>
+            <TableHead>Turmas</TableHead>
+            <TableHead>Cadastro</TableHead>
+            <TableHead className="text-right">Ações</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {catequistas.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                Nenhum catequista encontrado.
+              </TableCell>
+            </TableRow>
+          ) : (
+            catequistas.map((catequista) => (
+              <TableRow key={catequista.id}>
+                <TableCell>
+                  <div className="space-y-1">
+                    <div className="font-medium">{catequista.nome}</div>
+                    <div className="text-xs text-muted-foreground">ID {catequista.id}</div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-1 text-sm">
+                    <div>{catequista.email}</div>
+                    <div className="text-muted-foreground">{catequista.telefone || "-"}</div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-1 text-sm text-muted-foreground">
+                    <div>Endereço: {catequista.endereco || "-"}</div>
+                    <div className="max-w-xs truncate">Bio: {catequista.bio || "-"}</div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-2">
+                    {catequista.turmas.length > 0 ? (
+                      catequista.turmas.map((vinculo) => (
+                        <Badge key={vinculo.id} variant={vinculo.categoria === "AUXILIAR" ? "secondary" : "default"}>
+                          {vinculo.turma.nome}{" "}
+                          {vinculo.turma.ano ? `- ${vinculo.turma.ano}` : ""}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Sem turma vinculada</span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-1 text-sm text-muted-foreground">
+                    <div>Criado em: {formatDate(catequista.criadoEm)}</div>
+                    <div>Atualizado em: {formatDate(catequista.updatedAt)}</div>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="outline" className="gap-2" onClick={() => openEditCatequistaDialog(catequista)}>
+                      <Pencil className="h-4 w-4" />
+                      Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="gap-2"
+                      onClick={() => handleDeleteCatequista(catequista)}
+                      disabled={catequistaDeletingId === catequista.id}
+                    >
+                      {catequistaDeletingId === catequista.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                      Excluir
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+
   const handleLogout = () => {
     try {
       localStorage.removeItem("role");
@@ -635,7 +976,7 @@ export default function AdminInscricoesCatequistas() {
 
         <main className="p-4 md:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl space-y-6">
-            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
                   <ShieldCheck className="h-4 w-4" />
@@ -645,6 +986,16 @@ export default function AdminInscricoesCatequistas() {
                 <p className="mt-2 text-muted-foreground">
                   Revisão separada das inscrições públicas de catequista e controle de reuniões internas.
                 </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" className="gap-2" onClick={openNewCatequistaDialog}>
+                  <UserPlus className="h-4 w-4" />
+                  Novo catequista
+                </Button>
+                <Button className="gap-2" onClick={() => setReuniaoDialogOpen(true)}>
+                  <Calendar className="h-4 w-4" />
+                  Marcar reunião
+                </Button>
               </div>
             </div>
 
@@ -676,6 +1027,30 @@ export default function AdminInscricoesCatequistas() {
             </div>
 
             <Card>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                <div>
+                  <CardTitle>Cadastro de catequistas</CardTitle>
+                  <CardDescription>
+                    Veja os dados dos catequistas ativos, suas turmas vinculadas e edite ou cadastre novos perfis.
+                  </CardDescription>
+                </div>
+                <Button variant="outline" className="gap-2" onClick={openNewCatequistaDialog}>
+                  <Plus className="h-4 w-4" />
+                  Adicionar
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {catequistasLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  renderCatequistasTable()
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <div>
                   <CardTitle>Painel de Controle</CardTitle>
@@ -683,11 +1058,6 @@ export default function AdminInscricoesCatequistas() {
                     Gerenciamento de solicitações e chamadas para reuniões com a equipe.
                   </CardDescription>
                 </div>
-                {selectedStatus === "REUNIOES" && (
-                  <Button className="gap-2" onClick={() => setReuniaoDialogOpen(true)}>
-                    <Plus className="h-4 w-4" /> Marcar Reunião
-                  </Button>
-                )}
               </CardHeader>
               <CardContent>
                 <Tabs value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as any)} className="space-y-4">
@@ -742,7 +1112,7 @@ export default function AdminInscricoesCatequistas() {
                                       <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
                                           <Button
-                                            size="xs"
+                                            size="sm"
                                             variant={p.confirmado === "CONFIRMADO" ? "default" : "outline"}
                                             className="h-7 px-2 text-xs"
                                             onClick={() => handleAlterarPresenca(reuniao.id, p.catequistaId, "CONFIRMADO")}
@@ -750,7 +1120,7 @@ export default function AdminInscricoesCatequistas() {
                                             Confirmar
                                           </Button>
                                           <Button
-                                            size="xs"
+                                            size="sm"
                                             variant={p.confirmado === "RECUSADO" ? "destructive" : "outline"}
                                             className="h-7 px-2 text-xs"
                                             onClick={() => handleAlterarPresenca(reuniao.id, p.catequistaId, "RECUSADO")}
@@ -831,6 +1201,86 @@ export default function AdminInscricoesCatequistas() {
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setReuniaoDialogOpen(false)}>Cancelar</Button>
                   <Button onClick={handleAgendarReuniao}>Salvar Agendamento</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={catequistaDialogOpen} onOpenChange={closeCatequistaDialog}>
+              <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>{editingCatequistaId ? "Editar catequista" : "Novo catequista"}</DialogTitle>
+                  <DialogDescription>
+                    Preencha os dados básicos do catequista. No cadastro inicial, a senha é obrigatória.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="catequista-nome">Nome</Label>
+                    <Input
+                      id="catequista-nome"
+                      value={catequistaForm.nome}
+                      onChange={(e) => setCatequistaForm({ ...catequistaForm, nome: e.target.value })}
+                      placeholder="Nome completo"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="catequista-email">E-mail</Label>
+                    <Input
+                      id="catequista-email"
+                      type="email"
+                      value={catequistaForm.email}
+                      onChange={(e) => setCatequistaForm({ ...catequistaForm, email: e.target.value })}
+                      placeholder="nome@email.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="catequista-telefone">Telefone</Label>
+                    <Input
+                      id="catequista-telefone"
+                      value={catequistaForm.telefone}
+                      onChange={(e) => setCatequistaForm({ ...catequistaForm, telefone: e.target.value })}
+                      placeholder="(00) 00000-0000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="catequista-senha">Senha {editingCatequistaId ? "(opcional)" : ""}</Label>
+                    <Input
+                      id="catequista-senha"
+                      type="password"
+                      value={catequistaForm.senha}
+                      onChange={(e) => setCatequistaForm({ ...catequistaForm, senha: e.target.value })}
+                      placeholder={editingCatequistaId ? "Deixe em branco para manter" : "Senha inicial"}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="catequista-endereco">Endereço</Label>
+                    <Input
+                      id="catequista-endereco"
+                      value={catequistaForm.endereco}
+                      onChange={(e) => setCatequistaForm({ ...catequistaForm, endereco: e.target.value })}
+                      placeholder="Rua, número, bairro"
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="catequista-bio">Bio</Label>
+                    <Textarea
+                      id="catequista-bio"
+                      value={catequistaForm.bio}
+                      onChange={(e) => setCatequistaForm({ ...catequistaForm, bio: e.target.value })}
+                      placeholder="Resumo breve da experiência ou observações administrativas"
+                    />
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => closeCatequistaDialog(false)} disabled={catequistaSaving}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={() => void handleSaveCatequista()} disabled={catequistaSaving}>
+                    {catequistaSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Salvar
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
