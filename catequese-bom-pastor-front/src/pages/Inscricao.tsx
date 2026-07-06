@@ -353,7 +353,7 @@ export default function Inscricao() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-12">
+      <div className="min-h-screen bg-background px-4 py-12">
         <div className="container mx-auto max-w-2xl">
           <div className="mb-8">
             <Link
@@ -365,10 +365,10 @@ export default function Inscricao() {
             </Link>
           </div>
 
-          <Card className="border-2 border-blue-200 shadow-lg">
-            <CardHeader className="rounded-t-lg bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+          <Card className="border-border shadow-lg">
+            <CardHeader className="rounded-t-lg bg-primary text-primary-foreground dark:bg-navy-dark">
               <CardTitle className="text-3xl">Seja Catequista</CardTitle>
-              <CardDescription className="text-blue-100">
+              <CardDescription className="text-primary-foreground/80">
                 Preencha seus dados para iniciar sua inscricao como catequista.
               </CardDescription>
             </CardHeader>
@@ -377,7 +377,7 @@ export default function Inscricao() {
               <form onSubmit={handleSubmit} className="space-y-8">
                 <div className="space-y-6">
                   <div className="border-b pb-4">
-                    <h3 className="text-xl font-semibold text-blue-900">Dados Cadastrais</h3>
+                    <h3 className="text-xl font-semibold text-foreground">Dados Cadastrais</h3>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -390,7 +390,7 @@ export default function Inscricao() {
                         value={formData.nome}
                         onChange={(e) => setField("nome", e.target.value)}
                         placeholder="Seu nome completo"
-                        className="border-blue-200"
+                        className="border-border"
                         required
                       />
                       {errors.nome && <p className="text-sm text-red-600">{errors.nome}</p>}
@@ -405,7 +405,7 @@ export default function Inscricao() {
                         type="date"
                         value={formData.dataNascimento}
                         onChange={(e) => setField("dataNascimento", e.target.value)}
-                        className="border-blue-200"
+                        className="border-border"
                         required
                       />
                       {errors.dataNascimento && <p className="text-sm text-red-600">{errors.dataNascimento}</p>}
@@ -420,7 +420,7 @@ export default function Inscricao() {
                         type="date"
                         value={formData.dataBatismo}
                         onChange={(e) => setField("dataBatismo", e.target.value)}
-                        className="border-blue-200"
+                        className="border-border"
                       />
                       {errors.dataBatismo && <p className="text-sm text-red-600">{errors.dataBatismo}</p>}
                     </div>
@@ -435,7 +435,7 @@ export default function Inscricao() {
                         value={formData.email}
                         onChange={(e) => setField("email", e.target.value)}
                         placeholder="seu.email@exemplo.com"
-                        className="border-blue-200"
+                        className="border-border"
                         required
                       />
                       {errors.email && <p className="text-sm text-red-600">{errors.email}</p>}
@@ -469,7 +469,7 @@ export default function Inscricao() {
                           }
                         }}
                       >
-                        <SelectTrigger id="casado" className="border-blue-200">
+                        <SelectTrigger id="casado" className="border-border">
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
@@ -489,7 +489,7 @@ export default function Inscricao() {
                           value={formData.casadaIgrejaCatolica}
                           onValueChange={(value) => setField("casadaIgrejaCatolica", value)}
                         >
-                          <SelectTrigger id="casadaIgrejaCatolica" className="border-blue-200">
+                          <SelectTrigger id="casadaIgrejaCatolica" className="border-border">
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
                           <SelectContent>
@@ -512,7 +512,7 @@ export default function Inscricao() {
                         value={formData.sacramentos}
                         onChange={(e) => setField("sacramentos", e.target.value)}
                         placeholder="Ex.: Batismo, Eucaristia e Crisma"
-                        className="resize-none border-blue-200"
+                        className="resize-none border-border"
                         rows={3}
                       />
                     </div>
@@ -526,7 +526,7 @@ export default function Inscricao() {
                         value={formData.alergias}
                         onChange={(e) => setField("alergias", e.target.value)}
                         placeholder="Informe alergias ou deixe em branco"
-                        className="resize-none border-blue-200"
+                        className="resize-none border-border"
                         rows={3}
                       />
                     </div>
@@ -540,23 +540,23 @@ export default function Inscricao() {
 
                   <div className="space-y-4">
                     {documentosConfig.map((doc) => (
-                      <div key={doc.field} className="rounded-lg border border-blue-100 p-4">
+                      <div key={doc.field} className="rounded-lg border border-border p-4">
                         <Label htmlFor={doc.inputId} className="font-semibold">
                           {doc.titulo}
                         </Label>
-                        <p className="mt-1 text-xs text-slate-500">{doc.descricao}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{doc.descricao}</p>
 
                         <Input
                           id={doc.inputId}
                           type="file"
                           accept=".pdf,.png,.jpg,.jpeg,.webp"
-                          className="mt-3 border-blue-200"
+                          className="mt-3 border-border"
                           onChange={(e) => handleFileChange(e, doc.field)}
                         />
 
                         {documentoNomes[doc.field] && (
                           <div className="mt-2 flex items-center justify-between gap-3 text-sm">
-                            <span className="text-slate-700">{documentoNomes[doc.field]}</span>
+                            <span className="text-foreground">{documentoNomes[doc.field]}</span>
                             <Button
                               type="button"
                               variant="outline"
@@ -581,7 +581,7 @@ export default function Inscricao() {
                 <div className="flex gap-4 pt-2">
                   <Button
                     type="submit"
-                    className="h-auto flex-1 bg-blue-600 py-2 font-semibold text-white hover:bg-blue-700"
+                    className="h-auto flex-1 py-2 font-semibold"
                     disabled={isSubmitting || !isValid}
                   >
                     {isSubmitting ? "Enviando..." : "Enviar inscricao"}
@@ -591,7 +591,7 @@ export default function Inscricao() {
                   </Button>
                 </div>
 
-                <p className="border-t pt-4 text-center text-sm text-gray-600">
+                <p className="border-t pt-4 text-center text-sm text-muted-foreground">
                   Campos com * sao obrigatorios. Sua inscricao sera analisada pela coordenacao.
                 </p>
               </form>

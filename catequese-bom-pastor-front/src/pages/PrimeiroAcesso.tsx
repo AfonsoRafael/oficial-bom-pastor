@@ -97,8 +97,8 @@ export default function PrimeiroAcesso() {
 
   return (
     <MainLayout showFooter={false}>
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-gradient-to-br from-blue-50 via-sage-light/20 to-white px-4 py-12">
-        <Card className="w-full max-w-md">
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-background px-4 py-12">
+        <Card className="w-full max-w-md border-border shadow-lg">
           <CardHeader className="text-center space-y-2">
             <CardTitle>Primeiro Acesso</CardTitle>
             <CardDescription>Crie seu acesso e aguarde a validação da coordenação.</CardDescription>
@@ -181,7 +181,7 @@ export default function PrimeiroAcesso() {
               </Button>
 
               <p className="text-center text-sm text-muted-foreground">
-                Já tem acesso? <Link to="/login" className="text-blue-700 hover:underline">Entrar</Link>
+                Já tem acesso? <Link to="/login" className="text-primary hover:underline">Entrar</Link>
               </p>
             </form>
           </CardContent>

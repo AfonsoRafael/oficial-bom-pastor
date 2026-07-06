@@ -245,7 +245,7 @@ export default function Index() {
       </section>
 
       {/* Levels Section */}
-      <section className="py-16 md:py-20 bg-gradient-to-b from-slate-50 to-white">
+      <section className="py-16 md:py-20 bg-background">
         <div className="container px-4 md:px-6">
           {/* Header */}
           <div className="mb-12 text-center">
@@ -256,7 +256,7 @@ export default function Index() {
 
           {/* What is Catechesis - Beautiful Box */}
           <div className="mx-auto max-w-4xl mb-12">
-            <div className="bg-gradient-to-br from-primary/5 via-primary/2 to-transparent border-l-4 border-primary rounded-xl p-8 md:p-10 shadow-sm">
+            <div className="rounded-xl border border-border/80 bg-card/90 p-8 shadow-sm backdrop-blur-sm md:p-10">
               <div className="flex gap-4">
                 <div className="flex-shrink-0 pt-1">
                   <BookOpen className="h-7 w-7 text-primary shrink-0" />
@@ -398,7 +398,7 @@ export default function Index() {
       </section>
 
       {/* Donation Section */}
-      <section className="bg-gradient-to-br from-gold-light/30 to-sage-light/30 py-16 md:py-24">
+      <section className="bg-gradient-to-br from-gold-light/30 to-sage-light/30 py-16 md:py-24 dark:from-gold/10 dark:to-sage/10">
         <div className="container px-4 md:px-6">
           <Card
             variant="elevated"
@@ -456,7 +456,7 @@ export default function Index() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-primary py-16 md:py-24">
+      <section className="bg-primary py-16 md:py-24 dark:bg-navy-dark">
         <div className="container px-4 md:px-6">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="mb-4 font-display text-3xl font-bold text-primary-foreground md:text-4xl">
