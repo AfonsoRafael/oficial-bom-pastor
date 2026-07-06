@@ -162,12 +162,13 @@ export default function Historico() {
 
   const isAdminRoute = location.pathname.startsWith("/admin");
   const baseRoute = isAdminRoute ? "/admin" : "/catequista";
+
   const getColorByLevel = (level: number) => {
     switch (level) {
       case 1:
-        return "bg-sage-light text-sage-dark";
+        return "bg-sage-light dark:bg-sage-dark/20 text-sage-dark dark:text-sage-light";
       case 2:
-        return "bg-gold-light text-gold-dark";
+        return "bg-gold-light dark:bg-gold-dark/20 text-gold-dark dark:text-gold-light";
       case 3:
         return "bg-primary text-primary-foreground";
       default:
@@ -179,7 +180,7 @@ export default function Historico() {
     <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-card transition-transform duration-300 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-card text-card-foreground transition-transform duration-300 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } `}
       >
@@ -220,7 +221,7 @@ export default function Historico() {
           <div className="border-t p-4">
             <Button
               variant="ghost"
-              className="w-full justify-start text-destructive"
+              className="w-full justify-start text-destructive hover:bg-destructive/10"
               asChild
             >
               <Link to="/">
@@ -235,7 +236,7 @@ export default function Historico() {
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-foreground/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -243,7 +244,7 @@ export default function Historico() {
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
         {/* Mobile Header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card text-card-foreground px-4">
           <Button
             variant="ghost"
             size="icon"
@@ -258,14 +259,14 @@ export default function Historico() {
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto">
-          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-8">
+          <div className="min-h-screen bg-background p-4 md:p-8">
             <div className="max-w-6xl mx-auto">
               {/* Header */}
               <div className="mb-8">
-                <h1 className="text-4xl font-bold text-slate-900 mb-2">
+                <h1 className="text-4xl font-bold text-foreground mb-2">
                   Histórico de Turmas e Catequizandos
                 </h1>
-                <p className="text-slate-600">
+                <p className="text-muted-foreground">
                   Acompanhe o histórico de todas as turmas separadas por ano
                 </p>
               </div>
@@ -273,47 +274,47 @@ export default function Historico() {
               {/* Pastas por Ano */}
               <div className="space-y-4">
                 <Accordion type="single" collapsible className="w-full">
-                  {historicalData.map((yearData, yearIndex) => (
-                    <AccordionItem key={yearData.year} value={`year-${yearData.year}`}>
-                      <AccordionTrigger className="hover:no-underline">
+                  {historicalData.map((yearData) => (
+                    <AccordionItem key={yearData.year} value={`year-${yearData.year}`} className="border rounded-lg px-4 bg-card text-card-foreground mb-2">
+                      <AccordionTrigger className="hover:no-underline py-4">
                         <div className="flex items-center gap-3">
-                          <Folder className="h-5 w-5 text-yellow-500" />
+                          <Folder className="h-5 w-5 text-yellow-500 dark:text-yellow-600" />
                           <span className="text-lg font-semibold">Ano {yearData.year}</span>
                           <Badge variant="secondary">{yearData.turmas.length} turmas</Badge>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-4 pl-8 pt-4">
+                      <AccordionContent className="pb-4">
+                        <div className="space-y-4 pt-2 md:pl-4">
                           {/* Accordion aninhado para Turmas */}
                           <Accordion type="single" collapsible className="w-full">
                             {yearData.turmas.map((turma) => (
-                              <AccordionItem key={turma.id} value={`turma-${turma.id}`}>
-                                <AccordionTrigger className="hover:no-underline">
-                                  <div className="flex items-center gap-3 w-full">
-                                    <Folder className="h-4 w-4 text-blue-500" />
-                                    <span className="font-medium">{turma.nome}</span>
+                              <AccordionItem key={turma.id} value={`turma-${turma.id}`} className="border-none">
+                                <AccordionTrigger className="hover:no-underline py-3 px-3 rounded-lg hover:bg-muted/50">
+                                  <div className="flex flex-wrap items-center gap-3 w-full text-left">
+                                    <Folder className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" />
+                                    <span className="font-medium text-foreground">{turma.nome}</span>
                                     <Badge className={getColorByLevel(turma.nivel)}>
                                       Nível {turma.nivel}
                                     </Badge>
-                                    <Badge variant="outline" className="ml-auto">
+                                    <Badge variant="outline" className="ml-auto sm:inline-flex hidden">
                                       {turma.catequizandosCount} catequizandos
                                     </Badge>
                                   </div>
                                 </AccordionTrigger>
-                                <AccordionContent>
+                                <AccordionContent className="px-3">
                                   <div className="space-y-3 pt-4">
                                     <div className="text-sm">
-                                      <p className="font-medium text-slate-700">
-                                        Catequista: <span className="font-normal">{turma.catequista}</span>
+                                      <p className="font-medium text-foreground">
+                                        Catequista: <span className="font-normal text-muted-foreground">{turma.catequista}</span>
                                       </p>
                                     </div>
 
                                     {/* Tabela de Catequizandos */}
-                                    <div className="border rounded-lg overflow-hidden">
+                                    <div className="border rounded-lg overflow-hidden bg-card">
                                       <Table>
                                         <TableHeader>
-                                          <TableRow className="bg-slate-100">
-                                            <TableHead>ID</TableHead>
+                                          <TableRow className="bg-muted/50">
+                                            <TableHead className="w-[80px]">ID</TableHead>
                                             <TableHead>Nome do Catequizando</TableHead>
                                             <TableHead>Data de Nascimento</TableHead>
                                           </TableRow>
@@ -324,8 +325,8 @@ export default function Historico() {
                                               <TableCell className="font-medium">
                                                 {catequizando.id}
                                               </TableCell>
-                                              <TableCell>{catequizando.nome}</TableCell>
-                                              <TableCell>
+                                              <TableCell className="text-foreground">{catequizando.nome}</TableCell>
+                                              <TableCell className="text-muted-foreground">
                                                 {new Date(
                                                   catequizando.dataNascimento
                                                 ).toLocaleDateString("pt-BR")}
