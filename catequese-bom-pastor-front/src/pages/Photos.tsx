@@ -45,11 +45,11 @@ export default function Photos() {
   const location = useLocation();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Controle do Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState<HomePagePhoto | null>(null);
-  
+
   // Estados do formulário
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -129,13 +129,13 @@ export default function Photos() {
       setPhotos(prev =>
         prev.map(p =>
           p.id === editingPhoto.id
-            ? { 
-                ...p, 
-                title, 
-                description, 
-                // Se escolheu uma foto nova substitui, senão mantém a antiga
-                url: selectedFile ? previewUrl : p.url 
-              }
+            ? {
+              ...p,
+              title,
+              description,
+              // Se escolheu uma foto nova substitui, senão mantém a antiga
+              url: selectedFile ? previewUrl : p.url
+            }
             : p
         )
       );
@@ -155,8 +155,8 @@ export default function Photos() {
       setPhotos(prev => [newPhoto, ...prev]);
       toast({
         title: isDraft ? "Salvo como rascunho!" : "Foto adicionada!",
-        description: isDraft 
-          ? "A imagem foi guardada como rascunho e está oculta na Home." 
+        description: isDraft
+          ? "A imagem foi guardada como rascunho e está oculta na Home."
           : "A nova imagem foi enviada e já está ativa na tela inicial.",
       });
     }
@@ -188,9 +188,8 @@ export default function Photos() {
   return (
     <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-card transition-transform duration-300 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-card transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center justify-between border-b px-4">
@@ -223,7 +222,7 @@ export default function Photos() {
               onClick={() => {
                 try {
                   localStorage.removeItem("role");
-                } catch {}
+                } catch { }
                 window.location.href = "/login";
               }}
             >
@@ -277,89 +276,95 @@ export default function Photos() {
               </Button>
             </div>
 
-        {/* Modal Dinâmico de Formulário */}
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingPhoto ? "Editar Imagem de Destaque" : "Nova Imagem de Destaque"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={(e) => handleSavePhoto(e, false)} className="space-y-4 pt-2">
-              
-              <div className="space-y-2">
-                <Label htmlFor="title">Título da Imagem</Label>
-                <Input
-                  id="title"
-                  placeholder="Ex: Primeira Comunhão Turma 2026"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </div>
+            {/* Modal Dinâmico de Formulário */}
+            {/* Modal Dinâmico de Formulário */}
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+              {/* 1. Remova o overflow do DialogContent e garanta que ele use flexbox */}
+              <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden">
 
-              {/* Upload de Arquivo no lugar do Link de URL */}
-              <div className="space-y-2">
-                <Label htmlFor="image-file">
-                  {editingPhoto ? "Substituir Imagem (Opcional)" : "Upload da Imagem"}
-                </Label>
-                <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-4 bg-muted/30 hover:bg-muted/50 transition-colors relative cursor-pointer">
-                  <Input
-                    id="image-file"
-                    type="file"
-                    accept="image/*"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="absolute inset-0 opacity-0 cursor-pointer h-full w-full"
-                  />
-                  <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-                  <span className="text-xs text-muted-foreground text-center">
-                    {selectedFile ? (
-                      <strong className="text-primary truncate block max-w-[250px]">
-                        {selectedFile.name}
-                      </strong>
-                    ) : (
-                      "Clique ou arraste um arquivo de imagem aqui"
-                    )}
-                  </span>
+                <div className="p-6 pb-0">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingPhoto ? "Editar Imagem de Destaque" : "Nova Imagem de Destaque"}
+                    </DialogTitle>
+                  </DialogHeader>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição / Legenda</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Breve texto explicativo sobre o evento da foto..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={4}
-                />
-              </div>
-              
-              {/* Rodapé com botões de Ação + Rascunho */}
-              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
-                <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>
-                  Cancelar
-                </Button>
+                {/* 2. É o formulário que deve carregar a rolagem vertical */}
+                <form
+                  onSubmit={(e) => handleSavePhoto(e, false)}
+                  className="flex-1 overflow-y-auto space-y-4 p-6 pt-2"
+                >
 
-                {/* Salvar como rascunho apenas se estiver criando */}
-                {!editingPhoto && (
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={(e) => handleSavePhoto(e, true)}
-                    className="border-amber-500 text-amber-600 hover:bg-amber-50"
-                  >
-                    Salvar como Rascunho
-                  </Button>
-                )}
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Título da Imagem</Label>
+                    <Input
+                      id="title"
+                      placeholder="Ex: Primeira Comunhão Turma 2026"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                    />
+                  </div>
 
-                <Button type="submit">
-                  {editingPhoto ? "Salvar Alterações" : "Publicar na Home"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                  {/* Upload de Arquivo */}
+                  <div className="space-y-2">
+                    <Label htmlFor="image-file">
+                      {editingPhoto ? "Substituir Imagem (Opcional)" : "Upload da Imagem"}
+                    </Label>
+                    <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-4 bg-muted/30 hover:bg-muted/50 transition-colors relative cursor-pointer">
+                      <Input
+                        id="image-file"
+                        type="file"
+                        accept="image/*"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        className="absolute inset-0 opacity-0 cursor-pointer h-full w-full"
+                      />
+                      <Upload className="h-6 w-6 text-muted-foreground mb-1" />
+                      <span className="text-xs text-muted-foreground text-center">
+                        {selectedFile ? (
+                          <strong className="text-primary truncate block max-w-[250px]">
+                            {selectedFile.name}
+                          </strong>
+                        ) : (
+                          "Clique ou arraste um arquivo de imagem aqui"
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Descrição / Legenda</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="Breve texto explicativo sobre o evento da foto..."
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={4}
+                    />
+                  </div>
+
+                  {/* Rodapé com botões de Ação + Rascunho */}
+                  <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 sticky bottom-0 bg-background/95 backdrop-blur-sm">
+
+                    {!editingPhoto && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={(e) => handleSavePhoto(e, true)}
+                        className="border-amber-500 text-amber-600 hover:bg-amber-50"
+                      >
+                        Salvar como Rascunho
+                      </Button>
+                    )}
+
+                    <Button type="submit">
+                      {editingPhoto ? "Salvar Alterações" : "Publicar na Home"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
 
             {/* Grid de Banners/Cards */}
             {photos.length === 0 ? (
@@ -371,70 +376,70 @@ export default function Photos() {
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {photos.map((photo) => (
                   <Card key={photo.id} className="group flex flex-col overflow-hidden border shadow-sm transition-all hover:shadow-md">
-                
-                <div className="relative aspect-video w-full bg-muted overflow-hidden">
-                  <img
-                    src={photo.url}
-                    alt={photo.title}
-                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute top-3 right-3 flex gap-2">
-                    <Badge variant={photo.isActive ? "default" : "secondary"} className="shadow-sm">
-                      {photo.isActive ? "Exibindo na Home" : "Oculto"}
-                    </Badge>
-                  </div>
-                </div>
 
-                <CardContent className="p-5 flex-1 flex flex-col justify-between gap-4">
-                  <div className="space-y-1">
-                    <h3 className="font-semibold text-lg leading-tight line-clamp-1">{photo.title}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2 h-10">
-                      {photo.description || "Sem descrição informada."}
-                    </p>
-                  </div>
-
-                  {/* Ações de Linha */}
-                  <div className="flex items-center justify-between pt-2 border-t mt-auto">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => togglePhotoStatus(photo.id)}
-                      className="text-xs flex items-center gap-1.5 h-9"
-                    >
-                      {photo.isActive ? (
-                        <>
-                          <XCircle className="h-4 w-4 text-amber-500" /> Ocultar da Home
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Ativar na Home
-                        </>
-                      )}
-                    </Button>
-
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleOpenEditModal(photo)}
-                        className="text-muted-foreground hover:text-foreground h-9 w-9"
-                        title="Editar detalhes"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeletePhoto(photo.id)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10 h-9 w-9"
-                        title="Excluir imagem"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <div className="relative aspect-video w-full bg-muted overflow-hidden">
+                      <img
+                        src={photo.url}
+                        alt={photo.title}
+                        className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute top-3 right-3 flex gap-2">
+                        <Badge variant={photo.isActive ? "default" : "secondary"} className="shadow-sm">
+                          {photo.isActive ? "Exibindo na Home" : "Oculto"}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
+
+                    <CardContent className="p-5 flex-1 flex flex-col justify-between gap-4">
+                      <div className="space-y-1">
+                        <h3 className="font-semibold text-lg leading-tight line-clamp-1">{photo.title}</h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2 h-10">
+                          {photo.description || "Sem descrição informada."}
+                        </p>
+                      </div>
+
+                      {/* Ações de Linha */}
+                      <div className="flex items-center justify-between pt-2 border-t mt-auto">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => togglePhotoStatus(photo.id)}
+                          className="text-xs flex items-center gap-1.5 h-9"
+                        >
+                          {photo.isActive ? (
+                            <>
+                              <XCircle className="h-4 w-4 text-amber-500" /> Ocultar da Home
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Ativar na Home
+                            </>
+                          )}
+                        </Button>
+
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenEditModal(photo)}
+                            className="text-muted-foreground hover:text-foreground h-9 w-9"
+                            title="Editar detalhes"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeletePhoto(photo.id)}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 h-9 w-9"
+                            title="Excluir imagem"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
                   </Card>
                 ))}
               </div>
