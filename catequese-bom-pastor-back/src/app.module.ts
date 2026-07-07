@@ -20,6 +20,7 @@ import { UploadsModule } from './modules/uploads/uploads.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
 import { CatequistasModule } from './modules/catequistas/catequistas.module';
+import { PhotosModule } from './modules/photos/photos.module';
 import { PreMatriculasModule } from './modules/pre-matriculas/pre-matriculas.module';
 import { ItensLojaModule } from './modules/loja/loja.module';
 
@@ -58,6 +59,7 @@ import { ItensLojaModule } from './modules/loja/loja.module';
     UploadsModule,
     DashboardModule,
     CatequistasModule,
+    PhotosModule,
     PreMatriculasModule,
   ],
   providers: [

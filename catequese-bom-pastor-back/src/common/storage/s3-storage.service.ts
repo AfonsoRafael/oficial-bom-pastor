@@ -1,7 +1,12 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { CreateBucketCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { CreateBucketCommand, DeleteObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { randomUUID } from 'crypto';
+
+export type UploadedStorageFile = {
+  url: string;
+  key: string;
+};
 
 @Injectable()
 export class S3StorageService {
@@ -33,11 +38,17 @@ export class S3StorageService {
   }
 
   async uploadBase64Document(base64OrDataUrl: string, folder: string, documentLabel: string): Promise<string> {
+    const parsed = this.parseBase64(base64OrDataUrl);
+    const uploaded = await this.uploadBufferDocument(parsed.buffer, parsed.mimeType, folder, documentLabel);
+
+    return uploaded.url;
+  }
+
+  async uploadBufferDocument(buffer: Buffer, mimeType: string, folder: string, documentLabel: string): Promise<UploadedStorageFile> {
     this.ensureS3Config();
     await this.ensureBucketExists();
 
-    const parsed = this.parseBase64(base64OrDataUrl);
-    const extension = this.extensionFromMime(parsed.mimeType);
+    const extension = this.extensionFromMime(mimeType);
     const datePrefix = new Date().toISOString().slice(0, 10);
     const key = `${folder}/${datePrefix}/${randomUUID()}-${documentLabel}.${extension}`;
 
@@ -46,15 +57,33 @@ export class S3StorageService {
         new PutObjectCommand({
           Bucket: this.bucket,
           Key: key,
-          Body: parsed.buffer,
-          ContentType: parsed.mimeType,
+          Body: buffer,
+          ContentType: mimeType,
         }),
       );
     } catch {
       throw new InternalServerErrorException('Falha ao enviar arquivo para o storage');
     }
 
-    return this.buildFileUrl(key);
+    return {
+      key,
+      url: this.buildFileUrl(key),
+    };
+  }
+
+  async deleteObject(key: string) {
+    this.ensureS3Config();
+
+    try {
+      await this.client.send(
+        new DeleteObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+        }),
+      );
+    } catch {
+      throw new InternalServerErrorException('Falha ao remover arquivo do storage');
+    }
   }
 
   private ensureS3Config() {
@@ -109,6 +138,7 @@ export class S3StorageService {
       'image/jpg': 'jpg',
       'image/png': 'png',
       'image/webp': 'webp',
+      'image/gif': 'gif',
     };
 
     return map[mimeType] || 'bin';

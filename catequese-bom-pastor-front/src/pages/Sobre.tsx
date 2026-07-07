@@ -11,7 +11,6 @@ import {
 import {
   BookOpen,
   Camera,
-  Film,
   HandHeart,
   Heart,
   Lightbulb,
@@ -19,7 +18,9 @@ import {
   Users,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { API_ROUTES } from "@/lib/routes";
+import { fetchPublic } from "@/lib/api";
 
 const values = [
   {
@@ -80,8 +81,62 @@ const catechists = [
   },
 ];
 
+interface PublicPhoto {
+  id: string;
+  title: string;
+  description?: string | null;
+  imageUrl: string;
+  criadoEm: string;
+}
+
 export default function Sobre() {
   const [galleryExpanded, setGalleryExpanded] = useState(false);
+  const [photos, setPhotos] = useState<PublicPhoto[]>([]);
+  const [loadingPhotos, setLoadingPhotos] = useState(true);
+
+  useEffect(() => {
+    const loadPhotos = async () => {
+      setLoadingPhotos(true);
+
+      try {
+        const response = await fetchPublic(API_ROUTES.photosPublic);
+
+        if (!response.ok) {
+          setPhotos([]);
+          return;
+        }
+
+        const data = await response.json();
+        const list = Array.isArray(data?.photos)
+          ? data.photos
+          : Array.isArray(data)
+            ? data
+            : [];
+
+        setPhotos(
+          list.map((item: any) => ({
+            id: String(item.id),
+            title: String(item.title || ""),
+            description: item.description || null,
+            imageUrl: String(item.imageUrl || ""),
+            criadoEm: String(item.criadoEm || ""),
+          })),
+        );
+      } catch (error) {
+        console.error("Erro ao carregar fotos públicas:", error);
+        setPhotos([]);
+      } finally {
+        setLoadingPhotos(false);
+      }
+    };
+
+    void loadPhotos();
+  }, []);
+
+  const visiblePhotos = useMemo(() => {
+    return galleryExpanded ? photos : photos.slice(0, 3);
+  }, [galleryExpanded, photos]);
+
   return (
     <MainLayout>
       <section className="relative overflow-hidden bg-gradient-hero">
@@ -437,105 +492,58 @@ export default function Sobre() {
           </div>
 
           <div className="mx-auto max-w-5xl">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3].map((item) => (
-                <Card
-                  key={`photo-${item}`}
-                  className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer animate-slide-up group"
-                  style={{ animationDelay: `${item * 0.1}s` }}
-                >
-                  <div className="aspect-square bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center relative overflow-hidden">
-                    <div className="flex flex-col items-center justify-center gap-3 group-hover:scale-110 transition-transform duration-300">
-                      <Camera className="h-12 w-12 text-primary/40" />
-                      <p className="text-sm text-muted-foreground text-center px-4">
-                        Foto {item}
-                      </p>
+            {loadingPhotos ? (
+              <Card>
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  Carregando momentos especiais...
+                </CardContent>
+              </Card>
+            ) : visiblePhotos.length === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  Nenhuma foto publicada no momento.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {visiblePhotos.map((photo, index) => (
+                  <Card
+                    key={photo.id}
+                    className="group overflow-hidden transition-shadow hover:shadow-lg animate-slide-up"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
+                      <img
+                        src={photo.imageUrl}
+                        alt={photo.title}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
                     </div>
-                  </div>
-                  <CardContent className="pt-4">
-                    <p className="text-sm font-semibold text-foreground line-clamp-2">
-                      Momento especial da catequese
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Celebração e aprendizado
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {galleryExpanded && (
-              <div className="animate-in fade-in slide-in-from-top-4 duration-300">
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-6">
-                  {[4, 5, 6].map((item) => (
-                    <Card
-                      key={`photo-${item}`}
-                      className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer animate-slide-up group"
-                      style={{ animationDelay: `${(item - 3) * 0.1}s` }}
-                    >
-                      <div className="aspect-square bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center relative overflow-hidden">
-                        <div className="flex flex-col items-center justify-center gap-3 group-hover:scale-110 transition-transform duration-300">
-                          <Camera className="h-12 w-12 text-primary/40" />
-                          <p className="text-sm text-muted-foreground text-center px-4">
-                            Foto {item}
-                          </p>
-                        </div>
-                      </div>
-                      <CardContent className="pt-4">
-                        <p className="text-sm font-semibold text-foreground line-clamp-2">
-                          Momento especial da catequese
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Celebração e aprendizado
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-
-                <div className="mt-12 pt-12 border-t">
-                  <h3 className="mb-8 text-center font-display text-2xl font-bold text-foreground">
-                    Vídeos
-                  </h3>
-                  <div className="grid gap-6 md:grid-cols-2">
-                    {[1, 2].map((video) => (
-                      <Card
-                        key={`video-${video}`}
-                        className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer animate-slide-up group"
-                        style={{ animationDelay: `${video * 0.1}s` }}
-                      >
-                        <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center relative overflow-hidden">
-                          <div className="absolute inset-0 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                            <div className="flex items-center justify-center w-20 h-20 rounded-full bg-primary/30 group-hover:bg-primary/50 transition-colors">
-                              <Film className="h-10 w-10 text-white" />
-                            </div>
-                          </div>
-                        </div>
-                        <CardContent className="pt-4">
-                          <p className="text-sm font-semibold text-foreground line-clamp-2">
-                            Vídeo {video}: Momento especial da catequese
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Duração: aproximadamente 5 minutos
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
+                    <CardContent className="pt-4">
+                      <p className="text-sm font-semibold text-foreground line-clamp-2">
+                        {photo.title}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                        {photo.description || "Momento especial da catequese."}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             )}
 
-            <div className="flex justify-center mt-8">
-              <Button
-                onClick={() => setGalleryExpanded(!galleryExpanded)}
-                variant={galleryExpanded ? "outline" : "default"}
-                size="lg"
-                className="min-w-max"
-              >
-                {galleryExpanded ? "Minimizar Galeria" : "Ver Galeria Completa"}
-              </Button>
-            </div>
+            {photos.length > 3 && (
+              <div className="flex justify-center mt-8">
+                <Button
+                  onClick={() => setGalleryExpanded(!galleryExpanded)}
+                  variant={galleryExpanded ? "outline" : "default"}
+                  size="lg"
+                  className="min-w-max"
+                >
+                  {galleryExpanded ? "Mostrar menos" : "Ver Galeria Completa"}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </section>

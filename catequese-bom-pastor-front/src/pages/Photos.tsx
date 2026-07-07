@@ -1,43 +1,74 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { SidebarNav } from "@/components/layout/SidebarNav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
 import { ADMIN_NAV_ITEMS } from "@/lib/sidebarNavItems";
-import { Link, useLocation } from "react-router-dom";
+import { API_ROUTES } from "@/lib/routes";
+import { fetchWithAuth } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 import {
+  CheckCircle2,
   Cross,
+  Image as ImageIcon,
+  Loader2,
   LogOut,
   Menu,
+  Pencil,
   Plus,
   Trash2,
-  Image as ImageIcon,
-  CheckCircle2,
+  Upload,
   XCircle,
-  Pencil,
-  Upload
 } from "lucide-react";
-import { useState, useRef } from "react";
-import { useToast } from "@/hooks/use-toast";
 
-interface HomePagePhoto {
+interface PhotoItem {
   id: string;
   title: string;
-  description?: string;
-  url: string; // Guardará a URL temporária ou a URL final do backend
+  description?: string | null;
+  imageUrl: string;
+  storageKey: string;
   isActive: boolean;
+  criadoEm: string;
+  updatedAt: string;
+}
+
+interface PhotoFormState {
+  title: string;
+  description: string;
+  isActive: boolean;
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("pt-BR");
+}
+
+function normalizePhotoList(data: unknown): PhotoItem[] {
+  const list = Array.isArray((data as any)?.photos)
+    ? (data as any).photos
+    : Array.isArray(data)
+      ? data
+      : [];
+
+  return list.map((item: any) => ({
+    id: String(item.id),
+    title: String(item.title || ""),
+    description: item.description ?? null,
+    imageUrl: String(item.imageUrl || ""),
+    storageKey: String(item.storageKey || ""),
+    isActive: Boolean(item.isActive),
+    criadoEm: String(item.criadoEm || ""),
+    updatedAt: String(item.updatedAt || ""),
+  }));
 }
 
 export default function Photos() {
@@ -46,150 +77,240 @@ export default function Photos() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Controle do Modal
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPhoto, setEditingPhoto] = useState<HomePagePhoto | null>(null);
-
-  // Estados do formulário
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [editingPhoto, setEditingPhoto] = useState<PhotoItem | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFilePreview, setSelectedFilePreview] = useState<string | null>(null);
+  const [form, setForm] = useState<PhotoFormState>({
+    title: "",
+    description: "",
+    isActive: true,
+  });
 
-  // Lista de fotos inicial
-  const [photos, setPhotos] = useState<HomePagePhoto[]>([
-    {
-      id: "1",
-      title: "Missa de Abertura da Catequese 2026",
-      description: "Momento de bênção com as crianças e os pais no início do ano letivo.",
-      url: "https://images.unsplash.com/photo-1544427928-c49cdcaf859b?w=600&auto=format&fit=crop&q=60",
-      isActive: true,
-    },
-    {
-      id: "2",
-      title: "Teatrinho de Páscoa",
-      description: "Apresentação realizada pelos catequizandos da Crisma.",
-      url: "https://images.unsplash.com/photo-1519751138087-5bf79df62d5b?w=600&auto=format&fit=crop&q=60",
-      isActive: true,
-    },
-    {
-      id: "3",
-      title: "Encontro de Formação de Catequistas",
-      description: "Foto antiga guardada no acervo.",
-      url: "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=600&auto=format&fit=crop&q=60",
-      isActive: false,
+  useEffect(() => {
+    if (!selectedFile) {
+      setSelectedFilePreview(null);
+      return;
     }
-  ]);
 
-  // Abrir modal no modo "Criar"
-  const handleOpenCreateModal = () => {
+    const preview = URL.createObjectURL(selectedFile);
+    setSelectedFilePreview(preview);
+
+    return () => URL.revokeObjectURL(preview);
+  }, [selectedFile]);
+
+  const stats = useMemo(
+    () => ({
+      total: photos.length,
+      active: photos.filter((photo) => photo.isActive).length,
+      hidden: photos.filter((photo) => !photo.isActive).length,
+    }),
+    [photos],
+  );
+
+  const resetForm = () => {
     setEditingPhoto(null);
-    setTitle("");
-    setDescription("");
+    setForm({
+      title: "",
+      description: "",
+      isActive: true,
+    });
     setSelectedFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    setIsModalOpen(true);
-  };
-
-  // Abrir modal no modo "Editar"
-  const handleOpenEditModal = (photo: HomePagePhoto) => {
-    setEditingPhoto(photo);
-    setTitle(photo.title);
-    setDescription(photo.description || "");
-    setSelectedFile(null); // No modo edição, o upload só é necessário se for trocar a foto
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    setIsModalOpen(true);
-  };
-
-  // Manipular a seleção do arquivo
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+    setSelectedFilePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
-  // Salvar alterações ou nova foto
-  const handleSavePhoto = (e: React.FormEvent, isDraft = false) => {
-    e.preventDefault();
+  const loadPhotos = async () => {
+    setLoading(true);
+    try {
+      const response = await fetchWithAuth(API_ROUTES.photosAdmin);
 
-    // Validação: Se for criação, o arquivo de imagem é obrigatório
-    if (!title || (!editingPhoto && !selectedFile)) {
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.message || "Falha ao carregar fotos");
+      }
+
+      const data = await response.json();
+      setPhotos(normalizePhotoList(data));
+    } catch (error: any) {
+      setPhotos([]);
+      toast({
+        title: "Erro",
+        description: error?.message || "Nao foi possivel carregar as fotos",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadPhotos();
+  }, []);
+
+  const handleOpenCreateModal = () => {
+    resetForm();
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (photo: PhotoItem) => {
+    setEditingPhoto(photo);
+    setForm({
+      title: photo.title,
+      description: photo.description || "",
+      isActive: photo.isActive,
+    });
+    setSelectedFile(null);
+    setSelectedFilePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setSelectedFile(file);
+  };
+
+  const handleSavePhoto = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!form.title.trim()) {
       toast({
         title: "Campos obrigatórios",
-        description: "Por favor, preencha o título e selecione uma imagem para upload.",
+        description: "Informe o título da foto.",
         variant: "destructive",
       });
       return;
     }
 
-    // Gera uma URL local temporária para o preview do arquivo selecionado
-    const previewUrl = selectedFile ? URL.createObjectURL(selectedFile) : "";
-
-    if (editingPhoto) {
-      // MODO EDIÇÃO
-      setPhotos(prev =>
-        prev.map(p =>
-          p.id === editingPhoto.id
-            ? {
-              ...p,
-              title,
-              description,
-              // Se escolheu uma foto nova substitui, senão mantém a antiga
-              url: selectedFile ? previewUrl : p.url
-            }
-            : p
-        )
-      );
+    if (!editingPhoto && !selectedFile) {
       toast({
-        title: "Foto atualizada!",
-        description: "As alterações foram salvas com sucesso.",
+        title: "Imagem obrigatória",
+        description: "Selecione uma imagem para cadastrar a foto.",
+        variant: "destructive",
       });
-    } else {
-      // MODO CRIAÇÃO
-      const newPhoto: HomePagePhoto = {
-        id: Date.now().toString(),
-        title,
-        description,
-        url: previewUrl,
-        isActive: !isDraft, // Se for rascunho, nasce inativo (oculto)
-      };
-      setPhotos(prev => [newPhoto, ...prev]);
-      toast({
-        title: isDraft ? "Salvo como rascunho!" : "Foto adicionada!",
-        description: isDraft
-          ? "A imagem foi guardada como rascunho e está oculta na Home."
-          : "A nova imagem foi enviada e já está ativa na tela inicial.",
-      });
+      return;
     }
 
-    setIsModalOpen(false);
+    const formData = new FormData();
+    formData.append("title", form.title.trim());
+    if (form.description.trim()) {
+      formData.append("description", form.description.trim());
+    }
+    formData.append("isActive", String(form.isActive));
+    if (selectedFile) {
+      formData.append("image", selectedFile);
+    }
+
+    setSaving(true);
+    try {
+      const endpoint = editingPhoto ? API_ROUTES.photosUpdate(editingPhoto.id) : API_ROUTES.photosBase;
+      const response = await fetchWithAuth(endpoint, {
+        method: editingPhoto ? "PUT" : "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.message || "Nao foi possivel salvar a foto");
+      }
+
+      toast({
+        title: editingPhoto ? "Foto atualizada" : "Foto cadastrada",
+        description: editingPhoto ? "As alterações foram salvas com sucesso." : "A nova foto foi publicada com sucesso.",
+      });
+
+      setIsModalOpen(false);
+      resetForm();
+      await loadPhotos();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error?.message || "Erro ao salvar a foto",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const togglePhotoStatus = (id: string) => {
-    setPhotos(prev =>
-      prev.map(photo =>
-        photo.id === id ? { ...photo, isActive: !photo.isActive } : photo
-      )
-    );
-    toast({
-      title: "Status atualizado",
-      description: "A visibilidade da foto foi alterada com sucesso.",
-    });
+  const togglePhotoStatus = async (photo: PhotoItem) => {
+    setLoadingId(photo.id);
+    try {
+      const response = await fetchWithAuth(API_ROUTES.photosToggleStatus(photo.id), {
+        method: "PATCH",
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.message || "Nao foi possivel alterar a visibilidade");
+      }
+
+      toast({
+        title: "Status atualizado",
+        description: photo.isActive ? "Foto ocultada da Home." : "Foto exibida na Home.",
+      });
+
+      await loadPhotos();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error?.message || "Erro ao alterar visibilidade",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingId(null);
+    }
   };
 
-  const handleDeletePhoto = (id: string) => {
-    setPhotos(prev => prev.filter(photo => photo.id !== id));
-    toast({
-      title: "Foto removida",
-      description: "A imagem foi excluída do gerenciador.",
-      variant: "destructive",
-    });
+  const handleDeletePhoto = async (photo: PhotoItem) => {
+    const confirmed = window.confirm(`Excluir a foto \"${photo.title}\"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingId(photo.id);
+    try {
+      const response = await fetchWithAuth(API_ROUTES.photosDelete(photo.id), {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.message || "Nao foi possivel excluir a foto");
+      }
+
+      toast({
+        title: "Foto removida",
+        description: "A imagem foi excluída do gerenciador.",
+        variant: "destructive",
+      });
+
+      await loadPhotos();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error?.message || "Erro ao excluir a foto",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
     <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-card transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-card transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center justify-between border-b px-4">
@@ -222,7 +343,7 @@ export default function Photos() {
               onClick={() => {
                 try {
                   localStorage.removeItem("role");
-                } catch { }
+                } catch {}
                 window.location.href = "/login";
               }}
             >
@@ -233,23 +354,13 @@ export default function Photos() {
         </div>
       </aside>
 
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-foreground/50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {sidebarOpen && <div className="fixed inset-0 z-40 bg-foreground/50 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       <div className="flex-1">
         <header className="sticky top-0 z-40 border-b bg-card">
           <div className="flex h-16 items-center justify-between px-4 md:px-6">
             <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                className={sidebarOpen ? "lg:hidden" : ""}
-                onClick={toggleSidebar}
-              >
+              <Button variant="ghost" size="icon" className={sidebarOpen ? "lg:hidden" : ""} onClick={toggleSidebar}>
                 <Menu className="h-5 w-5" />
               </Button>
               <div>
@@ -257,7 +368,7 @@ export default function Photos() {
                   <ImageIcon className="h-6 w-6 text-primary" /> Galeria da Tela Inicial
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Gerencie as fotos, destaques e banners que os visitantes e pais visualizam na Home.
+                  Gerencie as fotos exibidas na seção pública da Home.
                 </p>
               </div>
             </div>
@@ -276,56 +387,183 @@ export default function Photos() {
               </Button>
             </div>
 
-            {/* Modal Dinâmico de Formulário */}
-            {/* Modal Dinâmico de Formulário */}
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-              {/* 1. Remova o overflow do DialogContent e garanta que ele use flexbox */}
-              <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Total</CardDescription>
+                  <CardTitle className="text-2xl">{stats.total}</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Ativas</CardDescription>
+                  <CardTitle className="text-2xl text-emerald-600">{stats.active}</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Ocultas</CardDescription>
+                  <CardTitle className="text-2xl text-muted-foreground">{stats.hidden}</CardTitle>
+                </CardHeader>
+              </Card>
+            </div>
 
+            <Card>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                <div>
+                  <CardTitle>Fotos da Home</CardTitle>
+                  <CardDescription>
+                    Adicione, edite, oculte e remova os momentos especiais exibidos para os visitantes.
+                  </CardDescription>
+                </div>
+                <Button variant="outline" className="gap-2" onClick={handleOpenCreateModal}>
+                  <Plus className="h-4 w-4" /> Nova foto
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : photos.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed bg-background p-16 text-center">
+                    <ImageIcon className="mb-3 h-12 w-12 text-muted-foreground/60" />
+                    <h3 className="text-lg font-semibold">Nenhuma foto cadastrada</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">Crie a primeira foto para mostrar na home.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                    {photos.map((photo) => (
+                      <Card key={photo.id} className="group flex flex-col overflow-hidden border shadow-sm transition-all hover:shadow-md">
+                        <div className="relative aspect-video overflow-hidden bg-muted">
+                          <img
+                            src={photo.imageUrl}
+                            alt={photo.title}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <div className="absolute right-3 top-3">
+                            <Badge variant={photo.isActive ? "default" : "secondary"} className="shadow-sm">
+                              {photo.isActive ? "Exibindo na Home" : "Oculto"}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <CardContent className="flex flex-1 flex-col gap-4 p-5">
+                          <div className="space-y-1">
+                            <h3 className="line-clamp-1 text-lg font-semibold leading-tight">{photo.title}</h3>
+                            <p className="line-clamp-2 h-10 text-sm text-muted-foreground">
+                              {photo.description || "Sem descrição informada."}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Atualizado em {formatDate(photo.updatedAt)}</p>
+                          </div>
+
+                          <div className="mt-auto flex items-center justify-between gap-2 border-t pt-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => void togglePhotoStatus(photo)}
+                              disabled={loadingId === photo.id}
+                              className="gap-2 text-xs"
+                            >
+                              {loadingId === photo.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : photo.isActive ? (
+                                <XCircle className="h-4 w-4 text-amber-500" />
+                              ) : (
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                              )}
+                              {photo.isActive ? "Ocultar" : "Ativar"}
+                            </Button>
+
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleOpenEditModal(photo)}
+                                className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                                title="Editar detalhes"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => void handleDeletePhoto(photo)}
+                                disabled={deletingId === photo.id}
+                                className="h-9 w-9 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                title="Excluir imagem"
+                              >
+                                {deletingId === photo.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+              <DialogContent className="max-h-[90vh] overflow-hidden p-0 sm:max-w-lg">
                 <div className="p-6 pb-0">
                   <DialogHeader>
-                    <DialogTitle>
-                      {editingPhoto ? "Editar Imagem de Destaque" : "Nova Imagem de Destaque"}
-                    </DialogTitle>
+                    <DialogTitle>{editingPhoto ? "Editar foto" : "Nova foto"}</DialogTitle>
                   </DialogHeader>
                 </div>
 
-                {/* 2. É o formulário que deve carregar a rolagem vertical */}
-                <form
-                  onSubmit={(e) => handleSavePhoto(e, false)}
-                  className="flex-1 overflow-y-auto space-y-4 p-6 pt-2"
-                >
-
+                <form onSubmit={handleSavePhoto} className="flex-1 space-y-4 overflow-y-auto p-6 pt-2">
                   <div className="space-y-2">
-                    <Label htmlFor="title">Título da Imagem</Label>
+                    <Label htmlFor="photo-title">Título</Label>
                     <Input
-                      id="title"
-                      placeholder="Ex: Primeira Comunhão Turma 2026"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
+                      id="photo-title"
+                      placeholder="Ex: Primeira Comunhão 2026"
+                      value={form.title}
+                      onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
                     />
                   </div>
 
-                  {/* Upload de Arquivo */}
                   <div className="space-y-2">
-                    <Label htmlFor="image-file">
-                      {editingPhoto ? "Substituir Imagem (Opcional)" : "Upload da Imagem"}
+                    <Label htmlFor="photo-description">Descrição / legenda</Label>
+                    <Textarea
+                      id="photo-description"
+                      placeholder="Breve texto explicativo sobre a foto..."
+                      value={form.description}
+                      onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                      rows={4}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3 rounded-lg border p-3">
+                    <Checkbox
+                      id="photo-active"
+                      checked={form.isActive}
+                      onCheckedChange={(checked) => setForm((current) => ({ ...current, isActive: Boolean(checked) }))}
+                    />
+                    <Label htmlFor="photo-active" className="text-sm font-medium">
+                      Exibir na Home
                     </Label>
-                    <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-4 bg-muted/30 hover:bg-muted/50 transition-colors relative cursor-pointer">
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="photo-image">{editingPhoto ? "Substituir imagem" : "Upload da imagem"}</Label>
+                    <div className="relative flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed bg-muted/30 p-4 transition-colors hover:bg-muted/50">
                       <Input
-                        id="image-file"
+                        id="photo-image"
                         type="file"
                         accept="image/*"
                         ref={fileInputRef}
                         onChange={handleFileChange}
-                        className="absolute inset-0 opacity-0 cursor-pointer h-full w-full"
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                       />
-                      <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-                      <span className="text-xs text-muted-foreground text-center">
+                      <Upload className="mb-2 h-6 w-6 text-muted-foreground" />
+                      <span className="text-center text-xs text-muted-foreground">
                         {selectedFile ? (
-                          <strong className="text-primary truncate block max-w-[250px]">
-                            {selectedFile.name}
-                          </strong>
+                          <strong className="block max-w-[250px] truncate text-primary">{selectedFile.name}</strong>
+                        ) : editingPhoto ? (
+                          "Se quiser, envie uma nova imagem para substituir a atual"
                         ) : (
                           "Clique ou arraste um arquivo de imagem aqui"
                         )}
@@ -333,117 +571,31 @@ export default function Photos() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Descrição / Legenda</Label>
-                    <Textarea
-                      id="description"
-                      placeholder="Breve texto explicativo sobre o evento da foto..."
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      rows={4}
-                    />
-                  </div>
+                  {(selectedFilePreview || editingPhoto?.imageUrl) && (
+                    <div className="space-y-2">
+                      <Label>Pré-visualização</Label>
+                      <div className="overflow-hidden rounded-lg border bg-muted">
+                        <img
+                          src={selectedFilePreview || editingPhoto?.imageUrl || ""}
+                          alt={form.title || editingPhoto?.title || "Pré-visualização"}
+                          className="aspect-video w-full object-cover"
+                        />
+                      </div>
+                    </div>
+                  )}
 
-                  {/* Rodapé com botões de Ação + Rascunho */}
-                  <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 sticky bottom-0 bg-background/95 backdrop-blur-sm">
-
-                    {!editingPhoto && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={(e) => handleSavePhoto(e, true)}
-                        className="border-amber-500 text-amber-600 hover:bg-amber-50"
-                      >
-                        Salvar como Rascunho
-                      </Button>
-                    )}
-
-                    <Button type="submit">
-                      {editingPhoto ? "Salvar Alterações" : "Publicar na Home"}
+                  <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+                    <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" disabled={saving}>
+                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      {editingPhoto ? "Salvar alterações" : "Publicar na Home"}
                     </Button>
                   </div>
                 </form>
               </DialogContent>
             </Dialog>
-
-            {/* Grid de Banners/Cards */}
-            {photos.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed bg-background p-16 text-center">
-                <ImageIcon className="mb-3 h-12 w-12 text-muted-foreground/60" />
-                <h3 className="text-lg font-semibold">Nenhuma foto cadastrada</h3>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {photos.map((photo) => (
-                  <Card key={photo.id} className="group flex flex-col overflow-hidden border shadow-sm transition-all hover:shadow-md">
-
-                    <div className="relative aspect-video w-full bg-muted overflow-hidden">
-                      <img
-                        src={photo.url}
-                        alt={photo.title}
-                        className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute top-3 right-3 flex gap-2">
-                        <Badge variant={photo.isActive ? "default" : "secondary"} className="shadow-sm">
-                          {photo.isActive ? "Exibindo na Home" : "Oculto"}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <CardContent className="p-5 flex-1 flex flex-col justify-between gap-4">
-                      <div className="space-y-1">
-                        <h3 className="font-semibold text-lg leading-tight line-clamp-1">{photo.title}</h3>
-                        <p className="text-sm text-muted-foreground line-clamp-2 h-10">
-                          {photo.description || "Sem descrição informada."}
-                        </p>
-                      </div>
-
-                      {/* Ações de Linha */}
-                      <div className="flex items-center justify-between pt-2 border-t mt-auto">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => togglePhotoStatus(photo.id)}
-                          className="text-xs flex items-center gap-1.5 h-9"
-                        >
-                          {photo.isActive ? (
-                            <>
-                              <XCircle className="h-4 w-4 text-amber-500" /> Ocultar da Home
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Ativar na Home
-                            </>
-                          )}
-                        </Button>
-
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenEditModal(photo)}
-                            className="text-muted-foreground hover:text-foreground h-9 w-9"
-                            title="Editar detalhes"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeletePhoto(photo.id)}
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10 h-9 w-9"
-                            title="Excluir imagem"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
           </div>
         </main>
       </div>

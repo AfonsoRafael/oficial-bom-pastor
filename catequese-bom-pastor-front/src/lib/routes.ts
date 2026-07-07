@@ -6,6 +6,12 @@ export const API_ROUTES = {
   catequistasInscricoes: "/api/catequistas/inscricoes",
   catequistasInscricoesApprove: (id: number | string) => `/api/catequistas/inscricoes/${id}/approve`,
   catequistasInscricoesReject: (id: number | string) => `/api/catequistas/inscricoes/${id}/reject`,
+  photosBase: "/api/photos",
+  photosAdmin: "/api/photos/admin",
+  photosPublic: "/api/photos/public",
+  photosUpdate: (id: number | string) => `/api/photos/${id}`,
+  photosToggleStatus: (id: number | string) => `/api/photos/${id}/toggle-status`,
+  photosDelete: (id: number | string) => `/api/photos/${id}`,
   cronogramaEventos: "/api/cronograma/eventos",
   cronogramaEventosPublicos: "/api/cronograma/eventos/publicos",
   auth: {

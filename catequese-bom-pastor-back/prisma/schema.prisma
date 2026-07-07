@@ -272,6 +272,19 @@ model Galeria {
   @@map("galerias")
 }
 
+model Photo {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  imageUrl    String
+  storageKey  String
+  isActive    Boolean  @default(true)
+  criadoEm    DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("photos")
+}
+
 model Imagem {
   id        String   @id @default(uuid()) @map("cod_imagem")
   galeiraId String   @map("cod_galeria")
