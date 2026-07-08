@@ -9,6 +9,17 @@ type UploadedImageFile = {
   originalname?: string;
 };
 
+type PhotoRecord = {
+  id: string;
+  title: string;
+  description: string | null;
+  imageUrl: string;
+  storageKey: string;
+  isActive: boolean;
+  criadoEm: Date;
+  updatedAt: Date;
+};
+
 @Injectable()
 export class PhotosService {
   constructor(
@@ -21,7 +32,7 @@ export class PhotosService {
       orderBy: { criadoEm: 'desc' },
     });
 
-    return { photos };
+    return { photos: await this.withResolvedImageUrls(photos) };
   }
 
   async findPublic() {
@@ -30,7 +41,7 @@ export class PhotosService {
       orderBy: { criadoEm: 'desc' },
     });
 
-    return { photos };
+    return { photos: await this.withResolvedImageUrls(photos) };
   }
 
   async create(dto: CreatePhotoDto, image?: UploadedImageFile) {
@@ -40,7 +51,7 @@ export class PhotosService {
 
     const uploaded = await this.uploadImage(image);
 
-    return this.prisma.photo.create({
+    const photo = await this.prisma.photo.create({
       data: {
         title: dto.title.trim(),
         description: this.normalizeOptionalString(dto.description),
@@ -49,6 +60,8 @@ export class PhotosService {
         isActive: this.normalizeBoolean(dto.isActive, true),
       },
     });
+
+    return this.resolveImageUrl(photo);
   }
 
   async update(id: string, dto: UpdatePhotoDto, image?: UploadedImageFile) {
@@ -80,7 +93,7 @@ export class PhotosService {
         await this.deleteStoredFile(photo.storageKey);
       }
 
-      return updatedPhoto;
+      return this.resolveImageUrl(updatedPhoto);
     } catch (error) {
       if (uploaded) {
         await this.deleteStoredFile(uploaded.key);
@@ -154,5 +167,16 @@ export class PhotosService {
       // Falha de storage nao deve impedir o fluxo principal; o backend registra o problema para retry manual.
       console.warn(`Falha ao remover arquivo do storage: ${storageKey}`, error);
     }
+  }
+
+  private async resolveImageUrl(photo: PhotoRecord) {
+    return {
+      ...photo,
+      imageUrl: await this.s3StorageService.getFileUrl(photo.storageKey),
+    };
+  }
+
+  private async withResolvedImageUrls(photos: PhotoRecord[]) {
+    return Promise.all(photos.map((photo) => this.resolveImageUrl(photo)));
   }
 }

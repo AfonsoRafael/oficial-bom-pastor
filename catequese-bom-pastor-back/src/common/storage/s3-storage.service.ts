@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { CreateBucketCommand, DeleteObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { CreateBucketCommand, DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 
 export type UploadedStorageFile = {
@@ -11,6 +12,7 @@ export type UploadedStorageFile = {
 @Injectable()
 export class S3StorageService {
   private readonly client: S3Client;
+  private readonly publicClient?: S3Client;
   private readonly bucket: string;
   private readonly region: string;
   private readonly endpoint?: string;
@@ -23,8 +25,12 @@ export class S3StorageService {
     this.endpoint = this.configService.get<string>('S3_ENDPOINT') || undefined;
     this.publicEndpoint = this.configService.get<string>('S3_PUBLIC_ENDPOINT') || undefined;
 
+ 
+
     const accessKeyId = this.configService.get<string>('S3_ACCESS_KEY_ID') || '';
     const secretAccessKey = this.configService.get<string>('S3_SECRET_ACCESS_KEY') || '';
+
+    
 
     this.client = new S3Client({
       region: this.region,
@@ -35,11 +41,24 @@ export class S3StorageService {
         secretAccessKey,
       },
     });
+
+    if (this.publicEndpoint) {
+      this.publicClient = new S3Client({
+        region: this.region,
+        endpoint: this.publicEndpoint,
+        forcePathStyle: true,
+        credentials: {
+          accessKeyId,
+          secretAccessKey,
+        },
+      });
+    }
   }
 
   async uploadBase64Document(base64OrDataUrl: string, folder: string, documentLabel: string): Promise<string> {
     const parsed = this.parseBase64(base64OrDataUrl);
     const uploaded = await this.uploadBufferDocument(parsed.buffer, parsed.mimeType, folder, documentLabel);
+    // console.log(accessKeyId, secretAccessKey, this.bucket, this.region, this.endpoint);
 
     return uploaded.url;
   }
@@ -67,7 +86,7 @@ export class S3StorageService {
 
     return {
       key,
-      url: this.buildFileUrl(key),
+      url: await this.buildFileUrl(key),
     };
   }
 
@@ -144,10 +163,28 @@ export class S3StorageService {
     return map[mimeType] || 'bin';
   }
 
-  private buildFileUrl(key: string): string {
+  async getFileUrl(key: string): Promise<string> {
+    this.ensureS3Config();
+    return this.buildFileUrl(key);
+  }
+
+  private async buildFileUrl(key: string): Promise<string> {
     const endpoint = this.publicEndpoint || this.endpoint;
 
     if (endpoint) {
+      if (this.publicClient) {
+        return getSignedUrl(
+          this.publicClient,
+          new GetObjectCommand({
+            Bucket: this.bucket,
+            Key: key,
+          }),
+          {
+            expiresIn: 60 * 60 * 24 * 7,
+          },
+        );
+      }
+
       const normalized = endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint;
       return `${normalized}/${this.bucket}/${key}`;
     }
