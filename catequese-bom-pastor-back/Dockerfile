@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Prisma engine depends on OpenSSL libraries at build and runtime.
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends openssl \
+	&& apt-get install -y --no-install-recommends openssl procps \
 	&& rm -rf /var/lib/apt/lists/*
 
 # Copy package files
