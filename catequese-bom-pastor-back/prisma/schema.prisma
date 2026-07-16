@@ -315,6 +315,58 @@ model Musica {
   @@map("musicas")
 }
 
+enum DestinatarioTipo {
+  ADMINISTRADOR
+  CATEQUISTA
+  RESPONSAVEL
+  TURMA
+}
+
+model Mensagem {
+  id              String              @id @default(uuid()) @map("cod_mensagem")
+  remetenteTipo   DestinatarioTipo    @map("dsc_remetente_tipo")
+  remetenteId     String              @map("cod_remetente")
+  assunto         String              @map("dsc_assunto")
+  conteudo         String              @map("txt_conteudo")
+  lida            Boolean             @default(false) @map("ind_lida")
+  lidaEm          DateTime?           @map("dat_lida_em")
+  criadoEm        DateTime            @default(now()) @map("dat_criado_em")
+  atualizadoEm    DateTime            @updatedAt @map("dat_atualizado_em")
+
+  destinatarios   MensagemDestinatario[]
+
+  @@map("mensagens")
+}
+
+model MensagemDestinatario {
+  id              String           @id @default(uuid()) @map("cod_mensagem_destinatario")
+  mensagemId      String           @map("cod_mensagem")
+  mensagem         Mensagem         @relation(fields: [mensagemId], references: [id], onDelete: Cascade)
+  destinatarioTipo DestinatarioTipo @map("dsc_destinatario_tipo")
+  destinatarioId   String           @map("cod_destinatario")
+  lida            Boolean          @default(false) @map("ind_lida")
+  lidaEm          DateTime?        @map("dat_lida_em")
+  criadoEm        DateTime         @default(now()) @map("dat_criado_em")
+
+  @@map("mensagens_destinatarios")
+}
+
+model Notificacao {
+  id              String           @id @default(uuid()) @map("cod_notificacao")
+  usuarioTipo     DestinatarioTipo @map("dsc_usuario_tipo")
+  usuarioId       String           @map("cod_usuario")
+  titulo          String           @map("dsc_titulo")
+  descricao       String           @map("dsc_descricao")
+  tipo            String           @map("dsc_tipo") // INFO, AVISO, URGENTE, SUCESSO, ERRO
+  prioridade      String           @default("NORMAL") @map("dsc_prioridade") // BAIXA, NORMAL, ALTA, URGENTE
+  lida            Boolean          @default(false) @map("ind_lida")
+  lidaEm          DateTime?        @map("dat_lida_em")
+  linkRelacionado String?          @map("txt_link_relacionado")
+  criadoEm        DateTime         @default(now()) @map("dat_criado_em")
+
+  @@map("notificacoes")
+}
+
 model LojaItem {
   id        String      @id @default(uuid()) @map("cod_loja_item")
   nome      String      @map("dsc_nome")

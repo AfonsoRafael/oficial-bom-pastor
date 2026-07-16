@@ -28,4 +28,17 @@ export const API_ROUTES = {
     documentos: (id: number | string) => `/api/catequizandos/${id}/documentos`,
   },
   catequistas: "/api/catequistas",
+  comunicacao: {
+    recipients: "/api/comunicacao/recipients",
+    send: "/api/comunicacao/send",
+    messages: "/api/comunicacao/messages",
+    unreadCount: "/api/comunicacao/unread-count",
+    markAsRead: "/api/comunicacao/mark-as-read",
+  },
+  notificacoes: {
+    base: "/api/notificacoes",
+    unreadCount: "/api/notificacoes/unread-count",
+    markAsRead: "/api/notificacoes/mark-as-read",
+    markAllAsRead: "/api/notificacoes/mark-all-as-read",
+  },
 };

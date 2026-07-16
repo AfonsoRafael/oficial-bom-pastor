@@ -31,6 +31,7 @@ import PrimeiroAcesso from "./pages/PrimeiroAcesso";
 import Sobre from "./pages/Sobre";
 import ProtectedRoute from "./components/auth/protectedRoute";
 import Photos from "./pages/Photos";
+import Comunicacao from "./pages/Comunicacao";
 
 const queryClient = new QueryClient();
 
@@ -85,6 +86,8 @@ const App = () => (
                 <Route path="/catequista/cronograma" element={<Cronograma />} />
                 <Route path="/catequista/material" element={<Material />} />
                 <Route path="/catequista/musicas" element={<Musicas />} />
+                {/* Rotas Gerais (autenticadas) */}
+                <Route path="/comunicacao" element={<Comunicacao />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
