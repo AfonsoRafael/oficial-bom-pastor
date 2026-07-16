@@ -247,15 +247,22 @@ model Documento {
 }
 
 model Evento {
-  id        String   @id @default(uuid()) @map("cod_evento")
-  titulo    String   @map("dsc_titulo")
-  descricao String?  @map("dsc_descricao")
-  data      DateTime
-  tipo      String
-  turmaId   String?  @map("cod_turma")
-  turma     Turma?   @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  criadoEm  DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(uuid()) @map("cod_evento")
+  titulo      String    @map("dsc_titulo")
+  descricao   String?   @map("dsc_descricao")
+  data        DateTime
+  dataFim     DateTime? @map("dat_fim")
+  horaInicio  String?   @map("hor_inicio")
+  horaFim     String?   @map("hor_fim")
+  local       String?   @map("dsc_local")
+  categoria   String    @default("ENCONTRO") @map("dsc_categoria")
+  cor         String?   @map("dsc_cor")
+  recorrencia String?   @map("dsc_recorrencia") // DIARIO, SEMANAL, MENSAL, ANUAL, null
+  tipo        String    @default("GERAL")
+  turmaId     String?   @map("cod_turma")
+  turma       Turma?    @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  criadoEm    DateTime  @default(now()) @map("dat_criado_em")
+  updatedAt   DateTime  @updatedAt @map("dat_atualizado_em")
 
   @@map("eventos")
 }

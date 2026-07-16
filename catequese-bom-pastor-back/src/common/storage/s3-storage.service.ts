@@ -58,7 +58,6 @@ export class S3StorageService {
   async uploadBase64Document(base64OrDataUrl: string, folder: string, documentLabel: string): Promise<string> {
     const parsed = this.parseBase64(base64OrDataUrl);
     const uploaded = await this.uploadBufferDocument(parsed.buffer, parsed.mimeType, folder, documentLabel);
-    // console.log(accessKeyId, secretAccessKey, this.bucket, this.region, this.endpoint);
 
     return uploaded.url;
   }

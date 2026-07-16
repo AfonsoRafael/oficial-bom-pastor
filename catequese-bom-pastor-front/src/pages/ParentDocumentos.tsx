@@ -162,24 +162,24 @@ export default function ParentDocumentos() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "aprovado":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300";
       case "pendente":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300";
       case "rejeitado":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "aprovado":
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
+        return <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />;
       case "pendente":
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+        return <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />;
       case "rejeitado":
-        return <X className="h-4 w-4 text-red-600" />;
+        return <X className="h-4 w-4 text-red-600 dark:text-red-400" />;
       default:
         return null;
     }
@@ -260,12 +260,12 @@ export default function ParentDocumentos() {
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-8">
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-background dark:to-background p-4 md:p-8">
             <div className="max-w-5xl mx-auto">
             <div className="w-10" />
               <div className="mb-8">
-                <h1 className="text-3xl font-bold text-slate-900">Documentos</h1>
-                <p className="text-slate-600 mt-1">
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Documentos</h1>
+                <p className="text-slate-600 dark:text-slate-400 mt-1">
                   Gerencie os documentos necessários para a catequese
                 </p>
               </div>
@@ -344,9 +344,9 @@ export default function ParentDocumentos() {
 
                         <div>
                           <Label htmlFor="file">Arquivo</Label>
-                          <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-primary transition cursor-pointer">
-                            <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                            <p className="text-sm text-slate-600">
+                          <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-6 text-center hover:border-primary transition cursor-pointer">
+                            <Upload className="h-8 w-8 text-slate-400 dark:text-slate-500 mx-auto mb-2" />
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
                               Clique ou arraste um arquivo
                             </p>
                             <Input
@@ -375,22 +375,22 @@ export default function ParentDocumentos() {
                       {uploadedDocuments.map((doc) => (
                         <div
                           key={doc.id}
-                          className="flex items-start justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition"
+                          className="flex items-start justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition"
                         >
                           <div className="flex items-start gap-4 flex-1">
                             <FileText className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
                             <div className="flex-1">
-                              <h4 className="font-medium text-slate-900">
+                              <h4 className="font-medium text-slate-900 dark:text-slate-100">
                                 {doc.documentType}
                               </h4>
-                              <p className="text-sm text-slate-600">
+                              <p className="text-sm text-slate-600 dark:text-slate-400">
                                 {doc.childName}
                               </p>
-                              <p className="text-xs text-slate-500 mt-1">
+                              <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
                                 Enviado em {doc.uploadDate}
                               </p>
                               {doc.status === "rejeitado" && (
-                                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                                <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
                                   <AlertCircle className="h-3 w-3" />
                                   Motivo: {doc.reason}
                                 </p>
@@ -417,7 +417,7 @@ export default function ParentDocumentos() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                                className="h-8 w-8 p-0 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -428,8 +428,8 @@ export default function ParentDocumentos() {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <FileText className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                      <p className="text-slate-600">
+                      <FileText className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                      <p className="text-slate-600 dark:text-slate-400">
                         Nenhum documento enviado ainda
                       </p>
                     </div>
@@ -464,21 +464,21 @@ export default function ParentDocumentos() {
                       return (
                         <div
                           key={child.id}
-                          className="p-3 bg-slate-50 rounded-lg"
+                          className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg"
                         >
                           <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium text-slate-900">
+                            <h4 className="font-medium text-slate-900 dark:text-slate-100">
                               {child.name}
                             </h4>
                             <Badge variant="outline">{approved}/{total}</Badge>
                           </div>
-                          <div className="w-full bg-slate-200 rounded-full h-2">
+                          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                             <div
                               className="bg-primary rounded-full h-2 transition-all"
                               style={{ width: `${percentage}%` }}
                             />
                           </div>
-                          <p className="text-xs text-slate-600 mt-2">
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
                             {percentage}% completo
                           </p>
                         </div>
@@ -489,14 +489,14 @@ export default function ParentDocumentos() {
               </Card>
 
               {/* Card de Informações */}
-              <Card className="border-0 shadow-sm bg-blue-50 border border-blue-200">
+              <Card className="border-0 shadow-sm bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900">
                 <CardHeader>
-                  <CardTitle className="text-sm flex items-center gap-2 text-blue-900">
+                  <CardTitle className="text-sm flex items-center gap-2 text-blue-900 dark:text-blue-300">
                     <AlertCircle className="h-4 w-4" />
                     Importante
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm text-blue-800">
+                <CardContent className="text-sm text-blue-800 dark:text-blue-300">
                   <ul className="space-y-2">
                     <li>• Documentos em PDF, JPG ou PNG</li>
                     <li>• Tamanho máximo: 5MB</li>

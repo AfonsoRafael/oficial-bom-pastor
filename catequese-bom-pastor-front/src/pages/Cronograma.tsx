@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -32,29 +32,81 @@ import {
   Calendar as CalendarNav,
   Clock,
   Cross,
+  Edit,
   LogOut,
   MapPin,
   Menu,
   Plus,
+  Trash2,
   Users,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 type ViewMode = "day" | "month" | "year";
 
 interface EventItem {
   id: string;
-  title: string;
-  description: string;
-  date: string;
-  type: "TURMA" | "GERAL";
-  turmaName: string | null;
+  titulo: string;
+  descricao: string;
+  data: string;
+  dataFim: string | null;
+  horaInicio: string | null;
+  horaFim: string | null;
+  local: string | null;
+  categoria: string;
+  cor: string | null;
+  recorrencia: string | null;
+  tipo: "TURMA" | "GERAL";
+  turma: { id: string; nome: string } | null;
 }
 
-interface EventForm {
-  title: string;
-  description: string;
-  audience: "comunidade" | "pais-catequistas";
+const CATEGORIA_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  ENCONTRO: { label: "Encontro", color: "text-blue-700", bg: "bg-blue-100 border-blue-300" },
+  FERIADO: { label: "Feriado", color: "text-red-700", bg: "bg-red-100 border-red-300" },
+  EVENTO: { label: "Evento", color: "text-purple-700", bg: "bg-purple-100 border-purple-300" },
+  REUNIAO: { label: "Reunião", color: "text-orange-700", bg: "bg-orange-100 border-orange-300" },
+  RETIRO: { label: "Retiro", color: "text-green-700", bg: "bg-green-100 border-green-300" },
+  CELEBRACAO: { label: "Celebração", color: "text-yellow-700", bg: "bg-yellow-100 border-yellow-300" },
+  OUTRO: { label: "Outro", color: "text-gray-700", bg: "bg-gray-100 border-gray-300" },
+};
+
+const CATEGORIAS = Object.keys(CATEGORIA_CONFIG);
+
+interface EventFormData {
+  titulo: string;
+  descricao: string;
+  data: string;
+  dataFim: string;
+  horaInicio: string;
+  horaFim: string;
+  local: string;
+  categoria: string;
+  cor: string;
+  recorrencia: string;
+  tipo: string;
 }
+
+const emptyForm: EventFormData = {
+  titulo: "",
+  descricao: "",
+  data: "",
+  dataFim: "",
+  horaInicio: "",
+  horaFim: "",
+  local: "",
+  categoria: "ENCONTRO",
+  cor: "",
+  recorrencia: "",
+  tipo: "GERAL",
+};
 
 function normalizeRole(value: string | null): "admin" | "catequista" | "responsavel" | "guest" {
   const role = String(value || "").toLowerCase().trim();
@@ -79,20 +131,42 @@ function toDateKey(dateIso: string): string {
   if (Number.isNaN(parsed.getTime())) {
     return "";
   }
-
   return format(parsed, "yyyy-MM-dd");
 }
 
 function mapEvent(item: any): EventItem {
   return {
     id: String(item?.id || ""),
-    title: String(item?.titulo || "Sem título"),
-    description: String(item?.descricao || ""),
-    date: String(item?.data || ""),
-    type: item?.tipo === "TURMA" ? "TURMA" : "GERAL",
-    turmaName: item?.turma?.nome ? String(item.turma.nome) : null,
+    titulo: String(item?.titulo || "Sem título"),
+    descricao: String(item?.descricao || ""),
+    data: String(item?.data || ""),
+    dataFim: item?.dataFim ? String(item.dataFim) : null,
+    horaInicio: item?.horaInicio ? String(item.horaInicio) : null,
+    horaFim: item?.horaFim ? String(item.horaFim) : null,
+    local: item?.local ? String(item.local) : null,
+    categoria: String(item?.categoria || "ENCONTRO"),
+    cor: item?.cor ? String(item.cor) : null,
+    recorrencia: item?.recorrencia ? String(item.recorrencia) : null,
+    tipo: item?.tipo === "TURMA" ? "TURMA" : "GERAL",
+    turma: item?.turma ?? null,
   };
 }
+
+function getCategoriaBadge(categoria: string) {
+  const config = CATEGORIA_CONFIG[categoria] ?? CATEGORIA_CONFIG.OUTRO;
+  return `${config.bg} ${config.color}`;
+}
+
+function getCategoriaLabel(categoria: string) {
+  return CATEGORIA_CONFIG[categoria]?.label ?? categoria;
+}
+
+const RECORRENCIA_LABELS: Record<string, string> = {
+  DIARIO: "Diário",
+  SEMANAL: "Semanal",
+  MENSAL: "Mensal",
+  ANUAL: "Anual",
+};
 
 export default function Cronograma() {
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
@@ -109,11 +183,16 @@ export default function Cronograma() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState<EventForm>({
-    title: "",
-    description: "",
-    audience: "comunidade",
-  });
+
+  // Edit / Delete state
+  const [editingEvent, setEditingEvent] = useState<EventItem | null>(null);
+  const [deletingEvent, setDeletingEvent] = useState<EventItem | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  // Filters
+  const [filterCategoria, setFilterCategoria] = useState<string>("all");
+
+  const [form, setForm] = useState<EventFormData>(emptyForm);
   const canManageEvents = isAdminRoute && isAdmin;
 
   useEffect(() => {
@@ -121,12 +200,16 @@ export default function Cronograma() {
     setIsAdmin(role === "admin");
   }, []);
 
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetchWithAuth(`${API_ROUTES.cronogramaEventos}?limit=1000&offset=0`);
+      const params = new URLSearchParams({ limit: "1000", offset: "0" });
+      if (filterCategoria && filterCategoria !== "all") {
+        params.set("categoria", filterCategoria);
+      }
+      const response = await fetchWithAuth(`${API_ROUTES.cronogramaEventos}?${params}`);
 
       if (!response.ok) {
         throw new Error("Não foi possível carregar os eventos.");
@@ -142,22 +225,22 @@ export default function Cronograma() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterCategoria]);
 
   useEffect(() => {
     loadEvents();
-  }, []);
+  }, [loadEvents]);
 
   const eventKeys = useMemo(() => {
-    return new Set(events.map((event) => toDateKey(event.date)).filter(Boolean));
+    return new Set(events.map((event) => toDateKey(event.data)).filter(Boolean));
   }, [events]);
 
   const selectedKey = useMemo(() => format(date, "yyyy-MM-dd"), [date]);
 
   const eventsForDay = useMemo(() => {
     return events
-      .filter((event) => toDateKey(event.date) === selectedKey)
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      .filter((event) => toDateKey(event.data) === selectedKey)
+      .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
   }, [events, selectedKey]);
 
   const monthEvents = useMemo(() => {
@@ -166,25 +249,25 @@ export default function Cronograma() {
 
     return events
       .filter((event) => {
-        const parsed = new Date(event.date);
+        const parsed = new Date(event.data);
         return parsed.getMonth() === targetMonth && parsed.getFullYear() === targetYear;
       })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
   }, [date, events]);
 
   const yearEvents = useMemo(() => {
     const targetYear = date.getFullYear();
 
     return events
-      .filter((event) => new Date(event.date).getFullYear() === targetYear)
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      .filter((event) => new Date(event.data).getFullYear() === targetYear)
+      .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
   }, [date, events]);
 
   const groupedYearEvents = useMemo(() => {
     const grouped: Record<string, EventItem[]> = {};
 
     for (const event of yearEvents) {
-      const parsed = new Date(event.date);
+      const parsed = new Date(event.data);
       const monthLabel = format(parsed, "MMMM", { locale: ptBR });
       if (!grouped[monthLabel]) {
         grouped[monthLabel] = [];
@@ -197,7 +280,7 @@ export default function Cronograma() {
 
   const coverage = useMemo(() => {
     if (viewMode === "year") {
-      const coveredDays = new Set(yearEvents.map((event) => toDateKey(event.date))).size;
+      const coveredDays = new Set(yearEvents.map((event) => toDateKey(event.data))).size;
       return {
         covered: coveredDays,
         total: 365,
@@ -207,7 +290,7 @@ export default function Cronograma() {
 
     if (viewMode === "month") {
       const totalDays = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-      const coveredDays = new Set(monthEvents.map((event) => toDateKey(event.date))).size;
+      const coveredDays = new Set(monthEvents.map((event) => toDateKey(event.data))).size;
       return {
         covered: coveredDays,
         total: totalDays,
@@ -223,39 +306,180 @@ export default function Cronograma() {
     };
   }, [date, eventsForDay.length, monthEvents, viewMode, yearEvents]);
 
-  const createEvent = async () => {
-    if (!form.title.trim()) {
-      return;
-    }
+  const resetForm = () => {
+    setForm(emptyForm);
+    setEditingEvent(null);
+    setShowCreateForm(false);
+  };
+
+  const openEditForm = (event: EventItem) => {
+    setEditingEvent(event);
+    setForm({
+      titulo: event.titulo,
+      descricao: event.descricao,
+      data: format(new Date(event.data), "yyyy-MM-dd'T'HH:mm"),
+      dataFim: event.dataFim ? format(new Date(event.dataFim), "yyyy-MM-dd'T'HH:mm") : "",
+      horaInicio: event.horaInicio ?? "",
+      horaFim: event.horaFim ?? "",
+      local: event.local ?? "",
+      categoria: event.categoria,
+      cor: event.cor ?? "",
+      recorrencia: event.recorrencia ?? "",
+      tipo: event.tipo,
+    });
+    setShowCreateForm(true);
+  };
+
+  const submitEvent = async () => {
+    if (!form.titulo.trim()) return;
 
     setSubmitting(true);
     setError(null);
 
-    try {
-      const response = await fetchWithAuth(API_ROUTES.cronogramaEventos, {
-        method: "POST",
-        body: JSON.stringify({
-          titulo: form.title.trim(),
-          descricao: form.description.trim() || undefined,
-          data: date.toISOString(),
-          tipo: form.audience === "comunidade" ? "GERAL" : "TURMA",
-        }),
-      });
+    // Ensure data is valid before using it
+    const eventDate = form.data && form.data.trim()
+      ? new Date(form.data)
+      : date;
 
-      if (!response.ok) {
-        throw new Error("Falha ao criar evento.");
+    if (Number.isNaN(eventDate.getTime())) {
+      setError("Data inválida.");
+      setSubmitting(false);
+      return;
+    }
+
+    const eventDataFim = form.dataFim && form.dataFim.trim()
+      ? new Date(form.dataFim)
+      : undefined;
+
+    const body: any = {
+      titulo: form.titulo.trim(),
+      descricao: form.descricao.trim() || undefined,
+      data: eventDate.toISOString(),
+      dataFim: eventDataFim && !Number.isNaN(eventDataFim.getTime()) ? eventDataFim.toISOString() : undefined,
+      horaInicio: form.horaInicio || undefined,
+      horaFim: form.horaFim || undefined,
+      local: form.local || undefined,
+      categoria: form.categoria,
+      cor: form.cor || undefined,
+      recorrencia: form.recorrencia || undefined,
+      tipo: form.tipo,
+    };
+
+    try {
+      if (editingEvent) {
+        const response = await fetchWithAuth(`${API_ROUTES.cronogramaEventos}/${editingEvent.id}`, {
+          method: "PUT",
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) throw new Error("Falha ao atualizar evento.");
+      } else {
+        const response = await fetchWithAuth(API_ROUTES.cronogramaEventos, {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) throw new Error("Falha ao criar evento.");
       }
 
-      setForm({ title: "", description: "", audience: "comunidade" });
-      setShowCreateForm(false);
+      resetForm();
       await loadEvents();
     } catch (submitError) {
-      console.error("Erro ao criar evento:", submitError);
-      setError("Não foi possível criar o evento.");
+      console.error("Erro ao salvar evento:", submitError);
+      setError("Não foi possível salvar o evento.");
     } finally {
       setSubmitting(false);
     }
   };
+
+  const confirmDelete = async () => {
+    if (!deletingEvent) return;
+
+    setSubmitting(true);
+    try {
+      const response = await fetchWithAuth(`${API_ROUTES.cronogramaEventos}/${deletingEvent.id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Falha ao deletar evento.");
+
+      setShowDeleteDialog(false);
+      setDeletingEvent(null);
+      await loadEvents();
+    } catch (err) {
+      console.error("Erro ao deletar evento:", err);
+      setError("Não foi possível deletar o evento.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const renderEventCard = (event: EventItem, showDate = false) => (
+    <div key={event.id} className="rounded-lg border p-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {showDate && (
+            <Badge variant="outline">
+              {format(new Date(event.data), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+            </Badge>
+          )}
+          <Badge className={getCategoriaBadge(event.categoria)} variant="outline">
+            {getCategoriaLabel(event.categoria)}
+          </Badge>
+          <Badge variant="secondary">
+            {event.tipo === "GERAL" ? "Comunidade" : "Turma"}
+          </Badge>
+          {event.turma && <Badge>{event.turma.nome}</Badge>}
+          {event.recorrencia && (
+            <Badge variant="outline" className="text-xs">
+              {RECORRENCIA_LABELS[event.recorrencia] ?? event.recorrencia}
+            </Badge>
+          )}
+        </div>
+        {canManageEvents && (
+          <div className="flex gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => openEditForm(event)}
+            >
+              <Edit className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-red-600 hover:text-red-700"
+              onClick={() => {
+                setDeletingEvent(event);
+                setShowDeleteDialog(true);
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
+      </div>
+      <p className="mt-1 font-medium text-slate-900">{event.titulo}</p>
+      <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+        {event.horaInicio && (
+          <span className="inline-flex items-center gap-1">
+            <Clock className="h-4 w-4" />
+            {event.horaInicio}{event.horaFim ? ` - ${event.horaFim}` : ""}
+          </span>
+        )}
+        {event.local && (
+          <span className="inline-flex items-center gap-1">
+            <MapPin className="h-4 w-4" />
+            {event.local}
+          </span>
+        )}
+        <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+          {format(new Date(event.data), "dd/MM/yyyy")}
+        </span>
+      </div>
+      {event.descricao && (
+        <p className="mt-2 text-sm text-slate-700">{event.descricao}</p>
+      )}
+    </div>
+  );
 
   return (
     <div
@@ -332,7 +556,9 @@ export default function Cronograma() {
           <div className="mx-auto max-w-7xl">
             <div className="mb-8">
               <h1 className="text-4xl font-bold text-slate-900">Cronograma</h1>
-              <p className="text-slate-600">Veja os eventos e acompanhe as datas importantes</p>
+              <p className="text-slate-600">
+                Gerencie encontros, feriados, eventos, reuniões e celebrações do ano
+              </p>
             </div>
 
             {error && (
@@ -366,24 +592,43 @@ export default function Cronograma() {
                 ))}
               </div>
 
-              <div className="w-full max-w-xl">
-                <div className="flex items-center justify-between text-sm text-slate-600">
-                  <span>
-                    {viewMode === "year"
-                      ? "Cobertura do ano"
-                      : viewMode === "month"
-                      ? "Cobertura do mês"
-                      : "Eventos do dia"}
-                  </span>
-                  <span>
-                    {coverage.covered}/{coverage.total} ({coverage.percent}%)
-                  </span>
-                </div>
-                <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-200">
-                  <div
-                    className="h-full bg-primary transition-all"
-                    style={{ width: `${coverage.percent}%` }}
-                  />
+              <div className="flex flex-wrap items-center gap-3">
+                <Select
+                  value={filterCategoria}
+                  onValueChange={(v) => setFilterCategoria(v)}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filtrar por categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as categorias</SelectItem>
+                    {CATEGORIAS.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {getCategoriaLabel(cat)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="w-full max-w-xs">
+                  <div className="flex items-center justify-between text-sm text-slate-600">
+                    <span>
+                      {viewMode === "year"
+                        ? "Cobertura do ano"
+                        : viewMode === "month"
+                        ? "Cobertura do mês"
+                        : "Eventos do dia"}
+                    </span>
+                    <span>
+                      {coverage.covered}/{coverage.total} ({coverage.percent}%)
+                    </span>
+                  </div>
+                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-200">
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{ width: `${coverage.percent}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -392,7 +637,7 @@ export default function Cronograma() {
               <Card className="lg:col-span-1">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <CalendarIcon className="h-5 w-5" /> Cronograma
+                    <CalendarIcon className="h-5 w-5" /> Calendário
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -425,14 +670,24 @@ export default function Cronograma() {
                       </CardDescription>
                     </div>
                     {canManageEvents && (
-                      <Button onClick={() => setShowCreateForm((prev) => !prev)} className="gap-2">
-                        <Plus className="h-4 w-4" /> Adicionar evento
+                      <Button
+                        onClick={() => {
+                          resetForm();
+                          setForm((prev) => ({
+                            ...prev,
+                            data: format(date, "yyyy-MM-dd'T'HH:mm"),
+                          }));
+                          setShowCreateForm(true);
+                        }}
+                        className="gap-2"
+                      >
+                        <Plus className="h-4 w-4" /> Adicionar
                       </Button>
                     )}
                   </div>
                 </CardHeader>
                 <CardContent>
-                    {loading ? (
+                  {loading ? (
                     <div className="rounded-lg border border-dashed p-6 text-center text-sm text-slate-500">
                       Carregando eventos...
                     </div>
@@ -442,86 +697,131 @@ export default function Cronograma() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {eventsForDay.map((event) => (
-                        <div key={event.id} className="rounded-lg border p-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline">
-                              {event.type === "GERAL" ? "Comunidade" : "Pais e Catequistas"}
-                            </Badge>
-                            {event.turmaName && <Badge>{event.turmaName}</Badge>}
-                            <p className="font-medium text-slate-900">{event.title}</p>
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-600">
-                            <span className="inline-flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              {format(new Date(event.date), "HH:mm")}
-                            </span>
-                            <span className="inline-flex items-center gap-1">
-                              <MapPin className="h-4 w-4" />
-                              {event.type === "GERAL"
-                                ? "Visível na comunidade"
-                                : "Visível para pais e catequistas"}
-                            </span>
-                          </div>
-                          {event.description && (
-                            <p className="mt-2 text-sm text-slate-700">{event.description}</p>
-                          )}
-                        </div>
-                      ))}
+                      {eventsForDay.map((event) => renderEventCard(event))}
                     </div>
                   )}
 
                   {canManageEvents && showCreateForm && (
                     <div className="mt-6 rounded-lg border p-4">
                       <p className="mb-3 font-medium">
-                        Novo evento para {format(date, "dd/MM/yyyy")}
+                        {editingEvent ? "Editar evento" : `Novo evento para ${format(date, "dd/MM/yyyy")}`}
                       </p>
                       <div className="grid gap-3">
-                        <Input
-                          placeholder="Título do evento"
-                          value={form.title}
-                          onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                        />
-                        <Textarea
-                          placeholder="Descrição (opcional)"
-                          value={form.description}
-                          onChange={(e) =>
-                            setForm((prev) => ({ ...prev, description: e.target.value }))
-                          }
-                        />
-                        <Select
-                          value={form.audience}
-                          onValueChange={(value: "comunidade" | "pais-catequistas") =>
-                            setForm((prev) => ({ ...prev, audience: value }))
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a visibilidade" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="comunidade">
-                              Comunidade (aparece na página Início)
-                            </SelectItem>
-                            <SelectItem value="pais-catequistas">
-                              Apenas pais e catequistas
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <Label>Título</Label>
+                            <Input
+                              placeholder="Título do evento"
+                              value={form.titulo}
+                              onChange={(e) => setForm((prev) => ({ ...prev, titulo: e.target.value }))}
+                            />
+                          </div>
+                          <div>
+                            <Label>Categoria</Label>
+                            <Select
+                              value={form.categoria}
+                              onValueChange={(v) => setForm((prev) => ({ ...prev, categoria: v }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Categoria" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {CATEGORIAS.map((cat) => (
+                                  <SelectItem key={cat} value={cat}>
+                                    {getCategoriaLabel(cat)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div>
+                          <Label>Descrição</Label>
+                          <Textarea
+                            placeholder="Descrição (opcional)"
+                            value={form.descricao}
+                            onChange={(e) =>
+                              setForm((prev) => ({ ...prev, descricao: e.target.value }))
+                            }
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <Label>Data e Hora início</Label>
+                            <Input
+                              type="datetime-local"
+                              value={form.data}
+                              onChange={(e) =>
+                                setForm((prev) => ({ ...prev, data: e.target.value }))
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Label>Data e Hora fim</Label>
+                            <Input
+                              type="datetime-local"
+                              value={form.dataFim}
+                              onChange={(e) =>
+                                setForm((prev) => ({ ...prev, dataFim: e.target.value }))
+                              }
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <Label>Local</Label>
+                            <Input
+                              placeholder="Local"
+                              value={form.local}
+                              onChange={(e) =>
+                                setForm((prev) => ({ ...prev, local: e.target.value }))
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Label>Recorrência</Label>
+                            <Select
+                              value={form.recorrencia || "none"}
+                              onValueChange={(v) => setForm((prev) => ({ ...prev, recorrencia: v === "none" ? "" : v }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Sem recorrência" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Sem recorrência</SelectItem>
+                                {Object.entries(RECORRENCIA_LABELS).map(([key, label]) => (
+                                  <SelectItem key={key} value={key}>
+                                    {label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label>Visibilidade</Label>
+                            <Select
+                              value={form.tipo}
+                              onValueChange={(v) => setForm((prev) => ({ ...prev, tipo: v }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Visibilidade" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="GERAL">Comunidade (público)</SelectItem>
+                                <SelectItem value="TURMA">Apenas turma</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
                         <div className="flex gap-2">
-                          <Button onClick={createEvent} disabled={submitting}>
-                            {submitting ? "Salvando..." : "Salvar evento"}
+                          <Button onClick={submitEvent} disabled={submitting}>
+                            {submitting
+                              ? "Salvando..."
+                              : editingEvent
+                              ? "Atualizar evento"
+                              : "Salvar evento"}
                           </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setShowCreateForm(false);
-                              setForm({
-                                title: "",
-                                description: "",
-                                audience: "comunidade",
-                              });
-                            }}
-                          >
+                          <Button variant="outline" onClick={resetForm}>
                             Cancelar
                           </Button>
                         </div>
@@ -531,6 +831,7 @@ export default function Cronograma() {
                 </CardContent>
               </Card>
 
+              {/* Month View */}
               <Card className={`lg:col-span-3 ${viewMode === "month" ? "" : "opacity-90"}`}>
                 <CardHeader>
                   <CardTitle>Eventos do mês</CardTitle>
@@ -549,29 +850,13 @@ export default function Cronograma() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {monthEvents.map((event) => (
-                        <div key={event.id} className="rounded-lg border p-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline">
-                              {format(new Date(event.date), "EEEE, dd 'de' MMMM", {
-                                locale: ptBR,
-                              })}
-                            </Badge>
-                            <Badge variant="secondary">
-                              {event.type === "GERAL" ? "Comunidade" : "Pais e Catequistas"}
-                            </Badge>
-                            <p className="font-medium text-slate-900">{event.title}</p>
-                          </div>
-                          {event.description && (
-                            <p className="mt-1 text-sm text-slate-700">{event.description}</p>
-                          )}
-                        </div>
-                      ))}
+                      {monthEvents.map((event) => renderEventCard(event, true))}
                     </div>
                   )}
                 </CardContent>
               </Card>
 
+              {/* Year View */}
               <Card className={`lg:col-span-3 ${viewMode === "year" ? "" : "opacity-90"}`}>
                 <CardHeader>
                   <CardTitle>Eventos do ano</CardTitle>
@@ -601,19 +886,20 @@ export default function Cronograma() {
                           <div className="space-y-3">
                             {monthItems.map((event) => (
                               <div key={event.id} className="rounded-md border p-3">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <Badge variant="secondary">
-                                    {format(new Date(event.date), "dd/MM/yyyy")}
+                                    {format(new Date(event.data), "dd/MM/yyyy")}
+                                  </Badge>
+                                  <Badge className={getCategoriaBadge(event.categoria)} variant="outline">
+                                    {getCategoriaLabel(event.categoria)}
                                   </Badge>
                                   <Badge variant="outline">
-                                    {event.type === "GERAL"
-                                      ? "Comunidade"
-                                      : "Pais e Catequistas"}
+                                    {event.tipo === "GERAL" ? "Comunidade" : "Turma"}
                                   </Badge>
-                                  <p className="font-medium text-slate-900">{event.title}</p>
+                                  <p className="font-medium text-slate-900">{event.titulo}</p>
                                 </div>
-                                {event.description && (
-                                  <p className="mt-1 text-sm text-slate-700">{event.description}</p>
+                                {event.descricao && (
+                                  <p className="mt-1 text-sm text-slate-700">{event.descricao}</p>
                                 )}
                               </div>
                             ))}
@@ -628,6 +914,27 @@ export default function Cronograma() {
           </div>
         </main>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deletar evento</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja deletar o evento "{deletingEvent?.titulo}"?
+              Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={submitting}>
+              {submitting ? "Deletando..." : "Deletar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

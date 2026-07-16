@@ -273,17 +273,83 @@ async function main() {
     },
   });
 
-  // Criar evento
-  const evento = await prisma.evento.create({
-    data: {
+  // Criar eventos variados
+  const eventos = [
+    {
       titulo: 'Missa de Primeira Comunhão',
       descricao: 'Cerimônia de primeira comunhão das turmas 2024',
-      data: new Date('2024-12-15T10:00:00'),
+      data: new Date('2025-06-15T10:00:00Z'),
+      horaInicio: '10:00',
+      horaFim: '12:00',
+      local: 'Matriz da Paróquia',
+      categoria: 'CELEBRACAO',
+      cor: '#EAB308',
       tipo: 'GERAL',
     },
-  });
-  console.log('✅ Evento criado:', evento.titulo);
+    {
+      titulo: 'Encontro de Catequese - Nível I',
+      descricao: 'Tema: Conhecendo Jesus - Parábola do Bom Pastor',
+      data: new Date('2025-03-08T09:00:00Z'),
+      horaInicio: '09:00',
+      horaFim: '11:00',
+      local: 'Salão Paroquial - Sala 1',
+      categoria: 'ENCONTRO',
+      cor: '#3B82F6',
+      recorrencia: 'SEMANAL',
+      tipo: 'TURMA',
+      turmaId: turma2024.id,
+    },
+    {
+      titulo: 'Encontro de Catequese - Nível II',
+      descricao: 'Tema: Os Sacramentos - Eucaristia',
+      data: new Date('2025-03-08T14:00:00Z'),
+      horaInicio: '14:00',
+      horaFim: '16:00',
+      local: 'Salão Paroquial - Sala 2',
+      categoria: 'ENCONTRO',
+      cor: '#3B82F6',
+      recorrencia: 'SEMANAL',
+      tipo: 'TURMA',
+      turmaId: turma2025.id,
+    },
+    {
+      titulo: 'Reunião de Pais e Mestres',
+      descricao: 'Reunião bimestral com os responsáveis para alinhamento do cronograma',
+      data: new Date('2025-03-15T19:00:00Z'),
+      horaInicio: '19:00',
+      horaFim: '21:00',
+      local: 'Salão Paroquial',
+      categoria: 'REUNIAO',
+      cor: '#F97316',
+      tipo: 'GERAL',
+    },
+    {
+      titulo: 'Retiro Espiritual de Páscoa',
+      descricao: 'Retiro de preparação para a Páscoa com todas as turmas',
+      data: new Date('2025-04-12T08:00:00Z'),
+      dataFim: new Date('2025-04-12T17:00:00Z'),
+      horaInicio: '08:00',
+      horaFim: '17:00',
+      local: 'Centro de Retiros São José',
+      categoria: 'RETIRO',
+      cor: '#22C55E',
+      tipo: 'GERAL',
+    },
+    {
+      titulo: 'Feriado: Semana Santa',
+      descricao: 'Semana Santa - Não haverá encontros de catequese',
+      data: new Date('2025-04-14T00:00:00Z'),
+      dataFim: new Date('2025-04-20T23:59:00Z'),
+      categoria: 'FERIADO',
+      cor: '#EF4444',
+      tipo: 'GERAL',
+    },
+  ];
 
+  for (const eventoData of eventos) {
+    const evento = await prisma.evento.create({ data: eventoData });
+    console.log(`✅ Evento criado: ${evento.titulo}`);
+  }
   // Criar música
   const musica = await prisma.musica.create({
     data: {

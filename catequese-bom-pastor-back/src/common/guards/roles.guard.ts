@@ -18,7 +18,6 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    // Auth/role checks are enabled by default. Set DISABLE_AUTH=true only for local/dev bypass.
     const authDisabled = process.env.DISABLE_AUTH === 'true';
 
     if (authDisabled) {
