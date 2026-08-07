@@ -1,3 +1,6 @@
+-- CreateEnum
+CREATE TYPE "DestinatarioTipo" AS ENUM ('ADMINISTRADOR', 'CATEQUISTA', 'RESPONSAVEL', 'TURMA');
+
 -- CreateTable
 CREATE TABLE "administrador" (
     "cod_administrador" TEXT NOT NULL,
@@ -46,7 +49,7 @@ CREATE TABLE "catequizandos" (
     "dsc_nome" TEXT NOT NULL,
     "dat_nascimento" TIMESTAMP(3) NOT NULL,
     "dat_batismo" TIMESTAMP(3),
-    "dsc_cpf" TEXT,
+    "nr_cpf" TEXT,
     "dsc_email" TEXT,
     "dsc_telefone" TEXT,
     "dsc_endereco" TEXT,
@@ -91,8 +94,8 @@ CREATE TABLE "inscricoes_catequistas" (
     "dat_batismo" TIMESTAMP(3),
     "dsc_email" TEXT NOT NULL,
     "dsc_telefone" TEXT NOT NULL,
-    "dsc_casado" TEXT NOT NULL,
-    "dsc_casada_igreja_catolica" TEXT,
+    "flg_casado" BOOLEAN NOT NULL,
+    "flg_casada_igreja_catolica" BOOLEAN,
     "dsc_sacramentos" TEXT,
     "dsc_alergias" TEXT,
     "dsc_comprovante_residencia" TEXT,
@@ -171,7 +174,7 @@ CREATE TABLE "catequistas" (
     "cod_catequista" TEXT NOT NULL,
     "dsc_nome" TEXT NOT NULL,
     "dsc_email" TEXT NOT NULL,
-    "dsc_senha" TEXT NOT NULL,
+    "pws_senha" TEXT NOT NULL,
     "dsc_telefone" TEXT,
     "dsc_endereco" TEXT,
     "dsc_bio" TEXT,
@@ -214,10 +217,17 @@ CREATE TABLE "eventos" (
     "dsc_titulo" TEXT NOT NULL,
     "dsc_descricao" TEXT,
     "data" TIMESTAMP(3) NOT NULL,
-    "tipo" TEXT NOT NULL,
+    "dat_fim" TIMESTAMP(3),
+    "hor_inicio" TEXT,
+    "hor_fim" TEXT,
+    "dsc_local" TEXT,
+    "dsc_categoria" TEXT NOT NULL DEFAULT 'ENCONTRO',
+    "dsc_cor" TEXT,
+    "dsc_recorrencia" TEXT,
+    "tipo" TEXT NOT NULL DEFAULT 'GERAL',
     "cod_turma" TEXT,
-    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "dat_criado_em" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "dat_atualizado_em" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "eventos_pkey" PRIMARY KEY ("cod_evento")
 );
@@ -232,6 +242,20 @@ CREATE TABLE "galerias" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "galerias_pkey" PRIMARY KEY ("cod_galeria")
+);
+
+-- CreateTable
+CREATE TABLE "photos" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "imageUrl" TEXT NOT NULL,
+    "storageKey" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "photos_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -256,6 +280,51 @@ CREATE TABLE "musicas" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "musicas_pkey" PRIMARY KEY ("cod_musica")
+);
+
+-- CreateTable
+CREATE TABLE "mensagens" (
+    "cod_mensagem" TEXT NOT NULL,
+    "dsc_remetente_tipo" "DestinatarioTipo" NOT NULL,
+    "cod_remetente" TEXT NOT NULL,
+    "dsc_assunto" TEXT NOT NULL,
+    "txt_conteudo" TEXT NOT NULL,
+    "ind_lida" BOOLEAN NOT NULL DEFAULT false,
+    "dat_lida_em" TIMESTAMP(3),
+    "dat_criado_em" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "dat_atualizado_em" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "mensagens_pkey" PRIMARY KEY ("cod_mensagem")
+);
+
+-- CreateTable
+CREATE TABLE "mensagens_destinatarios" (
+    "cod_mensagem_destinatario" TEXT NOT NULL,
+    "cod_mensagem" TEXT NOT NULL,
+    "dsc_destinatario_tipo" "DestinatarioTipo" NOT NULL,
+    "cod_destinatario" TEXT NOT NULL,
+    "ind_lida" BOOLEAN NOT NULL DEFAULT false,
+    "dat_lida_em" TIMESTAMP(3),
+    "dat_criado_em" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "mensagens_destinatarios_pkey" PRIMARY KEY ("cod_mensagem_destinatario")
+);
+
+-- CreateTable
+CREATE TABLE "notificacoes" (
+    "cod_notificacao" TEXT NOT NULL,
+    "dsc_usuario_tipo" "DestinatarioTipo" NOT NULL,
+    "cod_usuario" TEXT NOT NULL,
+    "dsc_titulo" TEXT NOT NULL,
+    "dsc_descricao" TEXT NOT NULL,
+    "dsc_tipo" TEXT NOT NULL,
+    "dsc_prioridade" TEXT NOT NULL DEFAULT 'NORMAL',
+    "ind_lida" BOOLEAN NOT NULL DEFAULT false,
+    "dat_lida_em" TIMESTAMP(3),
+    "txt_link_relacionado" TEXT,
+    "dat_criado_em" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "notificacoes_pkey" PRIMARY KEY ("cod_notificacao")
 );
 
 -- CreateTable
@@ -365,6 +434,9 @@ ALTER TABLE "eventos" ADD CONSTRAINT "eventos_cod_turma_fkey" FOREIGN KEY ("cod_
 
 -- AddForeignKey
 ALTER TABLE "imagens" ADD CONSTRAINT "imagens_cod_galeria_fkey" FOREIGN KEY ("cod_galeria") REFERENCES "galerias"("cod_galeria") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "mensagens_destinatarios" ADD CONSTRAINT "mensagens_destinatarios_cod_mensagem_fkey" FOREIGN KEY ("cod_mensagem") REFERENCES "mensagens"("cod_mensagem") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_ItensOrdem" ADD CONSTRAINT "_ItensOrdem_A_fkey" FOREIGN KEY ("A") REFERENCES "loja_items"("cod_loja_item") ON DELETE CASCADE ON UPDATE CASCADE;

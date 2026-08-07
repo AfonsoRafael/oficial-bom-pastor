@@ -2,6 +2,7 @@ import milagresPaes from "@/assets/milagres-paes.jpg";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ContactFormDialog } from "@/components/ContactFormDialog";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 import { fetchPublic } from "@/lib/api";
 import { API_ROUTES } from "@/lib/routes";
 import {
@@ -66,6 +67,7 @@ export default function Lojinha() {
   const [loading, setLoading] = useState(true);
   const [showPix, setShowPix] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
+  const [isReserving, setIsReserving] = useState(false);
   
   // Estados para controlar o carrinho
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -143,6 +145,54 @@ export default function Lojinha() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('pt-BR').format(date);
+  };
+
+  const handleReserveCart = async () => {
+    if (cartTotalItems === 0 || isReserving) {
+      return;
+    }
+
+    setIsReserving(true);
+
+    try {
+      const response = await api.post(
+        (API_ROUTES as any).lojinhaReservas || "/api/loja/itens/reservas",
+        {
+          itens: cart.map((item) => ({
+            itemId: item.product.id,
+            quantidade: item.quantity,
+          })),
+        }
+      );
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Não foi possível registrar a reserva agora.");
+      }
+
+      const retiradaAte = payload?.retiradaAte ? new Date(payload.retiradaAte) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      setCart([]);
+      setShowCartDropdown(false);
+
+      toast({
+        title: "Reserva confirmada",
+        description: `Seu pedido ficou reservado até ${formatDate(retiradaAte)}. A retirada e o pagamento acontecem na secretaria.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Não foi possível reservar",
+        description: error instanceof Error ? error.message : "Tente novamente em instantes.",
+      });
+    } finally {
+      setIsReserving(false);
+    }
+  };
+
   return (
     <MainLayout>
       {/* Hero Section */}
@@ -165,8 +215,8 @@ export default function Lojinha() {
               className="mb-8 text-lg text-primary-foreground/90 md:text-xl animate-slide-up"
               style={{ animationDelay: "0.1s" }}
             >
-              Adquira produtos da catequese e contribua com doações de materiais
-              para auxiliar na formação das crianças.
+              Reserve produtos da catequese pelo site e retire com pagamento na
+              secretaria em até 7 dias.
             </p>
           </div>
         </div>
@@ -193,7 +243,7 @@ export default function Lojinha() {
               Nossos Produtos
             </h2>
             <p className="text-muted-foreground">
-              Produtos exclusivos da Catequese Bom Pastor
+              Produtos exclusivos da Catequese Bom Pastor disponíveis para reserva
             </p>
           </div>
 
@@ -300,10 +350,15 @@ export default function Lojinha() {
                     <span>Total:</span>
                     <span className="text-primary">{formatCurrency(cartTotalPrice)}</span>
                   </div>
-                  <Button className="w-full bg-gold hover:bg-gold-dark text-black font-semibold" onClick={() => {
-                    toast({ title: "Checkout", description: "Integre aqui com a sua página ou modal de pagamento!" });
-                  }}>
-                    Finalizar Pedido
+                  <p className="text-xs text-muted-foreground">
+                    A reserva fica disponível por 7 dias para retirada e pagamento na secretaria.
+                  </p>
+                  <Button
+                    className="w-full bg-gold hover:bg-gold-dark text-black font-semibold"
+                    onClick={handleReserveCart}
+                    disabled={isReserving}
+                  >
+                    {isReserving ? "Reservando..." : "Reservar agora"}
                   </Button>
                 </div>
               </>

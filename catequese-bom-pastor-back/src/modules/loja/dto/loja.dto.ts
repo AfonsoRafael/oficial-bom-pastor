@@ -1,5 +1,18 @@
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsNumber, IsOptional, IsString, IsUrl, MinLength, IsPositive } from 'class-validator';
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUrl,
+  Min,
+  MinLength,
+  IsPositive,
+  ValidateNested,
+} from 'class-validator';
 
 export class CreateItemLojaDto {
   @ApiProperty({ example: 'Livro Práticas de Catequese' })
@@ -26,4 +39,24 @@ export class CreateItemLojaDto {
   @IsString()
   @IsUrl()
   imagemUrl?: string;
+}
+
+export class ReservaLojaItemDto {
+  @ApiProperty({ example: 'b0f7a1a6-2f2d-4b05-bd6f-9c2f7b9c4c91' })
+  @IsString()
+  itemId: string;
+
+  @ApiProperty({ example: 2, minimum: 1 })
+  @IsInt()
+  @Min(1)
+  quantidade: number;
+}
+
+export class CreateReservaLojaDto {
+  @ApiProperty({ type: [ReservaLojaItemDto] })
+  @IsArray()
+  @ArrayNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => ReservaLojaItemDto)
+  itens: ReservaLojaItemDto[];
 }

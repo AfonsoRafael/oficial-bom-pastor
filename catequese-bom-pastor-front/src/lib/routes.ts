@@ -28,6 +28,8 @@ export const API_ROUTES = {
     documentos: (id: number | string) => `/api/catequizandos/${id}/documentos`,
   },
   catequistas: "/api/catequistas",
+  lojinhaReservas: "/api/loja/itens/reservas",
+  lojinhaReservasAdmin: "/api/loja/itens/reservas",
   comunicacao: {
     recipients: "/api/comunicacao/recipients",
     send: "/api/comunicacao/send",

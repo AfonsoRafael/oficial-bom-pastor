@@ -1,10 +1,11 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { USER_ROLES } from '../../common/constants/user-roles';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Public } from '../auth/decorators/public.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CreateReservaLojaDto } from './dto/loja.dto';
 import { ItensLojaService } from './loja.service'; // Ajuste o caminho se necessário
 import { CreateItemLojaDto } from './dto/loja.dto'; // Importando o DTO que criamos
 
@@ -14,6 +15,27 @@ import { CreateItemLojaDto } from './dto/loja.dto'; // Importando o DTO que cria
 @ApiBearerAuth()
 export class ItensLojaController {
   constructor(private readonly itensLojaService: ItensLojaService) {}
+
+  @Post('reservas')
+  @ApiOperation({ summary: 'Criar uma reserva na lojinha' })
+  reservar(@Req() request: any, @Body() dto: CreateReservaLojaDto) {
+    return this.itensLojaService.reservar(dto, request.user);
+  }
+
+  @Get('reservas')
+  @Roles(USER_ROLES.ADMINISTRADOR)
+  @ApiOperation({ summary: 'Listar reservas da lojinha (ADMIN only)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'offset', required: false, type: Number })
+  listarReservas(
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.itensLojaService.listarReservas(
+      limit ? parseInt(limit, 10) : 20,
+      offset ? parseInt(offset, 10) : 0,
+    );
+  }
 
   @Post()
   @Roles(USER_ROLES.ADMINISTRADOR)

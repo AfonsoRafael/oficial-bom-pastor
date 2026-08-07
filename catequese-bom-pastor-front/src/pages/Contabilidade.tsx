@@ -38,11 +38,13 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
 import { SidebarNav } from "@/components/layout/SidebarNav";
 import { ADMIN_NAV_ITEMS } from "@/lib/sidebarNavItems";
 import { Link, useLocation } from "react-router-dom";
+import { api } from "@/lib/api";
+import { API_ROUTES } from "@/lib/routes";
 
 type Sale = { id: string; product: string; qty: number; price: number };
 type Purchase = { id: string; item: string; qty: number; cost: number };
@@ -53,6 +55,28 @@ type Product = {
   price: number;
   stock: number;
   isActive: boolean;
+};
+
+type ReservaItem = {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  preco: number;
+};
+
+type ReservaLojinha = {
+  id: string;
+  status: string;
+  total: number;
+  criadoEm: string;
+  retiradaAte: string;
+  responsavel: {
+    id: string;
+    nome: string;
+    email: string;
+    telefone: string | null;
+  };
+  itens: ReservaItem[];
 };
 
 const Contabilidade = () => {
@@ -71,6 +95,9 @@ const Contabilidade = () => {
     { id: "PROD-003", name: "Caneca Personalizada", category: "Lembranças", price: 30.0, stock: 0, isActive: true },
     { id: "PROD-004", name: "Bíblia Sagrada Jovem", category: "Livros", price: 60.0, stock: 5, isActive: false },
   ]);
+
+  const [reservas, setReservas] = useState<ReservaLojinha[]>([]);
+  const [reservasLoading, setReservasLoading] = useState(false);
 
   // Histórico de Vendas
   const [sales, setSales] = useState<Sale[]>([
@@ -162,6 +189,34 @@ const Contabilidade = () => {
   );
 
   const totalItemsCadastrados = products.length;
+
+  useEffect(() => {
+    const loadReservas = async () => {
+      setReservasLoading(true);
+      try {
+        const response = await api.get((API_ROUTES as any).lojinhaReservasAdmin || "/api/loja/itens/reservas");
+
+        if (!response.ok) {
+          throw new Error("Falha ao carregar reservas");
+        }
+
+        const data = await response.json();
+        setReservas(Array.isArray(data) ? data : data.reservas || []);
+      } catch (error) {
+        console.error("Erro ao carregar reservas da lojinha:", error);
+      } finally {
+        setReservasLoading(false);
+      }
+    };
+
+    loadReservas();
+  }, []);
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+
+  const formatDate = (value: string) =>
+    new Intl.DateTimeFormat("pt-BR").format(new Date(value));
 
   return (
     <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>
@@ -523,6 +578,66 @@ const Contabilidade = () => {
                       Salvar todas as alterações
                     </Button>
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <CardTitle>Reservas da Lojinha</CardTitle>
+                      <CardDescription>
+                        Pedidos já salvos para retirada e pagamento na secretaria.
+                      </CardDescription>
+                    </div>
+                    <Badge variant="outline">{reservas.length} reservas carregadas</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {reservasLoading ? (
+                    <p className="text-sm text-muted-foreground">Carregando reservas...</p>
+                  ) : reservas.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma reserva registrada ainda.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {reservas.map((reserva) => (
+                        <div key={reserva.id} className="rounded-lg border p-4">
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="font-semibold">{reserva.responsavel.nome}</h3>
+                                <Badge variant={reserva.status === "reservada" ? "default" : "secondary"}>
+                                  {reserva.status}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">{reserva.responsavel.email}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Retirar até {formatDate(reserva.retiradaAte)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-bold">{formatCurrency(reserva.total)}</p>
+                              <p className="text-xs text-muted-foreground">{formatDate(reserva.criadoEm)}</p>
+                            </div>
+                          </div>
+
+                          <div className="mt-4">
+                            <p className="mb-2 text-sm font-medium">Itens</p>
+                            <div className="grid gap-2 md:grid-cols-2">
+                              {reserva.itens.map((item) => (
+                                <div key={item.id} className="rounded-md bg-muted/40 px-3 py-2 text-sm">
+                                  <div className="font-medium">{item.nome}</div>
+                                  <div className="text-muted-foreground">{formatCurrency(item.preco)}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
