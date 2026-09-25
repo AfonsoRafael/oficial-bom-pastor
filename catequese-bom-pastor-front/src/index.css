@@ -11,6 +11,86 @@
 @tailwind components;
 @tailwind utilities;
 
+@media (hover: hover) and (pointer: fine) {
+  aside.fixed.inset-y-0.left-0 {
+    top: 4rem;
+    bottom: 0;
+    height: calc(100vh - 4rem);
+    width: 4rem;
+    overflow: hidden;
+    transform: translateX(0);
+    transition: width 160ms ease-out, transform 160ms ease-out;
+  }
+
+  aside.fixed.inset-y-0.left-0:hover {
+    width: 16rem;
+  }
+
+  aside.fixed.inset-y-0.left-0 .sidebar-nav-item {
+    justify-content: center;
+  }
+
+  aside.fixed.inset-y-0.left-0 .sidebar-nav-icon {
+    margin-right: 0;
+  }
+
+  aside.fixed.inset-y-0.left-0 .sidebar-nav-label {
+    display: inline-block;
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    white-space: nowrap;
+    transition: max-width 160ms ease-out, opacity 100ms ease-out, margin 160ms ease-out;
+  }
+
+  aside.fixed.inset-y-0.left-0 > div > div:first-child span,
+  aside.fixed.inset-y-0.left-0 > div > div:nth-child(2) p,
+  aside.fixed.inset-y-0.left-0 > div > div.border-t button {
+    font-size: 0;
+  }
+
+  aside.fixed.inset-y-0.left-0 > div > div.border-t button svg {
+    margin-right: 0;
+  }
+
+  aside.fixed.inset-y-0.left-0:hover .sidebar-nav-item {
+    justify-content: flex-start;
+  }
+
+  aside.fixed.inset-y-0.left-0:hover .sidebar-nav-icon {
+    margin-right: 0.75rem;
+  }
+
+  aside.fixed.inset-y-0.left-0:hover .sidebar-nav-label {
+    max-width: 12rem;
+    opacity: 1;
+  }
+
+  aside.fixed.inset-y-0.left-0:hover > div > div:first-child span,
+  aside.fixed.inset-y-0.left-0:hover > div > div:nth-child(2) p,
+  aside.fixed.inset-y-0.left-0:hover > div > div.border-t button {
+    font-size: revert;
+  }
+
+  aside.fixed.inset-y-0.left-0:hover > div > div.border-t button svg {
+    margin-right: 0.75rem;
+  }
+
+  header.sticky.z-30,
+  header.sticky.z-40 {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+  }
+
+  header.sticky.z-30 + main,
+  header.sticky.z-40 + main {
+    padding-top: 5rem;
+  }
+}
+
 
 @layer base {
   :root {
@@ -140,6 +220,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-body);
+    transition: background-color 180ms ease, color 180ms ease;
   }
 
   h1, h2, h3, h4, h5, h6 {

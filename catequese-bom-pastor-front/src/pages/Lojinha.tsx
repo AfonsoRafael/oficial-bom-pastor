@@ -24,6 +24,7 @@ import {
   Loader2,
   Trash2,
   ShoppingCart,
+  Upload,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -68,6 +69,7 @@ export default function Lojinha() {
   const [showPix, setShowPix] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
   const [isReserving, setIsReserving] = useState(false);
+  const [paymentReceipt, setPaymentReceipt] = useState<File | null>(null);
   
   // Estados para controlar o carrinho
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -145,10 +147,6 @@ export default function Lojinha() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('pt-BR').format(date);
-  };
-
   const handleReserveCart = async () => {
     if (cartTotalItems === 0 || isReserving) {
       return;
@@ -157,14 +155,25 @@ export default function Lojinha() {
     setIsReserving(true);
 
     try {
+      if (!paymentReceipt) {
+        toast({
+          variant: "destructive",
+          title: "Comprovante obrigatório",
+          description: "Anexe o comprovante do PIX para enviar a compra.",
+        });
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("itens", JSON.stringify(cart.map((item) => ({
+        itemId: item.product.id,
+        quantidade: item.quantity,
+      }))));
+      formData.append("comprovantePagamento", paymentReceipt);
+
       const response = await api.post(
         (API_ROUTES as any).lojinhaReservas || "/api/loja/itens/reservas",
-        {
-          itens: cart.map((item) => ({
-            itemId: item.product.id,
-            quantidade: item.quantity,
-          })),
-        }
+        formData
       );
 
       const payload = await response.json().catch(() => null);
@@ -173,14 +182,13 @@ export default function Lojinha() {
         throw new Error(payload?.message || "Não foi possível registrar a reserva agora.");
       }
 
-      const retiradaAte = payload?.retiradaAte ? new Date(payload.retiradaAte) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
       setCart([]);
+      setPaymentReceipt(null);
       setShowCartDropdown(false);
 
       toast({
-        title: "Reserva confirmada",
-        description: `Seu pedido ficou reservado até ${formatDate(retiradaAte)}. A retirada e o pagamento acontecem na secretaria.`,
+        title: "Compra enviada",
+        description: `Seu comprovante foi enviado. Aguarde a confirmação dos administradores para retirar o pedido na secretaria.`,
       });
     } catch (error) {
       toast({
@@ -215,8 +223,7 @@ export default function Lojinha() {
               className="mb-8 text-lg text-primary-foreground/90 md:text-xl animate-slide-up"
               style={{ animationDelay: "0.1s" }}
             >
-              Reserve produtos da catequese pelo site e retire com pagamento na
-              secretaria em até 7 dias.
+              Escolha seus produtos, pague via PIX e envie o comprovante. A retirada acontece na secretaria após a confirmação dos administradores.
             </p>
           </div>
         </div>
@@ -350,15 +357,29 @@ export default function Lojinha() {
                     <span>Total:</span>
                     <span className="text-primary">{formatCurrency(cartTotalPrice)}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    A reserva fica disponível por 7 dias para retirada e pagamento na secretaria.
-                  </p>
+                  <div className="rounded-lg border border-gold/40 bg-gold/10 p-3 text-sm">
+                    <p className="font-semibold">Pagamento via PIX</p>
+                    <p className="mt-1 text-muted-foreground">Chave: <span className="font-mono text-foreground">{pixKey}</span></p>
+                    <button type="button" onClick={copyPixKey} className="mt-2 text-xs font-semibold text-primary hover:underline">
+                      Copiar chave PIX
+                    </button>
+                  </div>
+                  <label className="block rounded-lg border border-dashed border-border p-3 text-sm">
+                    <span className="flex items-center gap-2 font-semibold"><Upload className="h-4 w-4" /> Comprovante do PIX *</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
+                      className="mt-2 block w-full text-xs"
+                      onChange={(event) => setPaymentReceipt(event.target.files?.[0] || null)}
+                    />
+                    {paymentReceipt && <span className="mt-1 block truncate text-xs text-muted-foreground">{paymentReceipt.name}</span>}
+                  </label>
                   <Button
                     className="w-full bg-gold hover:bg-gold-dark text-black font-semibold"
                     onClick={handleReserveCart}
                     disabled={isReserving}
                   >
-                    {isReserving ? "Reservando..." : "Reservar agora"}
+                    {isReserving ? "Enviando..." : "Enviar compra"}
                   </Button>
                 </div>
               </>

@@ -37,6 +37,7 @@ import {
   Trash2,
   Eye,
   EyeOff,
+  CheckCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
@@ -70,6 +71,7 @@ type ReservaLojinha = {
   total: number;
   criadoEm: string;
   retiradaAte: string;
+  comprovantePagamentoUrl: string | null;
   responsavel: {
     id: string;
     nome: string;
@@ -218,21 +220,35 @@ const Contabilidade = () => {
   const formatDate = (value: string) =>
     new Intl.DateTimeFormat("pt-BR").format(new Date(value));
 
+  const handleConfirmarCompra = async (id: string) => {
+    try {
+      const response = await api.patch(`/api/loja/itens/reservas/${id}/confirmar`);
+      if (!response.ok) {
+        throw new Error("Não foi possível confirmar a compra.");
+      }
+      setReservas((prev) => prev.map((reserva) =>
+        reserva.id === id ? { ...reserva, status: "confirmada" } : reserva
+      ));
+    } catch (error) {
+      console.error("Erro ao confirmar compra da lojinha:", error);
+    }
+  };
+
   return (
-    <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>
+    <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-16" : "lg:pl-0"}`}>
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-card transition-transform duration-300 ${
+        className={`group/sidebar fixed inset-y-0 left-0 z-50 w-64 transform overflow-hidden border-r bg-card transition-[width,transform] duration-300 lg:w-16 lg:hover:w-64 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } `}
       >
         <div className="flex h-full flex-col">
-          <div className="flex h-16 items-center justify-between border-b px-4">
-            <Link to="/" className="flex items-center gap-2">
+          <div className="flex h-16 items-center justify-between border-b px-3 lg:px-4">
+            <Link to="/" className="flex items-center gap-2 overflow-hidden">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
                 <Cross className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="font-display text-lg font-semibold">
+              <span className="hidden font-display text-lg font-semibold lg:inline-block lg:max-w-0 lg:overflow-hidden lg:whitespace-nowrap lg:opacity-0 lg:transition-all lg:duration-200 lg:group-hover/sidebar:max-w-none lg:group-hover/sidebar:opacity-100">
                 Catequese
               </span>
             </Link>
@@ -241,27 +257,29 @@ const Contabilidade = () => {
             </Button>
           </div>
 
-          <div className="border-b p-4">
-            <div className="flex items-center gap-3">
+          <div className="border-b p-3 lg:p-4">
+            <div className="flex items-center gap-3 lg:justify-center lg:group-hover/sidebar:justify-start">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
                 <DollarSign className="h-5 w-5 text-primary-foreground" />
               </div>
-              <div>
+              <div className="hidden lg:block lg:max-w-0 lg:overflow-hidden lg:whitespace-nowrap lg:opacity-0 lg:transition-all lg:duration-200 lg:group-hover/sidebar:max-w-none lg:group-hover/sidebar:opacity-100">
                 <p className="font-medium">Área do Admin</p>
               </div>
             </div>
           </div>
 
-          <SidebarNav items={ADMIN_NAV_ITEMS} pathname={location.pathname} />
+          <SidebarNav items={ADMIN_NAV_ITEMS} pathname={location.pathname} collapsible />
 
-          <div className="border-t p-4">
+          <div className="border-t p-3 lg:p-4">
             <Button
               variant="nav"
-              className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive lg:justify-start"
               onClick={handleLogout}
             >
-              <LogOut className="mr-3 h-4 w-4" />
-              Sair
+              <LogOut className="h-4 w-4 lg:mr-3" />
+              <span className="hidden lg:inline-block lg:max-w-0 lg:overflow-hidden lg:whitespace-nowrap lg:opacity-0 lg:transition-all lg:duration-200 lg:group-hover/sidebar:max-w-none lg:group-hover/sidebar:opacity-100">
+                Sair
+              </span>
             </Button>
           </div>
         </div>
@@ -585,9 +603,9 @@ const Contabilidade = () => {
                 <CardHeader>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <CardTitle>Reservas da Lojinha</CardTitle>
+                      <CardTitle>Compras da Lojinha</CardTitle>
                       <CardDescription>
-                        Pedidos já salvos para retirada e pagamento na secretaria.
+                        Compras aguardando conferência do comprovante e confirmação.
                       </CardDescription>
                     </div>
                     <Badge variant="outline">{reservas.length} reservas carregadas</Badge>
@@ -608,7 +626,7 @@ const Contabilidade = () => {
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
                                 <h3 className="font-semibold">{reserva.responsavel.nome}</h3>
-                                <Badge variant={reserva.status === "reservada" ? "default" : "secondary"}>
+                                <Badge variant={reserva.status === "aguardando_confirmacao" ? "outline" : "default"}>
                                   {reserva.status}
                                 </Badge>
                               </div>
@@ -633,6 +651,24 @@ const Contabilidade = () => {
                                 </div>
                               ))}
                             </div>
+                          </div>
+                          <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-4">
+                            {reserva.comprovantePagamentoUrl && (
+                              <a
+                                href={reserva.comprovantePagamentoUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-sm font-medium text-primary hover:underline"
+                              >
+                                Ver comprovante PIX
+                              </a>
+                            )}
+                            {reserva.status !== "confirmada" && (
+                              <Button size="sm" onClick={() => handleConfirmarCompra(reserva.id)}>
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                Confirmar compra
+                              </Button>
+                            )}
                           </div>
                         </div>
                       ))}
