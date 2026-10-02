@@ -73,6 +73,7 @@ interface PreMatricula {
   telefone: string;
   status: PreMatriculaStatus;
   criadoEm: string;
+  needsPasswordSetup?: boolean;
 }
 
 export default function AddCatequizando() {
@@ -84,6 +85,7 @@ export default function AddCatequizando() {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [preMatriculas, setPreMatriculas] = useState<PreMatricula[]>([]);
+  const [preMatriculasAprovadas, setPreMatriculasAprovadas] = useState<PreMatricula[]>([]);
   const [catequizandosSemTurma, setCatequizandosSemTurma] = useState<Catequizando[]>([]);
   const [selectedCatequizando, setSelectedCatequizando] = useState<Catequizando | null>(null);
   const [selectedTurmaId, setSelectedTurmaId] = useState<string>("");
@@ -131,6 +133,7 @@ export default function AddCatequizando() {
         telefone: preMatricula.telefone,
         status: preMatricula.status,
         criadoEm: preMatricula.criadoEm,
+        needsPasswordSetup: Boolean(preMatricula.needsPasswordSetup),
       });
 
       // Carregar turmas
@@ -171,6 +174,15 @@ export default function AddCatequizando() {
           title: "Erro ao buscar pré-matrículas",
           description: errorBody?.message || `Falha na rota de pré-matrículas (${preMatriculasResponse.status})`,
         });
+      }
+
+      const approvedResponse = await fetchWithAuth(`${API_ROUTES.preMatriculas}?status=APPROVED&limit=1000&offset=0`);
+      if (approvedResponse.ok) {
+        const approvedData = await approvedResponse.json();
+        const approvedList = Array.isArray(approvedData?.preMatriculas) ? approvedData.preMatriculas : [];
+        setPreMatriculasAprovadas(approvedList.map(mapPreMatricula));
+      } else {
+        setPreMatriculasAprovadas([]);
       }
 
       // Carregar catequizandos sem turma
@@ -215,9 +227,13 @@ export default function AddCatequizando() {
         throw new Error(error?.message || "Não foi possível aprovar a pré-matrícula");
       }
 
+      const result = await response.json().catch(() => ({}));
       toast({
         title: "Pré-matrícula aprovada",
-        description: `${preMatricula.nomeCatequizando} foi aprovado(a) e já pode ser alocado(a) em uma turma.`,
+        description: result.emailSent
+          ? `Convite para criar a senha enviado para ${preMatricula.email}.`
+          : "A aprovação foi registrada, mas o convite não foi enviado. Verifique o SMTP e reenvie pela lista de aprovadas.",
+        variant: result.emailSent ? "default" : "destructive",
       });
 
       await carregarDados();
@@ -226,6 +242,24 @@ export default function AddCatequizando() {
         variant: "destructive",
         title: "Erro",
         description: error?.message || "Erro ao aprovar pré-matrícula",
+      });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleResendResponsibleInvite = async (preMatricula: PreMatricula) => {
+    setActionLoadingId(preMatricula.id);
+    try {
+      const response = await fetchWithAuth(API_ROUTES.preMatriculasPasswordSetupInvite(preMatricula.id), { method: "POST" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result?.message || "Não foi possível reenviar o convite.");
+      toast({ title: "Convite enviado", description: `Novo link enviado para ${preMatricula.email}.` });
+    } catch (error) {
+      toast({
+        title: "Falha ao enviar convite",
+        description: error instanceof Error ? error.message : "Verifique o SMTP e tente novamente.",
+        variant: "destructive",
       });
     } finally {
       setActionLoadingId(null);
@@ -387,8 +421,8 @@ export default function AddCatequizando() {
 
           {/* Navigation */}
           <nav className="flex-1 space-y-1 p-4">
-            <Button variant={navVariant("/admin")} className="w-full justify-start" asChild>
-              <Link to="/admin">
+            <Button variant={navVariant("/admin/turmas")} className="w-full justify-start" asChild>
+              <Link to="/admin/turmas">
                 <Users className="mr-3 h-4 w-4" />
                 Turmas
               </Link>
@@ -638,6 +672,56 @@ export default function AddCatequizando() {
                             </TableRow>
                             );
                           })}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-lg">
+                  <CardHeader className="border-b">
+                    <CardTitle>Pré-matrículas aprovadas</CardTitle>
+                    <CardDescription>
+                      Reenvie o convite de criação de senha para responsáveis que ainda não ativaram o acesso.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    {preMatriculasAprovadas.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma pré-matrícula aprovada.</p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Catequizando</TableHead>
+                            <TableHead>Responsável</TableHead>
+                            <TableHead>E-mail de acesso</TableHead>
+                            <TableHead>Status do acesso</TableHead>
+                            <TableHead className="text-right">Ação</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {preMatriculasAprovadas.map((preMatricula) => (
+                            <TableRow key={preMatricula.id}>
+                              <TableCell className="font-medium">{preMatricula.nomeCatequizando}</TableCell>
+                              <TableCell>{preMatricula.nomePais}</TableCell>
+                              <TableCell>{preMatricula.email}</TableCell>
+                              <TableCell>
+                                {preMatricula.needsPasswordSetup ? "Aguardando criação de senha" : "Acesso ativado"}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {preMatricula.needsPasswordSetup && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleResendResponsibleInvite(preMatricula)}
+                                    disabled={actionLoadingId === preMatricula.id}
+                                  >
+                                    {actionLoadingId === preMatricula.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Reenviar convite"}
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
                         </TableBody>
                       </Table>
                     )}

@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { USER_ROLES } from '../../common/constants/user-roles';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -17,9 +18,21 @@ export class ItensLojaController {
   constructor(private readonly itensLojaService: ItensLojaService) {}
 
   @Post('reservas')
+  @UseInterceptors(FileInterceptor('comprovantePagamento'))
   @ApiOperation({ summary: 'Criar uma reserva na lojinha' })
-  reservar(@Req() request: any, @Body() dto: CreateReservaLojaDto) {
-    return this.itensLojaService.reservar(dto, request.user);
+  reservar(@Req() request: any, @Body() dto: CreateReservaLojaDto, @UploadedFile() comprovantePagamento?: { buffer: Buffer; mimetype?: string }) {
+    if (!comprovantePagamento) {
+      throw new BadRequestException('Anexe o comprovante do pagamento.');
+    }
+
+    return this.itensLojaService.reservar(dto, request.user, comprovantePagamento);
+  }
+
+  @Patch('reservas/:id/confirmar')
+  @Roles(USER_ROLES.ADMINISTRADOR)
+  @ApiOperation({ summary: 'Confirmar compra da lojinha (ADMIN only)' })
+  confirmarReserva(@Param('id') id: string, @Req() request: any) {
+    return this.itensLojaService.confirmarReserva(id, request.user);
   }
 
   @Get('reservas')

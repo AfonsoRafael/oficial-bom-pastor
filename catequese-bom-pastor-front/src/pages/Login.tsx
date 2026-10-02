@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Cross, Eye, EyeOff, KeyRound, LogIn } from "lucide-react";
+import { Cross, Eye, EyeOff, LogIn } from "lucide-react";
 import { api } from "@/lib/api";
 import { API_ROUTES } from "@/lib/routes";
 import { useToast } from "@/hooks/use-toast";
@@ -162,12 +162,6 @@ console.log("redirecioneli,f");
                 {isLoading ? "Entrando..." : "Entrar"}
               </Button>
 
-              <Button variant="outline" asChild className="w-full">
-                <Link to="/primeiro-acesso">
-                  <KeyRound className="mr-2 h-4 w-4" />
-                  Primeiro Acesso
-                </Link>
-              </Button>
             </form>
           </CardContent>
         </Card>

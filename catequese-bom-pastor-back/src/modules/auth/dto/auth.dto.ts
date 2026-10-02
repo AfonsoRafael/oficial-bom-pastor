@@ -1,42 +1,6 @@
-import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsStrongPassword, IsOptional, IsBoolean, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-
-export class RegisterDto {
-  @ApiProperty({ example: 'admin@catequese.com' })
-  @IsEmail({}, { message: 'Email inválido' })
-  email: string;
-
-  @Transform(({ value }) => String(value).trim())
-  @ApiProperty({ example: 'João Silva' })
-  @IsString({ message: 'Nome deve ser um texto' })
-  @MinLength(3, { message: 'Nome deve ter no mínimo 3 caracteres' })
-  nome: string;
-
-  @Transform(({ value }) => String(value).trim())
-  @ApiProperty({ example: '123' })
-  @IsString({ message: 'Senha deve ser um texto' })
-  @MinLength(6, { message: 'Senha deve ter no mínimo 6 caracteres' })
-  senha: string;
-
-  @Transform(({ value }) => String(value).trim())
-  @ApiProperty({ example: '123' })
-  @IsString({ message: 'Confirmação de senha deve ser um texto' })
-  @MinLength(6, { message: 'Confirmação de senha deve ter no mínimo 6 caracteres' })
-  confirmSenha: string;
-
-  @Transform(({ value }) => value ? String(value).trim() : undefined)
-  @ApiPropertyOptional({ example: '11999999999' })
-  @IsOptional()
-  @IsString({ message: 'Telefone deve ser um texto' })
-  telefone?: string;
-
-  @Transform(({ value }) => value ? String(value).trim() : undefined)
-  @ApiPropertyOptional({ example: 'Administrador' })
-  @IsOptional()
-  @IsString({ message: 'Função deve ser um texto' })
-  role?: string;
-}
 
 export class LoginDto {
   @ApiProperty({ example: 'admin@catequese.com' })
@@ -61,12 +25,65 @@ export class ForgotPasswordDto {
 }
 
 export class ResetPasswordDto {
-  @ApiProperty()
+  @ApiProperty({ description: 'Token de definição enviado por e-mail' })
   @IsString()
   token: string;
 
+  @ApiProperty({ description: 'Senha com 12+ caracteres, maiúscula, minúscula, número e símbolo' })
+  @IsString()
+  @IsStrongPassword({ minLength: 12, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })
+  novaSenha: string;
+}
+
+export class CompletePasswordSetupDto {
+  @ApiProperty({ description: 'Token de definição enviado por e-mail' })
+  @IsString()
+  token: string;
+
+  @ApiProperty({ description: 'Senha com 12+ caracteres, maiúscula, minúscula, número e símbolo' })
+  @IsString()
+  @IsStrongPassword({ minLength: 12, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })
+  senha: string;
+
   @ApiProperty()
   @IsString()
-  @MinLength(6)
-  novaSenha: string;
+  @MinLength(12)
+  confirmacao: string;
+}
+
+export class UpdateMyProfileDto {
+  @ApiPropertyOptional({ example: 'Maria de Souza' })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  nome?: string;
+
+  @ApiPropertyOptional({ example: '(11) 99999-9999' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  telefone?: string;
+
+  @ApiPropertyOptional({ description: 'Remover a foto de perfil atual' })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  removerFoto?: boolean;
+
+  @ApiPropertyOptional({ description: 'Senha atual, obrigatória para alterar senha' })
+  @IsOptional()
+  @IsString()
+  senhaAtual?: string;
+
+  @ApiPropertyOptional({ description: 'Nova senha forte' })
+  @IsOptional()
+  @IsString()
+  @IsStrongPassword({ minLength: 12, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })
+  novaSenha?: string;
+
+  @ApiPropertyOptional({ description: 'Confirmação da nova senha' })
+  @IsOptional()
+  @IsString()
+  confirmacaoNovaSenha?: string;
 }

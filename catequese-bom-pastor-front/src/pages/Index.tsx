@@ -221,8 +221,8 @@ export default function Index() {
                 </Link>
               </Button>
               <Button variant="heroOutline" size="lg" asChild>
-                <Link to="/login">
-                  Renovação
+                <Link to="/inscricao">
+                  Seja Catequista
                   <ChevronRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>

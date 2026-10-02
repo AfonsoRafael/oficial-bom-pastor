@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayNotEmpty,
@@ -54,6 +54,7 @@ export class ReservaLojaItemDto {
 
 export class CreateReservaLojaDto {
   @ApiProperty({ type: [ReservaLojaItemDto] })
+  @Transform(({ value }) => (typeof value === 'string' ? JSON.parse(value) : value))
   @IsArray()
   @ArrayNotEmpty()
   @ValidateNested({ each: true })

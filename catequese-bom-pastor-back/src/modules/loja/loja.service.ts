@@ -1,11 +1,17 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DestinatarioTipo } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { MailerService } from '../../common/mailer/mailer.service';
+import { S3StorageService } from '../../common/storage/s3-storage.service';
 import { CreateItemLojaDto, CreateReservaLojaDto } from './dto/loja.dto';
 
 @Injectable()
 export class ItensLojaService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailerService: MailerService,
+    private readonly s3StorageService: S3StorageService,
+  ) {}
 
   async listarReservas(limit: number = 20, offset: number = 0) {
     const safeLimit = Math.max(1, Math.min(limit, 100));
@@ -47,6 +53,7 @@ export class ItensLojaService {
           status: reserva.status,
           total: reserva.total,
           pagamentoId: reserva.pagamentoId,
+          comprovantePagamentoUrl: reserva.comprovantePagamentoUrl,
           criadoEm: reserva.criadoEm,
           updatedAt: reserva.updatedAt,
           responsavel: responsavel
@@ -69,9 +76,22 @@ export class ItensLojaService {
     };
   }
 
-  async reservar(dto: CreateReservaLojaDto, user: { id: string; email: string; role?: string }) {
+  async reservar(
+    dto: CreateReservaLojaDto,
+    user: { id: string; email: string; role?: string },
+    comprovantePagamento: { buffer: Buffer; mimetype?: string },
+  ) {
     if (!dto.itens.length) {
       throw new BadRequestException('Adicione ao menos um item para reservar.');
+    }
+
+    const mimeType = (comprovantePagamento.mimetype || '').toLowerCase().trim();
+    const allowedMimeTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedMimeTypes.includes(mimeType)) {
+      throw new BadRequestException('Formato de comprovante invalido. Envie PDF ou imagem (JPG, PNG, WEBP).');
+    }
+    if (comprovantePagamento.buffer.length > 10 * 1024 * 1024) {
+      throw new BadRequestException('O comprovante deve ter no maximo 10 MB.');
     }
 
     const itensAgrupados = new Map<string, number>();
@@ -108,6 +128,12 @@ export class ItensLojaService {
     });
 
     const total = linhas.reduce((acc, linha) => acc + linha.subtotal, 0);
+    const comprovante = await this.s3StorageService.uploadBufferDocument(
+      comprovantePagamento.buffer,
+      mimeType,
+      'comprovantes-lojinha',
+      'pagamento',
+    );
     const responsavel = await this.prisma.responsavel.findUnique({
       where: { id: user.id },
       select: { nome: true, email: true },
@@ -117,7 +143,8 @@ export class ItensLojaService {
       data: {
         responsavelId: user.id,
         total,
-        status: 'reservada',
+        status: 'aguardando_confirmacao',
+        comprovantePagamentoUrl: comprovante.url,
         itens: {
           connect: itemIds.map((id) => ({ id })),
         },
@@ -125,27 +152,48 @@ export class ItensLojaService {
     });
 
     const admins = await this.prisma.administrador.findMany({
-      select: { id: true },
+      select: { id: true, email: true },
     });
 
     const retiradaAte = new Date();
     retiradaAte.setDate(retiradaAte.getDate() + 7);
 
+    const itensDescricao = linhas
+      .map((linha) => `${linha.quantidade}x ${linha.item.nome}`)
+      .join(', ');
+
     if (admins.length > 0) {
-      const itensDescricao = linhas
-        .map((linha) => `${linha.quantidade}x ${linha.item.nome}`)
-        .join(', ');
 
       await this.prisma.notificacao.createMany({
         data: admins.map((admin) => ({
           usuarioTipo: DestinatarioTipo.ADMINISTRADOR,
           usuarioId: admin.id,
-          titulo: 'Nova reserva na lojinha',
-          descricao: `${responsavel?.nome || user.email} reservou ${itensDescricao}. Retirada e pagamento na secretaria até ${new Intl.DateTimeFormat('pt-BR').format(retiradaAte)}.`,
+          titulo: 'Nova compra na lojinha',
+          descricao: `${responsavel?.nome || user.email} enviou ${itensDescricao} com comprovante PIX. Aguarda confirmacao administrativa.`,
           tipo: 'AVISO',
           prioridade: 'ALTA',
           linkRelacionado: '/lojinha',
         })),
+      });
+    }
+
+    const adminEmails = admins.map((admin) => admin.email).filter(Boolean);
+    if (adminEmails.length > 0) {
+      await this.mailerService.sendMail({
+        to: adminEmails,
+        subject: 'Nova compra da lojinha aguardando confirmacao',
+        text: [
+          'Uma nova compra da lojinha foi recebida.',
+          `Responsavel: ${responsavel?.nome || user.email}`,
+          `Itens: ${itensDescricao}`,
+          `Total: R$ ${total.toFixed(2)}`,
+          'O comprovante PIX esta anexado a este email.',
+        ].join('\n'),
+        attachments: [{
+          filename: `comprovante-${reserva.id}.${mimeType === 'application/pdf' ? 'pdf' : 'jpg'}`,
+          content: comprovantePagamento.buffer,
+          contentType: mimeType,
+        }],
       });
     }
 
@@ -160,8 +208,54 @@ export class ItensLojaService {
       })),
       total,
       retiradaAte: retiradaAte.toISOString(),
-      mensagem: 'Reserva registrada com sucesso. Retire e pague na secretaria em até 7 dias.',
+      mensagem: 'Compra enviada com sucesso. Aguarde a confirmacao dos administradores para retirar na secretaria.',
     };
+  }
+
+  async confirmarReserva(id: string, admin: { id: string }) {
+    const reserva = await this.prisma.ordemLoja.findUnique({
+      where: { id },
+    });
+
+    if (!reserva) {
+      throw new NotFoundException('Compra da lojinha nao encontrada.');
+    }
+
+    if (reserva.status === 'confirmada') {
+      return reserva;
+    }
+
+    const confirmada = await this.prisma.ordemLoja.update({
+      where: { id },
+      data: { status: 'confirmada' },
+    });
+
+    const responsavel = await this.prisma.responsavel.findUnique({
+      where: { id: reserva.responsavelId },
+      select: { email: true },
+    });
+
+    if (responsavel?.email) {
+      await this.mailerService.sendMail({
+        to: [responsavel.email],
+        subject: 'Sua compra da lojinha foi confirmada',
+        text: 'O pagamento da sua compra da lojinha foi confirmado. Retire seus itens na secretaria da catequese.',
+      });
+    }
+
+    await this.prisma.notificacao.create({
+      data: {
+        usuarioTipo: DestinatarioTipo.RESPONSAVEL,
+        usuarioId: reserva.responsavelId,
+        titulo: 'Compra da lojinha confirmada',
+        descricao: 'Seu pagamento foi confirmado. Retire os itens na secretaria da catequese.',
+        tipo: 'SUCESSO',
+        prioridade: 'NORMAL',
+        linkRelacionado: '/lojinha',
+      },
+    });
+
+    return { ...confirmada, confirmadoPor: admin.id };
   }
 
   async create(dto: CreateItemLojaDto) {

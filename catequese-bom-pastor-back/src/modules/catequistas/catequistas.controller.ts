@@ -35,7 +35,7 @@ export class CatequistasController {
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['nome', 'dataNascimento', 'email', 'telefone', 'casado'],
+      required: ['nome', 'dataNascimento', 'email', 'telefone', 'casado', 'aceiteTermoMissao'],
       properties: {
         nome: { type: 'string', example: 'Maria de Souza' },
         dataNascimento: { type: 'string', format: 'date', example: '1990-05-12' },
@@ -44,8 +44,10 @@ export class CatequistasController {
         telefone: { type: 'string', example: '(11) 99999-9999' },
         casado: { type: 'string', example: 'SIM' },
         casadaIgrejaCatolica: { type: 'string', example: 'SIM', description: 'Preencher apenas quando casado for SIM' },
+        aceiteTermoMissao: { type: 'boolean', example: true },
         sacramentos: { type: 'string', example: 'Batismo, Eucaristia e Crisma' },
         alergias: { type: 'string', example: 'Alergia a poeira' },
+        sobreVoce: { type: 'string', example: 'Participo da comunidade há vários anos e gostaria de servir na catequese.' },
         comprovanteResidencia: {
           type: 'string',
           format: 'binary',
@@ -56,6 +58,10 @@ export class CatequistasController {
           format: 'binary',
           description: 'Arquivo de documento de CPF (PDF ou imagem)',
         },
+        comprovanteSacramentoBatismo: { type: 'string', format: 'binary' },
+        comprovanteSacramentoEucaristia: { type: 'string', format: 'binary' },
+        comprovanteSacramentoCrisma: { type: 'string', format: 'binary' },
+        comprovanteSacramentoMatrimonio: { type: 'string', format: 'binary' },
       },
     },
   })
@@ -63,6 +69,10 @@ export class CatequistasController {
     FileFieldsInterceptor([
       { name: 'comprovanteResidencia', maxCount: 1 },
       { name: 'documentoCpf', maxCount: 1 },
+      { name: 'comprovanteSacramentoBatismo', maxCount: 1 },
+      { name: 'comprovanteSacramentoEucaristia', maxCount: 1 },
+      { name: 'comprovanteSacramentoCrisma', maxCount: 1 },
+      { name: 'comprovanteSacramentoMatrimonio', maxCount: 1 },
     ]),
   )
   createInscricao(
@@ -71,6 +81,10 @@ export class CatequistasController {
     files: {
       comprovanteResidencia?: UploadedDocumentFile[];
       documentoCpf?: UploadedDocumentFile[];
+      comprovanteSacramentoBatismo?: UploadedDocumentFile[];
+      comprovanteSacramentoEucaristia?: UploadedDocumentFile[];
+      comprovanteSacramentoCrisma?: UploadedDocumentFile[];
+      comprovanteSacramentoMatrimonio?: UploadedDocumentFile[];
     },
   ) {
     const payload: CreateCatequistaInscricaoDto = {
@@ -79,6 +93,14 @@ export class CatequistasController {
         this.fileToDataUrl(files?.comprovanteResidencia?.[0]) ?? dto.comprovanteResidenciaBase64,
       documentoCpfBase64:
         this.fileToDataUrl(files?.documentoCpf?.[0]) ?? dto.documentoCpfBase64,
+      comprovanteSacramentoBatismoBase64:
+        this.fileToDataUrl(files?.comprovanteSacramentoBatismo?.[0]) ?? dto.comprovanteSacramentoBatismoBase64,
+      comprovanteSacramentoEucaristiaBase64:
+        this.fileToDataUrl(files?.comprovanteSacramentoEucaristia?.[0]) ?? dto.comprovanteSacramentoEucaristiaBase64,
+      comprovanteSacramentoCrismaBase64:
+        this.fileToDataUrl(files?.comprovanteSacramentoCrisma?.[0]) ?? dto.comprovanteSacramentoCrismaBase64,
+      comprovanteSacramentoMatrimonioBase64:
+        this.fileToDataUrl(files?.comprovanteSacramentoMatrimonio?.[0]) ?? dto.comprovanteSacramentoMatrimonioBase64,
     };
 
     return this.catequistasService.createInscricao(payload);
@@ -156,6 +178,13 @@ export class CatequistasController {
     @GetUser('id') adminId: string,
   ) {
     return this.catequistasService.rejectInscricao(id, adminId, dto.observacoesAdmin);
+  }
+
+  @Post('inscricoes/:id/password-setup-invite')
+  @Roles(USER_ROLES.ADMINISTRADOR)
+  @ApiOperation({ summary: 'Reenviar convite para definir senha do catequista (ADMIN only)' })
+  resendPasswordSetupInvite(@Param('id') id: string) {
+    return this.catequistasService.resendPasswordSetupInvite(id);
   }
 
   @Get(':id')

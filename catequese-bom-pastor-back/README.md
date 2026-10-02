@@ -248,6 +248,12 @@ docker-compose up -d
 - `JWT_EXPIRATION`: Expiração do access token (padrão: 15m)
 - `JWT_REFRESH_EXPIRATION`: Expiração do refresh token (padrão: 7d)
 - `FRONTEND_URL`: URL do frontend para CORS
+
+### Convites e criação de senha
+
+As aprovações de pré-matrícula e inscrição de catequista enviam um link para criação de senha. Configure no `.env` do backend um servidor SMTP válido (`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` e `SMTP_FROM`). Sem SMTP, a aprovação fica registrada, a tela administrativa informa que o e-mail não foi enviado e permite reenviar o convite após corrigir a configuração.
+
+Os links expiram em 24 horas e só podem ser usados uma vez. A senha deve ter ao menos 12 caracteres, com letras maiúsculas e minúsculas, número e símbolo.
 - `S3_*`: Configurações de upload S3/R2
 - `RESEND_API_KEY`: API key para envio de emails
 - `STRIPE_API_KEY`: API key do Stripe (pagamentos)

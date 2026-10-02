@@ -4,9 +4,10 @@ import { CatequistasController } from './catequistas.controller';
 import { PrismaModule } from '../../common/prisma/prisma.module';
 import { MailerModule } from '../../common/mailer/mailer.module';
 import { S3StorageService } from '../../common/storage/s3-storage.service';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [PrismaModule, MailerModule],
+  imports: [PrismaModule, MailerModule, AuthModule],
   providers: [CatequistasService, S3StorageService],
   controllers: [CatequistasController],
 })

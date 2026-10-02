@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -26,11 +27,48 @@ type InscricaoCatequistaForm = {
   telefone: string;
   casado: string;
   casadaIgrejaCatolica: string;
-  sacramentos: string;
+  sacramentos: string[];
+  possuiAlergias: string;
   alergias: string;
+  sobreVoce: string;
 };
 
-type DocumentoUploadField = "comprovanteResidencia" | "documentoCpf";
+const SACRAMENT_OPTIONS = [
+  { value: "BATISMO", label: "Batismo", documentField: "comprovanteSacramentoBatismo", requestField: "comprovanteSacramentoBatismo" },
+  { value: "EUCARISTIA", label: "Eucaristia", documentField: "comprovanteSacramentoEucaristia", requestField: "comprovanteSacramentoEucaristia" },
+  { value: "CRISMA", label: "Crisma", documentField: "comprovanteSacramentoCrisma", requestField: "comprovanteSacramentoCrisma" },
+  { value: "MATRIMONIO", label: "Matrimônio", documentField: "comprovanteSacramentoMatrimonio", requestField: "comprovanteSacramentoMatrimonio" },
+] as const;
+
+type SacramentDocumentField = (typeof SACRAMENT_OPTIONS)[number]["documentField"];
+type DocumentoUploadField = "comprovanteResidencia" | "documentoCpf" | SacramentDocumentField;
+
+const createEmptyDocumentFiles = (): Record<DocumentoUploadField, File | null> => ({
+  comprovanteResidencia: null,
+  documentoCpf: null,
+  comprovanteSacramentoBatismo: null,
+  comprovanteSacramentoEucaristia: null,
+  comprovanteSacramentoCrisma: null,
+  comprovanteSacramentoMatrimonio: null,
+});
+
+const createEmptyDocumentNames = (): Record<DocumentoUploadField, string> => ({
+  comprovanteResidencia: "",
+  documentoCpf: "",
+  comprovanteSacramentoBatismo: "",
+  comprovanteSacramentoEucaristia: "",
+  comprovanteSacramentoCrisma: "",
+  comprovanteSacramentoMatrimonio: "",
+});
+
+const createEmptyDocumentErrors = (): Record<DocumentoUploadField, string> => ({
+  comprovanteResidencia: "",
+  documentoCpf: "",
+  comprovanteSacramentoBatismo: "",
+  comprovanteSacramentoEucaristia: "",
+  comprovanteSacramentoCrisma: "",
+  comprovanteSacramentoMatrimonio: "",
+});
 
 const ALLOWED_DOCUMENT_MIME_TYPES = ["application/pdf", "image/jpeg", "image/jpg", "image/png", "image/webp"];
 const MAX_DOCUMENT_SIZE_MB = 5;
@@ -87,6 +125,8 @@ function parseApiErrorMessage(payload: unknown): string {
 export default function Inscricao() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showMissionTerms, setShowMissionTerms] = useState(false);
+  const [missionTermsAccepted, setMissionTermsAccepted] = useState(false);
   const [formData, setFormData] = useState<InscricaoCatequistaForm>({
     nome: "",
     dataNascimento: "",
@@ -95,23 +135,16 @@ export default function Inscricao() {
     telefone: "",
     casado: "",
     casadaIgrejaCatolica: "",
-    sacramentos: "",
+    sacramentos: [],
+    possuiAlergias: "",
     alergias: "",
+    sobreVoce: "",
   });
   const [errors, setErrors] = useState<Partial<Record<keyof InscricaoCatequistaForm, string>>>({});
   const [documentosError, setDocumentosError] = useState("");
-  const [documentoNomes, setDocumentoNomes] = useState<Record<DocumentoUploadField, string>>({
-    comprovanteResidencia: "",
-    documentoCpf: "",
-  });
-  const [documentoTamanhoErrors, setDocumentoTamanhoErrors] = useState<Record<DocumentoUploadField, string>>({
-    comprovanteResidencia: "",
-    documentoCpf: "",
-  });
-  const [documentosFiles, setDocumentosFiles] = useState<Record<DocumentoUploadField, File | null>>({
-    comprovanteResidencia: null,
-    documentoCpf: null,
-  });
+  const [documentoNomes, setDocumentoNomes] = useState(createEmptyDocumentNames);
+  const [documentoTamanhoErrors, setDocumentoTamanhoErrors] = useState(createEmptyDocumentErrors);
+  const [documentosFiles, setDocumentosFiles] = useState(createEmptyDocumentFiles);
 
   const documentosConfig: Array<{ field: DocumentoUploadField; inputId: string; titulo: string; descricao: string }> = [
     {
@@ -126,28 +159,63 @@ export default function Inscricao() {
       titulo: "Documento de CPF *",
       descricao: `Obrigatorio. PDF, PNG, JPG ou WEBP (max. ${MAX_DOCUMENT_SIZE_MB}MB).`,
     },
+    ...SACRAMENT_OPTIONS.filter((option) => formData.sacramentos.includes(option.value)).map((option) => ({
+      field: option.documentField,
+      inputId: `${option.documentField}File`,
+      titulo: `Comprovante de ${option.label.toLowerCase()} *`,
+      descricao: `Obrigatório para o sacramento selecionado. PDF ou imagem, até ${MAX_DOCUMENT_SIZE_MB}MB.`,
+    })),
   ];
 
-  const isValid = useMemo(() => {
-    return (
-      formData.nome.trim().length > 0 &&
-      formData.dataNascimento.trim().length > 0 &&
-      isValidDateString(formData.dataNascimento) &&
-      formData.email.trim().length > 0 &&
-      isValidEmail(formData.email.trim()) &&
-      formData.telefone.trim().length > 0 &&
-      isValidBrazilianPhone(formData.telefone) &&
-      formData.casado.trim().length > 0 &&
-      (formData.casado !== "SIM" || formData.casadaIgrejaCatolica.trim().length > 0) &&
-      Boolean(documentosFiles.comprovanteResidencia) &&
-      Boolean(documentosFiles.documentoCpf)
-    );
+  const missingRequirements = useMemo(() => {
+    const missing: string[] = [];
+    if (!formData.nome.trim()) missing.push("informe seu nome completo");
+    if (!formData.dataNascimento.trim() || !isValidDateString(formData.dataNascimento)) {
+      missing.push("informe uma data de nascimento válida");
+    }
+    if (!formData.email.trim() || !isValidEmail(formData.email.trim())) missing.push("informe um e-mail válido");
+    if (!formData.telefone.trim() || !isValidBrazilianPhone(formData.telefone)) {
+      missing.push("informe um celular válido com DDD");
+    }
+    if (!formData.casado) missing.push("responda se é casado(a)");
+    if (formData.casado === "SIM" && !formData.casadaIgrejaCatolica) {
+      missing.push("informe se é casado(a) na Igreja Católica");
+    }
+    if (!formData.possuiAlergias) missing.push("informe se possui alergias");
+    if (formData.possuiAlergias === "SIM" && !formData.alergias.trim()) {
+      missing.push("descreva suas alergias");
+    }
+    if (!documentosFiles.comprovanteResidencia) missing.push("anexe o comprovante de residência");
+    if (!documentosFiles.documentoCpf) missing.push("anexe o documento de CPF");
+    for (const sacrament of SACRAMENT_OPTIONS) {
+      if (formData.sacramentos.includes(sacrament.value) && !documentosFiles[sacrament.documentField]) {
+        missing.push(`anexe o comprovante de ${sacrament.label.toLowerCase()}`);
+      }
+    }
+    return missing;
   }, [formData, documentosFiles]);
+
+  const isValid = missingRequirements.length === 0;
 
   const setField = <K extends keyof InscricaoCatequistaForm>(field: K, value: InscricaoCatequistaForm[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    setShowMissionTerms(false);
+    setMissionTermsAccepted(false);
     if (field in errors) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const toggleSacrament = (value: (typeof SACRAMENT_OPTIONS)[number]["value"], checked: boolean) => {
+    const option = SACRAMENT_OPTIONS.find((item) => item.value === value);
+    setField(
+      "sacramentos",
+      checked
+        ? [...formData.sacramentos, value]
+        : formData.sacramentos.filter((item) => item !== value),
+    );
+    if (!checked && option) {
+      handleRemoveFile(option.documentField, `${option.documentField}File`);
     }
   };
 
@@ -184,6 +252,12 @@ export default function Inscricao() {
       nextErrors.casado = "Informe se e casada(o).";
     }
 
+    if (!formData.possuiAlergias) {
+      nextErrors.possuiAlergias = "Informe se possui alergias.";
+    } else if (formData.possuiAlergias === "SIM" && !formData.alergias.trim()) {
+      nextErrors.alergias = "Descreva as alergias ou observações de saúde.";
+    }
+
     if (formData.casado === "SIM" && !formData.casadaIgrejaCatolica.trim()) {
       nextErrors.casadaIgrejaCatolica = "Informe se e casada(o) na Igreja Catolica.";
     }
@@ -193,6 +267,8 @@ export default function Inscricao() {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: DocumentoUploadField) => {
+    setShowMissionTerms(false);
+    setMissionTermsAccepted(false);
     const file = e.target.files?.[0];
     if (!file) {
       setDocumentosFiles((prev) => ({ ...prev, [field]: null }));
@@ -202,6 +278,9 @@ export default function Inscricao() {
     }
 
     if (!ALLOWED_DOCUMENT_MIME_TYPES.includes(file.type)) {
+      setDocumentosFiles((prev) => ({ ...prev, [field]: null }));
+      setDocumentoNomes((prev) => ({ ...prev, [field]: "" }));
+      setDocumentoTamanhoErrors((prev) => ({ ...prev, [field]: "Formato inválido. Envie PDF, JPG, PNG ou WEBP." }));
       toast({
         title: "Formato nao permitido",
         description: "Envie apenas PDF ou imagem (JPG, PNG, WEBP).",
@@ -213,6 +292,7 @@ export default function Inscricao() {
 
     if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
       setDocumentosFiles((prev) => ({ ...prev, [field]: null }));
+      setDocumentoNomes((prev) => ({ ...prev, [field]: "" }));
       setDocumentoTamanhoErrors((prev) => ({
         ...prev,
         [field]: `Arquivo muito grande. Limite de ${MAX_DOCUMENT_SIZE_MB}MB por documento.`,
@@ -233,6 +313,8 @@ export default function Inscricao() {
   };
 
   const handleRemoveFile = (field: DocumentoUploadField, inputId: string) => {
+    setShowMissionTerms(false);
+    setMissionTermsAccepted(false);
     setDocumentosFiles((prev) => ({ ...prev, [field]: null }));
     setDocumentoNomes((prev) => ({ ...prev, [field]: "" }));
     setDocumentoTamanhoErrors((prev) => ({ ...prev, [field]: "" }));
@@ -246,18 +328,21 @@ export default function Inscricao() {
     e.preventDefault();
 
     const isFormValid = validateForm();
-    const documentosValidos =
-      Boolean(documentosFiles.comprovanteResidencia) &&
-      Boolean(documentosFiles.documentoCpf);
+    const documentosValidos = documentosConfig.every((documento) => Boolean(documentosFiles[documento.field]));
 
-    setDocumentosError(documentosValidos ? "" : "Os 2 documentos sao obrigatorios para concluir a inscricao.");
+    setDocumentosError(documentosValidos ? "" : "Anexe os documentos obrigatórios, incluindo o comprovante de cada sacramento selecionado.");
 
     if (!isFormValid || !documentosValidos) {
       toast({
         title: "Revise os dados",
-        description: "Preencha os campos obrigatorios e anexe os 2 documentos para enviar.",
+        description: "Preencha os campos obrigatórios e anexe todos os comprovantes solicitados.",
         variant: "destructive",
       });
+      return;
+    }
+
+    if (!missionTermsAccepted) {
+      setShowMissionTerms(true);
       return;
     }
 
@@ -269,8 +354,9 @@ export default function Inscricao() {
       telefone: formatBrazilianPhone(formData.telefone),
       casado: formData.casado,
       casadaIgrejaCatolica: formData.casadaIgrejaCatolica,
-      sacramentos: formData.sacramentos.trim(),
-      alergias: formData.alergias.trim(),
+      sacramentos: formData.sacramentos.join(", "),
+      alergias: formData.possuiAlergias === "SIM" ? formData.alergias.trim() : "",
+      sobreVoce: formData.sobreVoce.trim(),
     };
 
     const requestData = new FormData();
@@ -281,9 +367,13 @@ export default function Inscricao() {
     }
     requestData.append("email", payload.email);
     requestData.append("telefone", payload.telefone);
+    requestData.append("aceiteTermoMissao", "true");
     requestData.append("casado", payload.casado);
     if (payload.casado === "SIM") {
       requestData.append("casadaIgrejaCatolica", payload.casadaIgrejaCatolica);
+    }
+    if (payload.sobreVoce) {
+      requestData.append("sobreVoce", payload.sobreVoce);
     }
 
     if (payload.sacramentos) {
@@ -295,6 +385,11 @@ export default function Inscricao() {
 
     requestData.append("comprovanteResidencia", documentosFiles.comprovanteResidencia!);
     requestData.append("documentoCpf", documentosFiles.documentoCpf!);
+    for (const sacrament of SACRAMENT_OPTIONS) {
+      if (formData.sacramentos.includes(sacrament.value)) {
+        requestData.append(sacrament.requestField, documentosFiles[sacrament.documentField]!);
+      }
+    }
 
     setIsSubmitting(true);
     try {
@@ -329,23 +424,18 @@ export default function Inscricao() {
         telefone: "",
         casado: "",
         casadaIgrejaCatolica: "",
-        sacramentos: "",
+        sacramentos: [],
+        possuiAlergias: "",
         alergias: "",
+        sobreVoce: "",
       });
       setErrors({});
       setDocumentosError("");
-      setDocumentoNomes({
-        comprovanteResidencia: "",
-        documentoCpf: "",
-      });
-      setDocumentoTamanhoErrors({
-        comprovanteResidencia: "",
-        documentoCpf: "",
-      });
-      setDocumentosFiles({
-        comprovanteResidencia: null,
-        documentoCpf: null,
-      });
+      setDocumentoNomes(createEmptyDocumentNames());
+      setDocumentoTamanhoErrors(createEmptyDocumentErrors());
+      setDocumentosFiles(createEmptyDocumentFiles());
+      setShowMissionTerms(false);
+      setMissionTermsAccepted(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -504,31 +594,79 @@ export default function Inscricao() {
                     )}
 
                     <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="sacramentos" className="font-semibold">
-                        Sacramentos
-                      </Label>
-                      <Textarea
-                        id="sacramentos"
-                        value={formData.sacramentos}
-                        onChange={(e) => setField("sacramentos", e.target.value)}
-                        placeholder="Ex.: Batismo, Eucaristia e Crisma"
-                        className="resize-none border-border"
-                        rows={3}
-                      />
+                      <Label className="font-semibold">Sacramentos recebidos</Label>
+                      <div className="grid gap-3 rounded-md border border-border p-4 sm:grid-cols-2">
+                        {SACRAMENT_OPTIONS.map((sacrament) => (
+                          <div key={sacrament.value} className="flex items-center gap-2">
+                            <Checkbox
+                              id={`sacramento-${sacrament.value}`}
+                              checked={formData.sacramentos.includes(sacrament.value)}
+                              onCheckedChange={(checked) => toggleSacrament(sacrament.value, Boolean(checked))}
+                            />
+                            <Label htmlFor={`sacramento-${sacrament.value}`} className="font-normal">
+                              {sacrament.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="alergias" className="font-semibold">
-                        Alergias / observacoes de saude
+                      <Label htmlFor="possuiAlergias" className="font-semibold">
+                        Possui alergias ou observações de saúde? *
+                      </Label>
+                      <Select
+                        value={formData.possuiAlergias}
+                        onValueChange={(value) => {
+                          setField("possuiAlergias", value);
+                          if (value === "NAO") setField("alergias", "");
+                        }}
+                      >
+                        <SelectTrigger id="possuiAlergias" className="border-border">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="NAO">Não</SelectItem>
+                          <SelectItem value="SIM">Sim</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {errors.possuiAlergias && <p className="text-sm text-red-600">{errors.possuiAlergias}</p>}
+                    </div>
+
+                    {formData.possuiAlergias === "SIM" && (
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="alergias" className="font-semibold">
+                          Descreva as alergias ou observações de saúde *
+                        </Label>
+                        <Textarea
+                          id="alergias"
+                          value={formData.alergias}
+                          onChange={(e) => setField("alergias", e.target.value)}
+                          placeholder="Informe alergias, medicações ou cuidados especiais"
+                          className="resize-none border-border"
+                          rows={3}
+                          required
+                        />
+                        {errors.alergias && <p className="text-sm text-red-600">{errors.alergias}</p>}
+                      </div>
+                    )}
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="sobreVoce" className="font-semibold">
+                        Conte um pouco sobre você
                       </Label>
                       <Textarea
-                        id="alergias"
-                        value={formData.alergias}
-                        onChange={(e) => setField("alergias", e.target.value)}
-                        placeholder="Informe alergias ou deixe em branco"
-                        className="resize-none border-border"
-                        rows={3}
+                        id="sobreVoce"
+                        value={formData.sobreVoce}
+                        onChange={(event) => setField("sobreVoce", event.target.value)}
+                        placeholder="Conte sobre sua caminhada de fé, experiências e motivação para servir na catequese."
+                        className="resize-y border-border"
+                        rows={4}
+                        maxLength={2000}
                       />
+                      <p className="text-right text-xs text-muted-foreground">
+                        {formData.sobreVoce.length}/2000
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -578,13 +716,61 @@ export default function Inscricao() {
                   </div>
                 </div>
 
+                {showMissionTerms && (
+                  <section
+                    className="space-y-4 rounded-lg border border-primary/30 bg-primary/5 p-5"
+                    aria-labelledby="mission-terms-title"
+                  >
+                    <div className="space-y-2">
+                      <h3 id="mission-terms-title" className="text-lg font-semibold text-foreground">
+                        Confirmação do compromisso de catequista
+                      </h3>
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        A missão de catequista envolve compromisso com a comunidade e com a formação na fé. Ao aceitar, comprometo-me a:
+                      </p>
+                      <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed text-muted-foreground">
+                        <li>participar das formações, reuniões e atividades para as quais for convocado(a);</li>
+                        <li>preparar e conduzir os encontros de catequese com responsabilidade e fidelidade às orientações da Igreja e da coordenação;</li>
+                        <li>acolher crianças e famílias com respeito, cuidado e bom testemunho cristão;</li>
+                        <li>zelar pela segurança, dignidade e confidencialidade das informações das pessoas atendidas;</li>
+                        <li>comunicar à coordenação ausências, dificuldades ou situações que exijam acompanhamento.</li>
+                      </ul>
+                    </div>
+                    <div className="flex items-start gap-3 border-t border-primary/15 pt-4">
+                      <Checkbox
+                        id="aceiteTermoMissao"
+                        checked={missionTermsAccepted}
+                        onCheckedChange={(checked) => setMissionTermsAccepted(Boolean(checked))}
+                      />
+                      <Label htmlFor="aceiteTermoMissao" className="cursor-pointer text-sm font-medium leading-relaxed">
+                        Estou de acordo com o compromisso descrito acima.
+                      </Label>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowMissionTerms(false);
+                        setMissionTermsAccepted(false);
+                      }}
+                    >
+                      Voltar e revisar os dados
+                    </Button>
+                  </section>
+                )}
+
                 <div className="flex gap-4 pt-2">
                   <Button
                     type="submit"
                     className="h-auto flex-1 py-2 font-semibold"
-                    disabled={isSubmitting || !isValid}
+                    disabled={isSubmitting || (showMissionTerms && !missionTermsAccepted)}
                   >
-                    {isSubmitting ? "Enviando..." : "Enviar inscricao"}
+                    {isSubmitting
+                      ? "Enviando..."
+                      : showMissionTerms
+                        ? "Estou de acordo e enviar inscrição"
+                        : "Enviar inscrição"}
                   </Button>
                   <Button type="button" variant="outline" className="flex-1" asChild>
                     <Link to="/">Cancelar</Link>
@@ -594,6 +780,11 @@ export default function Inscricao() {
                 <p className="border-t pt-4 text-center text-sm text-muted-foreground">
                   Campos com * sao obrigatorios. Sua inscricao sera analisada pela coordenacao.
                 </p>
+                {!isValid && (
+                  <p className="text-center text-sm text-muted-foreground" aria-live="polite">
+                    Para enviar, {missingRequirements.join("; ")}.
+                  </p>
+                )}
               </form>
             </CardContent>
           </Card>

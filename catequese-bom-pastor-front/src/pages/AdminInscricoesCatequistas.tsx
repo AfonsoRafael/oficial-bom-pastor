@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { ADMIN_NAV_ITEMS } from "@/lib/sidebarNavItems";
 import { fetchWithAuth } from "@/lib/api";
 import { API_ROUTES } from "@/lib/routes";
 import {
+  AlertCircle,
   BookOpen,
   Calendar,
   Check,
@@ -37,6 +38,9 @@ import {
   X,
   XCircle,
   Plus,
+  Mail,
+  Eye,
+  ExternalLink,
 } from "lucide-react";
 
 type InscricaoStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -66,7 +70,14 @@ interface InscricaoCatequista {
   casadaIgrejaCatolica?: string | null;
   sacramentos?: string | null;
   alergias?: string | null;
+  sobreVoce?: string | null;
+  termoMissaoVersao?: string | null;
+  termoMissaoAceitoEm?: string | null;
+  ComprovanteResidencia?: string | null;
+  DocumentoCpf?: string | null;
+  comprovantesSacramentos?: Record<string, string> | null;
   status: InscricaoStatus;
+  needsPasswordSetup?: boolean;
   criadoEm: string;
   decisaoEm?: string | null;
   observacoesAdmin?: string | null;
@@ -128,6 +139,12 @@ interface CatequistaFormState {
 const NO_TURMA_VALUE = "__NO_TURMA__";
 const CATEGORIA_CATEQUISTA_VALUE = "catequista";
 const CATEGORIA_AUXILIAR_VALUE = "auxiliar";
+const SACRAMENT_LABELS: Record<string, string> = {
+  BATISMO: "Batismo",
+  EUCARISTIA: "Eucaristia",
+  CRISMA: "Crisma",
+  MATRIMONIO: "Matrimônio",
+};
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -153,7 +170,9 @@ export default function AdminInscricoesCatequistas() {
   const [catequistasLoading, setCatequistasLoading] = useState(false);
   const [turmasLoading, setTurmasLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const loadingInscricoesRef = useRef(false);
   const [inscricoes, setInscricoes] = useState<InscricaoCatequista[]>([]);
+  const [inscricaoSelecionada, setInscricaoSelecionada] = useState<InscricaoCatequista | null>(null);
   const [catequistas, setCatequistas] = useState<Catequista[]>([]);
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<InscricaoStatus | "ALL" | "REUNIOES">("PENDING");
@@ -200,8 +219,10 @@ export default function AdminInscricoesCatequistas() {
     carregarReunioes();
   }, [isAdminRoute]);
 
-  const carregarDados = async () => {
-    setLoading(true);
+  const carregarDados = async (silencioso = false) => {
+    if (loadingInscricoesRef.current) return;
+    loadingInscricoesRef.current = true;
+    if (!silencioso) setLoading(true);
     try {
       const response = await fetchWithAuth(`${API_ROUTES.catequistasInscricoes}?limit=1000&offset=0`);
 
@@ -225,11 +246,24 @@ export default function AdminInscricoesCatequistas() {
           dataBatismo: item.dataBatismo || null,
           email: String(item.email || ""),
           telefone: String(item.telefone || ""),
-          casado: String(item.casado || ""),
-          casadaIgrejaCatolica: item.casadaIgrejaCatolica || null,
+          casado: item.casado === true || item.casado === "true" ? "Sim" : "Não",
+          casadaIgrejaCatolica: item.casadaIgrejaCatolica == null
+            ? null
+            : item.casadaIgrejaCatolica === true || item.casadaIgrejaCatolica === "true"
+              ? "Sim"
+              : "Não",
           sacramentos: item.sacramentos || null,
           alergias: item.alergias || null,
+          sobreVoce: item.sobreVoce || null,
+          termoMissaoVersao: item.termoMissaoVersao || null,
+          termoMissaoAceitoEm: item.termoMissaoAceitoEm || null,
+          ComprovanteResidencia: item.ComprovanteResidencia || null,
+          DocumentoCpf: item.DocumentoCpf || null,
+          comprovantesSacramentos: item.comprovantesSacramentos && typeof item.comprovantesSacramentos === "object"
+            ? item.comprovantesSacramentos
+            : {},
           status: item.status,
+          needsPasswordSetup: Boolean(item.needsPasswordSetup),
           criadoEm: item.criadoEm,
           decisaoEm: item.decisaoEm || null,
           observacoesAdmin: item.observacoesAdmin || null,
@@ -243,16 +277,33 @@ export default function AdminInscricoesCatequistas() {
       );
     } catch (error: any) {
       console.error("Erro ao carregar inscricoes de catequista:", error);
-      setInscricoes([]);
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: error?.message || "Nao foi possivel carregar as inscricoes de catequista",
-      });
+      if (!silencioso) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: error?.message || "Nao foi possivel carregar as inscricoes de catequista",
+        });
+      }
     } finally {
-      setLoading(false);
+      loadingInscricoesRef.current = false;
+      if (!silencioso) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!isAdminRoute) return;
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void carregarDados(true);
+    };
+    const intervalId = window.setInterval(refreshWhenVisible, 30_000);
+    window.addEventListener("focus", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshWhenVisible);
+    };
+  }, [isAdminRoute]);
 
   const carregarTurmas = async () => {
     setTurmasLoading(true);
@@ -455,15 +506,20 @@ export default function AdminInscricoesCatequistas() {
         throw new Error(error?.message || "Nao foi possivel aprovar a inscricao");
       }
 
+      const approvalResult = await response.json().catch(() => ({}));
+
       const turmaSelecionada = turmaId ? turmas.find((turma) => turma.id === turmaId) : null;
 
       toast({
         title: "Inscricao aprovada",
-        description: turmaSelecionada
+        description: !approvalResult.emailSent
+          ? "A aprovação foi registrada, mas o convite não foi enviado. Verifique o SMTP; você poderá reenviá-lo na lista de aprovadas."
+          : turmaSelecionada
           ? `${currentInscricao.nome} foi aprovada e alocada em ${turmaSelecionada.nome} como ${
               selectedCategoriaTurma === CATEGORIA_AUXILIAR_VALUE ? "auxiliar" : "catequista"
             }.`
           : `${currentInscricao.nome} foi aprovada sem alocacao em turma.`,
+        variant: approvalResult.emailSent ? "default" : "destructive",
       });
 
       closeApproveDialog(false);
@@ -473,6 +529,27 @@ export default function AdminInscricoesCatequistas() {
         variant: "destructive",
         title: "Erro",
         description: error?.message || "Erro ao aprovar inscricao",
+      });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleResendPasswordSetupInvite = async (inscricao: InscricaoCatequista) => {
+    setActionLoadingId(inscricao.id);
+    try {
+      const response = await fetchWithAuth(API_ROUTES.catequistasInscricoesPasswordSetupInvite(inscricao.id), {
+        method: "POST",
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.message || "Não foi possível reenviar o convite.");
+      toast({ title: "Convite reenviado", description: `Novo link enviado para ${inscricao.email}.` });
+      await carregarDados();
+    } catch (error) {
+      toast({
+        title: "Falha ao enviar convite",
+        description: error instanceof Error ? error.message : "Verifique o SMTP e tente novamente.",
+        variant: "destructive",
       });
     } finally {
       setActionLoadingId(null);
@@ -763,7 +840,16 @@ export default function AdminInscricoesCatequistas() {
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => setInscricaoSelecionada(inscricao)}
+                    >
+                      <Eye className="h-4 w-4" />
+                      Ver respostas
+                    </Button>
                     {inscricao.status === "PENDING" ? (
                       <>
                         <Button
@@ -791,7 +877,20 @@ export default function AdminInscricoesCatequistas() {
                         </Button>
                       </>
                     ) : (
-                      <span className="text-sm text-muted-foreground">Sem ações</span>
+                      inscricao.needsPasswordSetup ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() => handleResendPasswordSetupInvite(inscricao)}
+                          disabled={actionLoadingId === inscricao.id}
+                        >
+                          {actionLoadingId === inscricao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                          Reenviar convite
+                        </Button>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Acesso ativado</span>
+                      )
                     )}
                   </div>
                 </TableCell>
@@ -988,6 +1087,15 @@ export default function AdminInscricoesCatequistas() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => void carregarDados()}
+                  disabled={loading}
+                >
+                  <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                  Atualizar inscrições
+                </Button>
                 <Button variant="outline" className="gap-2" onClick={openNewCatequistaDialog}>
                   <UserPlus className="h-4 w-4" />
                   Novo catequista
@@ -998,6 +1106,30 @@ export default function AdminInscricoesCatequistas() {
                 </Button>
               </div>
             </div>
+
+            {counts.pending > 0 && (
+              <div
+                role="status"
+                className="mb-6 flex flex-col gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="h-5 w-5 shrink-0 text-amber-700" />
+                  <p className="text-sm font-medium">
+                    {counts.pending === 1
+                      ? "Há 1 inscrição de catequista aguardando sua análise."
+                      : `Há ${counts.pending} inscrições de catequistas aguardando sua análise.`}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-400 bg-white text-amber-950 hover:bg-amber-100"
+                  onClick={() => setSelectedStatus("PENDING")}
+                >
+                  Ver pendentes
+                </Button>
+              </div>
+            )}
 
             <div className="mb-6 grid gap-4 md:grid-cols-4">
               <Card>
@@ -1283,6 +1415,86 @@ export default function AdminInscricoesCatequistas() {
                   </Button>
                 </DialogFooter>
               </DialogContent>
+            </Dialog>
+
+            <Dialog
+              open={Boolean(inscricaoSelecionada)}
+              onOpenChange={(open) => {
+                if (!open) setInscricaoSelecionada(null);
+              }}
+            >
+              {inscricaoSelecionada && (
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+                  <DialogHeader>
+                    <DialogTitle>Respostas da inscrição</DialogTitle>
+                    <DialogDescription>
+                      {inscricaoSelecionada.nome} · enviada em {formatDateTime(inscricaoSelecionada.criadoEm)}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-5">
+                    <section className="space-y-3 rounded-md border p-4">
+                      <h3 className="font-semibold">Dados pessoais</h3>
+                      <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+                        <div><dt className="text-muted-foreground">Nome</dt><dd>{inscricaoSelecionada.nome}</dd></div>
+                        <div><dt className="text-muted-foreground">E-mail</dt><dd>{inscricaoSelecionada.email}</dd></div>
+                        <div><dt className="text-muted-foreground">Telefone</dt><dd>{inscricaoSelecionada.telefone || "Não informado"}</dd></div>
+                        <div><dt className="text-muted-foreground">Nascimento</dt><dd>{formatDate(inscricaoSelecionada.dataNascimento)}</dd></div>
+                        <div><dt className="text-muted-foreground">Batismo</dt><dd>{formatDate(inscricaoSelecionada.dataBatismo)}</dd></div>
+                      </dl>
+                    </section>
+
+                    <section className="space-y-3 rounded-md border p-4">
+                      <h3 className="font-semibold">Respostas</h3>
+                      <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+                        <div><dt className="text-muted-foreground">Casado(a)</dt><dd>{inscricaoSelecionada.casado || "Não informado"}</dd></div>
+                        <div><dt className="text-muted-foreground">Casado(a) na Igreja Católica</dt><dd>{inscricaoSelecionada.casadaIgrejaCatolica || "Não se aplica / não informado"}</dd></div>
+                        <div className="sm:col-span-2"><dt className="text-muted-foreground">Sacramentos</dt><dd>{inscricaoSelecionada.sacramentos || "Nenhum informado"}</dd></div>
+                        <div className="sm:col-span-2"><dt className="text-muted-foreground">Alergias ou observações de saúde</dt><dd className="whitespace-pre-wrap">{inscricaoSelecionada.alergias || "Não informado"}</dd></div>
+                        <div className="sm:col-span-2"><dt className="text-muted-foreground">Sobre você</dt><dd className="whitespace-pre-wrap">{inscricaoSelecionada.sobreVoce || "Não informado"}</dd></div>
+                      </dl>
+                    </section>
+
+                    <section className="space-y-3 rounded-md border p-4">
+                      <h3 className="font-semibold">Compromisso da missão</h3>
+                      <p className="text-sm">
+                        Aceito em: {formatDateTime(inscricaoSelecionada.termoMissaoAceitoEm)}
+                        {inscricaoSelecionada.termoMissaoVersao ? ` · Termo ${inscricaoSelecionada.termoMissaoVersao}` : ""}
+                      </p>
+                    </section>
+
+                    <section className="space-y-3 rounded-md border p-4">
+                      <h3 className="font-semibold">Documentos enviados</h3>
+                      <div className="grid gap-2 text-sm sm:grid-cols-2">
+                        {[
+                          { label: "Comprovante de residência", url: inscricaoSelecionada.ComprovanteResidencia },
+                          { label: "Documento de CPF", url: inscricaoSelecionada.DocumentoCpf },
+                          ...Object.entries(inscricaoSelecionada.comprovantesSacramentos ?? {}).map(([key, url]) => ({
+                            label: `Comprovante de ${SACRAMENT_LABELS[key] ?? key}`,
+                            url,
+                          })),
+                        ].map((documento) => (
+                          <div key={documento.label} className="flex items-center justify-between gap-3 rounded border px-3 py-2">
+                            <span>{documento.label}</span>
+                            {documento.url ? (
+                              <a
+                                href={documento.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex shrink-0 items-center gap-1 text-primary hover:underline"
+                              >
+                                Abrir <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground">Não enviado</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  </div>
+                </DialogContent>
+              )}
             </Dialog>
 
             {/* Modal de Aprovação */}

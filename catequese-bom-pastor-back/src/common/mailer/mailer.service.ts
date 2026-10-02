@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
@@ -7,6 +7,11 @@ export type SendMailParams = {
   subject: string;
   text: string;
   html?: string;
+  attachments?: nodemailer.SendMailOptions['attachments'];
+};
+
+type SendMailOptions = {
+  requireDelivery?: boolean;
 };
 
 @Injectable()
@@ -40,12 +45,15 @@ export class MailerService {
     }
   }
 
-  async sendMail(params: SendMailParams) {
+  async sendMail(params: SendMailParams, options: SendMailOptions = {}) {
     if (!this.transporter) {
+      if (options.requireDelivery) {
+        throw new ServiceUnavailableException('O envio de e-mails não está configurado. Configure o SMTP e tente novamente.');
+      }
       return { skipped: true };
     }
 
-    const { to, subject, text, html } = params;
+    const { to, subject, text, html, attachments } = params;
 
     return this.transporter.sendMail({
       from: this.fromAddress,
@@ -53,6 +61,7 @@ export class MailerService {
       subject,
       text,
       html,
+      attachments,
     });
   }
 }

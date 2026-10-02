@@ -4,6 +4,9 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateCatequistaDto, CreateCatequistaInscricaoDto, UpdateCatequistaDto } from './dto/catequista.dto';
 import { S3StorageService } from '../../common/storage/s3-storage.service';
 import { MailerService } from '../../common/mailer/mailer.service';
+import { AuthService } from '../auth/auth.service';
+import { PasswordSetupProfile } from '@prisma/client';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class CatequistasService {
@@ -11,6 +14,7 @@ export class CatequistasService {
     private prisma: PrismaService,
     private s3StorageService: S3StorageService,
     private mailerService: MailerService,
+    private authService: AuthService,
   ) {}
 
   async findAll() {
@@ -74,6 +78,22 @@ export class CatequistasService {
   }
 
   async createInscricao(dto: CreateCatequistaInscricaoDto) {
+    const sacramentDocuments = [
+      { value: 'BATISMO', field: dto.comprovanteSacramentoBatismoBase64, label: 'comprovante-batismo' },
+      { value: 'EUCARISTIA', field: dto.comprovanteSacramentoEucaristiaBase64, label: 'comprovante-eucaristia' },
+      { value: 'CRISMA', field: dto.comprovanteSacramentoCrismaBase64, label: 'comprovante-crisma' },
+      { value: 'MATRIMONIO', field: dto.comprovanteSacramentoMatrimonioBase64, label: 'comprovante-matrimonio' },
+    ];
+    const selectedSacraments = new Set(
+      (dto.sacramentos ?? '').split(',').map((value) => value.trim().toUpperCase()).filter(Boolean),
+    );
+
+    for (const sacrament of sacramentDocuments) {
+      if (selectedSacraments.has(sacrament.value) && !sacrament.field) {
+        throw new BadRequestException(`O comprovante de ${sacrament.value.toLowerCase()} é obrigatório.`);
+      }
+    }
+
     const comprovanteResidenciaUrl = await this.resolveDocumentLocation(
       dto.comprovanteResidenciaBase64,
       'comprovante-residencia',
@@ -82,6 +102,16 @@ export class CatequistasService {
     const documentoCpfUrl = await this.resolveDocumentLocation(
       dto.documentoCpfBase64,
       'documento-cpf',
+    );
+    const comprovantesSacramentos = Object.fromEntries(
+      await Promise.all(
+        sacramentDocuments
+          .filter((sacrament) => selectedSacraments.has(sacrament.value) && sacrament.field)
+          .map(async (sacrament) => [
+            sacrament.value,
+            await this.resolveDocumentLocation(sacrament.field, sacrament.label),
+          ]),
+      ),
     );
 
     const inscricao = await this.prisma.inscricaoCatequista.create({
@@ -93,10 +123,14 @@ export class CatequistasService {
         telefone: dto.telefone,
         casado: dto.casado,
         casadaIgrejaCatolica: dto.casadaIgrejaCatolica,
+        termoMissaoVersao: '2026-10-v1',
+        termoMissaoAceitoEm: new Date(),
         sacramentos: dto.sacramentos ?? null,
         alergias: dto.alergias ?? null,
+        sobreVoce: dto.sobreVoce?.trim() || null,
         ComprovanteResidencia: comprovanteResidenciaUrl ?? null,
         DocumentoCpf: documentoCpfUrl ?? null,
+        comprovantesSacramentos,
         status: 'PENDING',
       },
       include: {
@@ -134,9 +168,18 @@ export class CatequistasService {
       this.prisma.inscricaoCatequista.count({ where }),
     ]);
 
+    const results = await Promise.all(inscricoes.map(async (inscricao) => {
+      if (inscricao.status !== 'APPROVED') return { ...inscricao, needsPasswordSetup: false };
+      const catequista = await this.prisma.catequista.findUnique({
+        where: { email: inscricao.email },
+        select: { primeiroAcesso: true },
+      });
+      return { ...inscricao, needsPasswordSetup: Boolean(catequista?.primeiroAcesso) };
+    }));
+
     return {
       total,
-      inscricoes,
+      inscricoes: results,
     };
   }
 
@@ -209,11 +252,8 @@ export class CatequistasService {
       throw new NotFoundException('Turma not found');
     }
 
-    let temporaryPassword: string | undefined;
-
     const approvedInscricao = await this.prisma.$transaction(async (tx) => {
-      temporaryPassword = this.generateTemporaryPassword();
-      const temporaryPasswordHash = await bcrypt.hash(temporaryPassword, 10);
+      const temporaryPasswordHash = await bcrypt.hash(randomBytes(48).toString('hex'), 12);
 
       let catequista = await tx.catequista.findUnique({ where: { email: inscricao.email } });
 
@@ -224,7 +264,7 @@ export class CatequistasService {
             email: inscricao.email,
             senha: temporaryPasswordHash,
             telefone: inscricao.telefone,
-            primeiroAcesso: false,
+            primeiroAcesso: true,
           },
         });
       }
@@ -262,9 +302,40 @@ export class CatequistasService {
       });
     });
 
-    await this.notifyCandidateDecision(approvedInscricao.email, approvedInscricao.nome, 'APPROVED', temporaryPassword);
+    let emailSent = false;
+    try {
+      const catequista = await this.prisma.catequista.findUniqueOrThrow({ where: { email: approvedInscricao.email } });
+      const result = await this.authService.sendPasswordSetupInvite(
+        PasswordSetupProfile.CATEQUISTA,
+        catequista.id,
+        catequista.email,
+        catequista.nome,
+      );
+      emailSent = result.emailSent;
+    } catch {
+      emailSent = false;
+    }
 
-    return approvedInscricao;
+    return { ...approvedInscricao, emailSent };
+  }
+
+  async resendPasswordSetupInvite(id: string) {
+    const inscricao = await this.prisma.inscricaoCatequista.findUnique({ where: { id } });
+    if (!inscricao) throw new NotFoundException('Inscricao de catequista not found');
+    if (inscricao.status !== 'APPROVED') throw new BadRequestException('A inscrição precisa estar aprovada para reenviar o convite.');
+
+    const catequista = await this.prisma.catequista.findUnique({ where: { email: inscricao.email } });
+    if (!catequista) throw new NotFoundException('Catequista não encontrado');
+    if (!catequista.primeiroAcesso) {
+      throw new BadRequestException('Este catequista já criou a senha e ativou o acesso.');
+    }
+
+    return this.authService.sendPasswordSetupInvite(
+      PasswordSetupProfile.CATEQUISTA,
+      catequista.id,
+      catequista.email,
+      catequista.nome,
+    );
   }
 
   async rejectInscricao(id: string, adminId: string, observacoesAdmin?: string) {
@@ -302,7 +373,7 @@ export class CatequistasService {
       },
     });
 
-    await this.notifyCandidateDecision(rejectedInscricao.email, rejectedInscricao.nome, 'REJECTED');
+    await this.notifyCandidateDecision(rejectedInscricao.email, rejectedInscricao.nome);
 
     return rejectedInscricao;
   }
@@ -400,39 +471,18 @@ export class CatequistasService {
     });
   }
 
-  private async notifyCandidateDecision(
-    email: string,
-    nome: string,
-    status: 'APPROVED' | 'REJECTED',
-    temporaryPassword?: string,
-  ) {
-    const subject =
-      status === 'APPROVED'
-        ? 'Sua inscricao de catequista foi aprovada'
-        : 'Sua inscricao de catequista foi reprovada';
-
-    const text =
-      status === 'APPROVED'
-        ? [
-            'Sua inscricao de catequista foi aprovada.',
-            `Nome: ${nome}`,
-            `Senha temporaria: ${temporaryPassword || 'definida pela coordenação'}`,
-            'Acesse o sistema com seu email e essa senha inicial.',
-          ]
-        : [
-            'Sua inscricao de catequista nao foi aprovada no momento.',
-            `Nome: ${nome}`,
-            'Caso queira, entre em contato com a coordenação para mais detalhes.',
-          ];
+  private async notifyCandidateDecision(email: string, nome: string) {
+    const subject = 'Sua inscricao de catequista foi reprovada';
+    const text = [
+      'Sua inscricao de catequista nao foi aprovada no momento.',
+      `Nome: ${nome}`,
+      'Caso queira, entre em contato com a coordenação para mais detalhes.',
+    ];
 
     await this.mailerService.sendMail({
       to: [email],
       subject,
       text: text.join('\n'),
     });
-  }
-
-  private generateTemporaryPassword() {
-    return `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   }
 }

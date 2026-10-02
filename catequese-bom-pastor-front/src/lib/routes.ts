@@ -6,6 +6,8 @@ export const API_ROUTES = {
   catequistasInscricoes: "/api/catequistas/inscricoes",
   catequistasInscricoesApprove: (id: number | string) => `/api/catequistas/inscricoes/${id}/approve`,
   catequistasInscricoesReject: (id: number | string) => `/api/catequistas/inscricoes/${id}/reject`,
+  catequistasInscricoesPasswordSetupInvite: (id: number | string) => `/api/catequistas/inscricoes/${id}/password-setup-invite`,
+  preMatriculasPasswordSetupInvite: (id: number | string) => `/api/pre-matriculas/${id}/password-setup-invite`,
   photosBase: "/api/photos",
   photosAdmin: "/api/photos/admin",
   photosPublic: "/api/photos/public",
@@ -15,10 +17,11 @@ export const API_ROUTES = {
   cronogramaEventos: "/api/cronograma/eventos",
   cronogramaEventosPublicos: "/api/cronograma/eventos/publicos",
   auth: {
+    me: "/api/auth/me",
     login: "/api/auth/login",
-    register: "/api/auth/register",
     refresh: "/api/auth/refresh",
     forgotPassword: "/api/auth/forgot-password",
+    passwordSetup: "/api/auth/password-setup",
   },
   turmas: "/api/turmas",
   catequizandos: {

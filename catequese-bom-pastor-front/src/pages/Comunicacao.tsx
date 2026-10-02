@@ -20,9 +20,16 @@ import {
 import { useMensagens } from "@/hooks/useMensagens";
 import { SendMessageDialog } from "@/components/comunicacao/SendMessageDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
+import { SidebarNav } from "@/components/layout/SidebarNav";
+import { ADMIN_NAV_ITEMS, CATECHIST_NAV_ITEMS, PARENT_NAV_ITEMS } from "@/lib/sidebarNavItems";
+import { Link, useLocation } from "react-router-dom";
 import {
+  Cross,
   Mail,
   MailOpen,
+  LogOut,
+  Menu,
   Send,
   MessageSquare,
   Loader2,
@@ -32,7 +39,17 @@ import {
 
 export default function Comunicacao() {
   const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, role, logout } = useAuth();
+  const location = useLocation();
+  const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
+  const activeRole = user?.role ?? role;
+  const navigationItems = activeRole === "admin"
+    ? ADMIN_NAV_ITEMS
+    : activeRole === "catequista"
+      ? CATECHIST_NAV_ITEMS
+      : activeRole === "responsavel"
+        ? PARENT_NAV_ITEMS
+        : [];
   const {
     mensagens,
     total,
@@ -56,7 +73,73 @@ export default function Comunicacao() {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4 max-w-5xl">
+    <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-card transition-transform duration-300 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex h-full flex-col">
+          <div className="flex h-16 items-center justify-between border-b px-4">
+            <Link to="/" className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
+                <Cross className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <span className="font-display text-lg font-semibold">Catequese</span>
+            </Link>
+            <Button variant="ghost" size="icon" onClick={toggleSidebar} aria-label="Fechar menu">
+              <Menu className="h-5 w-5" />
+            </Button>
+          </div>
+          <div className="border-b p-4">
+            <p className="font-medium">
+              {activeRole === "admin"
+                ? "Área do Admin"
+                : activeRole === "catequista"
+                  ? "Área do Catequista"
+                  : activeRole === "responsavel"
+                    ? "Área do Responsável"
+                    : "Carregando perfil..."}
+            </p>
+          </div>
+          <SidebarNav items={navigationItems} pathname={location.pathname} />
+          <div className="border-t p-4">
+            <Button
+              variant="nav"
+              className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={logout}
+            >
+              <LogOut className="mr-3 h-4 w-4" />
+              Sair
+            </Button>
+          </div>
+        </div>
+      </aside>
+
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-foreground/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <main className="min-w-0 flex-1">
+        <header className="sticky top-0 z-30 border-b bg-card">
+          <div className="flex h-16 items-center gap-4 px-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={sidebarOpen ? "lg:hidden" : ""}
+              onClick={toggleSidebar}
+              aria-label="Abrir menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <span className="font-semibold">Comunicação</span>
+          </div>
+        </header>
+
+    <div className="container mx-auto max-w-5xl px-4 py-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -275,6 +358,8 @@ export default function Comunicacao() {
         onClose={() => setIsSendDialogOpen(false)}
         onSuccess={handleSendSuccess}
       />
+    </div>
+      </main>
     </div>
   );
 }

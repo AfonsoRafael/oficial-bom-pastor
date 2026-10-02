@@ -76,21 +76,47 @@ function normalizeDateToYyyyMmDd(value: string): string {
   return `${year}-${month}-${day}`;
 }
 
-function parseApiErrorMessage(payload: unknown): string {
+function parseApiErrors(payload: unknown): {
+  fieldErrors: Partial<Record<keyof CreatePreMatriculaDto, string>>;
+  formError: string;
+} {
+  const fieldErrors: Partial<Record<keyof CreatePreMatriculaDto, string>> = {};
   if (!payload || typeof payload !== "object") {
-    return "Não foi possível enviar a pré-matrícula. Verifique os dados e tente novamente.";
+    return { fieldErrors, formError: "Não foi possível enviar a pré-matrícula. Verifique os dados e tente novamente." };
   }
 
   const maybeMessage = (payload as { message?: unknown }).message;
-  if (Array.isArray(maybeMessage)) {
-    return maybeMessage.map((item) => String(item)).join("\n");
+  const messages = Array.isArray(maybeMessage)
+    ? maybeMessage.map(String)
+    : typeof maybeMessage === "string" && maybeMessage.trim()
+      ? [maybeMessage]
+      : [];
+  const fields: Array<keyof CreatePreMatriculaDto> = [
+    "nomeCatequizando",
+    "dataNascimento",
+    "nomePais",
+    "email",
+    "telefone",
+  ];
+  const unassociatedMessages: string[] = [];
+
+  for (const message of messages) {
+    const field = fields.find((candidate) => message.toLowerCase().startsWith(candidate.toLowerCase()));
+    if (!field) {
+      unassociatedMessages.push(message);
+      continue;
+    }
+
+    fieldErrors[field] = {
+      nomeCatequizando: "Confira o nome informado.",
+      dataNascimento: "Informe uma data de nascimento válida.",
+      nomePais: "Confira os nomes dos pais/responsáveis.",
+      email: "Informe um e-mail válido.",
+      telefone: "Informe um telefone válido com DDD.",
+    }[field];
   }
 
-  if (typeof maybeMessage === "string" && maybeMessage.trim()) {
-    return maybeMessage;
-  }
-
-  return "Não foi possível enviar a pré-matrícula. Verifique os dados e tente novamente.";
+  return { fieldErrors, formError: unassociatedMessages.join(" ") };
 }
 
 function buildPayload(form: PreMatriculaFormState): CreatePreMatriculaDto {
@@ -126,6 +152,7 @@ export default function PreMatriculaCrianca() {
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof CreatePreMatriculaDto, string>>>({});
+  const [formError, setFormError] = useState("");
   const [documentosError, setDocumentosError] = useState<string>("");
   const [confirmacoesError, setConfirmacoesError] = useState<string>("");
   const [documentoNomes, setDocumentoNomes] = useState<Record<DocumentoUploadField, string>>({
@@ -185,6 +212,10 @@ export default function PreMatriculaCrianca() {
 
   const setField = <K extends keyof PreMatriculaFormState>(field: K, value: PreMatriculaFormState[K]) => {
     setData((prev) => ({ ...prev, [field]: value }));
+    setFormError("");
+    if (field === "aceiteReunioes" || field === "aceiteCompromisso" || field === "aceiteRegulamento") {
+      setConfirmacoesError("");
+    }
     if (field in errors) {
       setErrors((prev) => ({ ...prev, [field as keyof CreatePreMatriculaDto]: undefined }));
     }
@@ -236,6 +267,9 @@ export default function PreMatriculaCrianca() {
     }
 
     if (!ALLOWED_DOCUMENT_MIME_TYPES.includes(file.type)) {
+      setDocumentosFiles((prev) => ({ ...prev, [field]: null }));
+      setDocumentoNomes((prev) => ({ ...prev, [field]: "" }));
+      setDocumentoTamanhoErrors((prev) => ({ ...prev, [field]: "Formato inválido. Envie PDF ou imagem JPG, PNG ou WEBP." }));
       toast({
         title: "Formato não permitido",
         description: "Envie apenas PDF ou imagem (JPG, PNG, WEBP).",
@@ -247,6 +281,7 @@ export default function PreMatriculaCrianca() {
 
     if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
       setDocumentosFiles((prev) => ({ ...prev, [field]: null }));
+      setDocumentoNomes((prev) => ({ ...prev, [field]: "" }));
       setDocumentoTamanhoErrors((prev) => ({
         ...prev,
         [field]: `Arquivo muito grande. O limite e ${MAX_DOCUMENT_SIZE_MB}MB por documento.`,
@@ -265,6 +300,7 @@ export default function PreMatriculaCrianca() {
       setDocumentoNomes((prev) => ({ ...prev, [field]: file.name }));
       setDocumentoTamanhoErrors((prev) => ({ ...prev, [field]: "" }));
       setDocumentosError("");
+      setFormError("");
       toast({
         title: "Documento carregado",
         description: `Arquivo ${file.name} pronto para envio.`,
@@ -290,6 +326,7 @@ export default function PreMatriculaCrianca() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError("");
 
     const isFormValid = validateForm();
     const confirmationsValid = hasAllConfirmations();
@@ -347,19 +384,15 @@ export default function PreMatriculaCrianca() {
         }
 
         if (response.status === 400) {
-          toast({
-            title: "Dados inválidos",
-            description: parseApiErrorMessage(apiError),
-            variant: "destructive",
-          });
+          const parsedErrors = parseApiErrors(apiError);
+          setErrors(parsedErrors.fieldErrors);
+          setFormError(parsedErrors.formError || (Object.keys(parsedErrors.fieldErrors).length
+            ? "Revise os campos indicados e envie novamente."
+            : "Não foi possível enviar a pré-matrícula. Verifique os dados e tente novamente."));
           return;
         }
 
-        toast({
-          title: "Erro ao enviar",
-          description: "Não foi possível enviar a pré-matrícula agora. Tente novamente em alguns minutos.",
-          variant: "destructive",
-        });
+        setFormError("Não foi possível enviar a pré-matrícula agora. Tente novamente em alguns minutos.");
         return;
       }
 
@@ -398,12 +431,9 @@ export default function PreMatriculaCrianca() {
       setDocumentosError("");
       setConfirmacoesError("");
       setErrors({});
+      setFormError("");
     } catch {
-      toast({
-        title: "Erro de conexão",
-        description: "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.",
-        variant: "destructive",
-      });
+      setFormError("Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.");
     } finally {
       setIsSubmitting(false);
     }
@@ -653,6 +683,7 @@ export default function PreMatriculaCrianca() {
                 </div>
 
                 <div className="pt-1">
+                  {formError && <p role="alert" className="mb-3 text-sm text-destructive">{formError}</p>}
                   <Button type="submit" className="h-11 w-full text-base" disabled={isSubmitting}>
                     {isSubmitting ? "Enviando..." : "Enviar Pré-Matrícula"}
                   </Button>

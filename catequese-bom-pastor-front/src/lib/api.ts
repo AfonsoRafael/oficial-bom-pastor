@@ -33,8 +33,7 @@ export async function fetchWithAuth(
   const isAuthEndpoint =
     endpoint === API_ROUTES.auth.login ||
     endpoint === API_ROUTES.auth.refresh ||
-    endpoint === API_ROUTES.auth.forgotPassword ||
-    endpoint === API_ROUTES.auth.register;
+    endpoint === API_ROUTES.auth.forgotPassword;
   
   const isFormData = options.body instanceof FormData;
   const headers = new Headers(options.headers ?? {});

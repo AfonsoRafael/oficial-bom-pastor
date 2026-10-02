@@ -142,4 +142,13 @@ export class PreMatriculasController {
   reject(@Param('id') id: string, @Body() dto: RejectPreMatriculaDto, @GetUser('id') adminId: string) {
     return this.preMatriculasService.reject(id, adminId, dto.observacoesAdmin);
   }
+
+  @Post(':id/password-setup-invite')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
+  @Roles(USER_ROLES.ADMINISTRADOR)
+  @ApiOperation({ summary: 'Reenviar convite para definir senha do responsável (ADMIN only)' })
+  resendPasswordSetupInvite(@Param('id') id: string) {
+    return this.preMatriculasService.resendPasswordSetupInvite(id);
+  }
 }

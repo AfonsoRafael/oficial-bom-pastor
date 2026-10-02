@@ -1,9 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreatePreMatriculaDto } from './dto/pre-matricula.dto';
 import { MailerService } from '../../common/mailer/mailer.service';
 import { S3StorageService } from '../../common/storage/s3-storage.service';
+import { AuthService } from '../auth/auth.service';
+import { PasswordSetupProfile } from '@prisma/client';
 
 @Injectable()
 export class PreMatriculasService {
@@ -11,6 +14,7 @@ export class PreMatriculasService {
     private prisma: PrismaService,
     private mailerService: MailerService,
     private s3StorageService: S3StorageService,
+    private authService: AuthService,
   ) {}
 
   async findAll(status?: string, limit: number = 20, offset: number = 0) {
@@ -33,7 +37,16 @@ export class PreMatriculasService {
       this.prisma.preMatricula.count({ where }),
     ]);
 
-    return { total, preMatriculas };
+    const preMatriculasWithAccess = await Promise.all(preMatriculas.map(async (preMatricula) => {
+      if (preMatricula.status !== 'APPROVED') return { ...preMatricula, needsPasswordSetup: false };
+      const responsavel = await this.prisma.responsavel.findUnique({
+        where: { email: preMatricula.email },
+        select: { primeiroAcesso: true },
+      });
+      return { ...preMatricula, needsPasswordSetup: Boolean(responsavel?.primeiroAcesso) };
+    }));
+
+    return { total, preMatriculas: preMatriculasWithAccess };
   }
 
   async findOne(id: string) {
@@ -104,8 +117,11 @@ export class PreMatriculasService {
       throw new BadRequestException('Pre-matricula already rejected');
     }
 
-    // Aprovação integra a pré-matrícula ao fluxo de catequizandos.
-    return this.prisma.$transaction(async (tx) => {
+    if (preMatricula.status === 'APPROVED') {
+      return this.resendPasswordSetupInvite(id);
+    }
+
+    const approved = await this.prisma.$transaction(async (tx) => {
       let responsavel = await tx.responsavel.findUnique({
         where: { email: preMatricula.email },
       });
@@ -117,6 +133,7 @@ export class PreMatriculasService {
             nome: preMatricula.nomePais,
             telefone: preMatricula.telefone,
             senha: await this.generateTemporaryPasswordHash(),
+            primeiroAcesso: true,
           },
         });
       }
@@ -142,15 +159,6 @@ export class PreMatriculasService {
         });
       }
 
-      if (preMatricula.status === 'APPROVED') {
-        return tx.preMatricula.findUniqueOrThrow({
-          where: { id },
-          include: {
-            decisaoPor: true,
-          },
-        });
-      }
-
       return tx.preMatricula.update({
         where: { id },
         data: {
@@ -164,6 +172,43 @@ export class PreMatriculasService {
         },
       });
     });
+
+    const responsavel = await this.prisma.responsavel.findUnique({ where: { email: preMatricula.email } });
+    let emailSent = false;
+    if (responsavel?.primeiroAcesso) {
+      try {
+        const result = await this.authService.sendPasswordSetupInvite(
+          PasswordSetupProfile.RESPONSAVEL,
+          responsavel.id,
+          responsavel.email,
+          responsavel.nome,
+        );
+        emailSent = result.emailSent;
+      } catch {
+        emailSent = false;
+      }
+    }
+
+    return { ...approved, emailSent };
+  }
+
+  async resendPasswordSetupInvite(id: string) {
+    const preMatricula = await this.prisma.preMatricula.findUnique({ where: { id } });
+    if (!preMatricula) throw new NotFoundException('Pre-matricula not found');
+    if (preMatricula.status !== 'APPROVED') throw new BadRequestException('A pré-matrícula precisa estar aprovada para reenviar o convite.');
+
+    const responsavel = await this.prisma.responsavel.findUnique({ where: { email: preMatricula.email } });
+    if (!responsavel) throw new NotFoundException('Responsável não encontrado');
+    if (!responsavel.primeiroAcesso) {
+      throw new BadRequestException('Este responsável já criou a senha e ativou o acesso.');
+    }
+
+    return this.authService.sendPasswordSetupInvite(
+      PasswordSetupProfile.RESPONSAVEL,
+      responsavel.id,
+      responsavel.email,
+      responsavel.nome,
+    );
   }
 
   async reject(id: string, adminId: string, observacoesAdmin?: string) {
@@ -251,7 +296,6 @@ export class PreMatriculasService {
   }
 
   private async generateTemporaryPasswordHash() {
-    const temporaryPassword = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    return bcrypt.hash(temporaryPassword, 10);
+    return bcrypt.hash(randomBytes(48).toString('hex'), 12);
   }
 }

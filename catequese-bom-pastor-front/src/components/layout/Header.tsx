@@ -1,5 +1,6 @@
 import logoParoquia from "@/assets/logo-paroquia.jpg";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { BookOpen, Heart, Home, LogIn, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
@@ -21,7 +22,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div className="container flex h-16 items-center justify-between px-4 pr-16 md:px-6 md:pr-44">
+      <div className="container flex h-16 items-center justify-between px-4 md:px-6">
         {/* Logo */}
         <Link
           to="/"
@@ -61,14 +62,12 @@ export function Header() {
 
         {/* Desktop Actions */}
         <div className="hidden items-center gap-3 md:flex">
+          <ThemeToggle />
           <Button variant="outline" size="sm" asChild>
             <Link to="/login">
               <LogIn className="mr-2 h-4 w-4" />
               Entrar
             </Link>
-          </Button>
-          <Button variant="gold" size="sm" asChild>
-            <Link to="/inscricao">Seja Catequista</Link>
           </Button>
         </div>
 
@@ -106,15 +105,11 @@ export function Header() {
               </Button>
             ))}
             <div className="mt-2 flex flex-col gap-2 border-t pt-4">
+              <ThemeToggle />
               <Button variant="outline" asChild>
                 <Link to="/login" onClick={() => setIsMenuOpen(false)}>
                   <LogIn className="mr-2 h-4 w-4" />
                   Entrar
-                </Link>
-              </Button>
-              <Button variant="gold" asChild>
-                <Link to="/inscricao" onClick={() => setIsMenuOpen(false)}>
-                  Inscreva-se
                 </Link>
               </Button>
             </div>

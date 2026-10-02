@@ -15,6 +15,7 @@ model Administrador {
   email          String   @unique @map("dsc_email")
   nome           String   @map("dsc_nome")
   telefone       String?  @map("dsc_telefone")
+  fotoPerfilKey  String?  @map("dsc_foto_perfil_key")
   senha          String   @map("dsc_senha")
   primeiroAcesso Boolean  @default(false) @map("ind_primeiro_acesso")
   criadoEm       DateTime @default(now()) @map("dat_criado_em")
@@ -32,6 +33,7 @@ model Responsavel {
   email          String   @unique @map("dsc_email")
   nome           String   @map("dsc_nome")
   telefone       String?  @map("dsc_telefone")
+  fotoPerfilKey  String?  @map("dsc_foto_perfil_key")
   senha          String   @map("dsc_senha")
   primeiroAcesso Boolean  @default(false) @map("ind_primeiro_acesso")
   criadoEm       DateTime @default(now())
@@ -121,10 +123,14 @@ model InscricaoCatequista {
   telefone              String    @map("dsc_telefone")
   casado                Boolean    @map("flg_casado")
   casadaIgrejaCatolica  Boolean?   @map("flg_casada_igreja_catolica")
+  termoMissaoVersao     String?    @map("dsc_termo_missao_versao")
+  termoMissaoAceitoEm   DateTime?  @map("dat_termo_missao_aceito_em")
   sacramentos           String?   @map("dsc_sacramentos")
   alergias              String?   @map("dsc_alergias")
+  sobreVoce             String?   @map("txt_sobre_voce")
   ComprovanteResidencia String?   @map("dsc_comprovante_residencia")
   DocumentoCpf          String?   @map("dsc_documento_cpf")
+  comprovantesSacramentos Json    @default("{}") @map("jsn_comprovantes_sacramentos")
   decisaoEm             DateTime? @map("dat_decisao")
   decisaoPorId          String?   @map("cod_administrador")
   observacoesAdmin      String?   @map("dsc_observacoes_admin")
@@ -208,6 +214,7 @@ model Catequista {
   email          String            @unique @map("dsc_email")
   senha          String            @map("pws_senha")
   telefone       String?           @map("dsc_telefone")
+  fotoPerfilKey  String?           @map("dsc_foto_perfil_key")
   endereco       String?           @map("dsc_endereco")
   bio            String?           @map("dsc_bio")
   primeiroAcesso Boolean           @default(false)
@@ -322,6 +329,27 @@ enum DestinatarioTipo {
   TURMA
 }
 
+enum PasswordSetupProfile {
+  ADMINISTRADOR
+  CATEQUISTA
+  RESPONSAVEL
+}
+
+model PasswordSetupToken {
+  id          String               @id @default(uuid()) @map("cod_password_setup_token")
+  profileType PasswordSetupProfile @map("dsc_profile_type")
+  profileId   String               @map("cod_profile")
+  email       String               @map("dsc_email")
+  tokenHash   String               @unique @map("dsc_token_hash")
+  expiresAt   DateTime             @map("dat_expires_at")
+  usedAt      DateTime?            @map("dat_used_at")
+  createdAt   DateTime             @default(now()) @map("dat_created_at")
+
+  @@index([profileType, profileId])
+  @@index([expiresAt])
+  @@map("password_setup_tokens")
+}
+
 model Mensagem {
   id              String              @id @default(uuid()) @map("cod_mensagem")
   remetenteTipo   DestinatarioTipo    @map("dsc_remetente_tipo")
@@ -386,8 +414,9 @@ model OrdemLoja {
   responsavelId String     @map("cod_responsavel")
   itens         LojaItem[] @relation("ItensOrdem")
   total         Float      @map("vlr_total")
-  status        String     @default("pending")
+  status        String     @default("aguardando_confirmacao")
   pagamentoId   String?    @map("cod_pagamento")
+  comprovantePagamentoUrl String? @map("dsc_comprovante_pagamento_url")
   criadoEm      DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 

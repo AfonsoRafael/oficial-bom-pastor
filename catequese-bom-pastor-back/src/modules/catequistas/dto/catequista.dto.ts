@@ -1,5 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsDateString, IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
+import { Equals, IsBoolean, IsDateString, IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
+
+function transformSimNao(value: unknown): unknown {
+  if (typeof value === 'boolean') return value;
+  if (typeof value !== 'string') return value;
+
+  const normalized = value.trim().toUpperCase();
+  if (normalized === 'SIM' || normalized === 'TRUE') return true;
+  if (normalized === 'NAO' || normalized === 'NÃO' || normalized === 'FALSE') return false;
+  return value;
+}
 
 export class CreateCatequistaDto {
   @ApiProperty()
@@ -58,6 +69,17 @@ export class UpdateCatequistaDto {
 }
 
 export class CreateCatequistaInscricaoDto {
+  @ApiPropertyOptional({ description: 'Relato pessoal sobre trajetória, experiência e motivação para servir' })
+  @IsOptional()
+  @IsString()
+  sobreVoce?: string;
+
+  @ApiProperty({ description: 'Confirmação do termo de compromisso da missão de catequista', example: true })
+  @Transform(({ value }) => transformSimNao(value))
+  @IsBoolean()
+  @Equals(true, { message: 'É necessário aceitar o termo de compromisso para enviar a inscrição.' })
+  aceiteTermoMissao: boolean;
+
   @ApiProperty({
     description: 'Nome completo do candidato a catequista',
     example: 'Maria de Souza',
@@ -98,6 +120,7 @@ export class CreateCatequistaInscricaoDto {
     description: 'Se a pessoa e casada',
     example: 'SIM',
   })
+  @Transform(({ value }) => transformSimNao(value))
   @IsBoolean()
   casado: boolean;
 
@@ -105,6 +128,7 @@ export class CreateCatequistaInscricaoDto {
     description: 'Se a pessoa e casada na Igreja Catolica (informar quando casado = SIM)',
     example: 'SIM',
   })
+  @Transform(({ value }) => transformSimNao(value))
   @IsOptional()
   @IsBoolean()
   casadaIgrejaCatolica?: boolean;
@@ -140,6 +164,26 @@ export class CreateCatequistaInscricaoDto {
   @IsOptional()
   @IsString()
   documentoCpfBase64?: string;
+
+  @ApiPropertyOptional({ description: 'Comprovante de batismo em Base64 (data URL)' })
+  @IsOptional()
+  @IsString()
+  comprovanteSacramentoBatismoBase64?: string;
+
+  @ApiPropertyOptional({ description: 'Comprovante de eucaristia em Base64 (data URL)' })
+  @IsOptional()
+  @IsString()
+  comprovanteSacramentoEucaristiaBase64?: string;
+
+  @ApiPropertyOptional({ description: 'Comprovante de crisma em Base64 (data URL)' })
+  @IsOptional()
+  @IsString()
+  comprovanteSacramentoCrismaBase64?: string;
+
+  @ApiPropertyOptional({ description: 'Comprovante de matrimônio em Base64 (data URL)' })
+  @IsOptional()
+  @IsString()
+  comprovanteSacramentoMatrimonioBase64?: string;
 }
 
 export class ApproveCatequistaInscricaoDto {

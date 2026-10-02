@@ -13,6 +13,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   BookOpen,
   Cross,
   Gift,
@@ -25,10 +33,12 @@ import {
   Trash2,
   ShoppingCart,
   Upload,
+  Check,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
 
 interface Product {
   id: string;
@@ -37,6 +47,10 @@ interface Product {
   preco: number;
   estoque: number;
   imagemUrl: string | null;
+}
+
+function isProductImageUrl(value: string | null): value is string {
+  return Boolean(value && /^(https?:\/\/|\/|data:image\/)/i.test(value));
 }
 
 // Interface para controlar a quantidade no carrinho
@@ -65,6 +79,7 @@ const donationNeeds = [
 
 export default function Lojinha() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPix, setShowPix] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
@@ -73,10 +88,25 @@ export default function Lojinha() {
   
   // Estados para controlar o carrinho
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [productQuantities, setProductQuantities] = useState<Record<string, number>>({});
   const [showCartDropdown, setShowCartDropdown] = useState(false);
+  const cartContainerRef = useRef<HTMLDivElement>(null);
 
   const { toast } = useToast();
   const pixKey = "catequese@paroquia.org.br";
+
+  useEffect(() => {
+    if (!showCartDropdown) return;
+
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !cartContainerRef.current?.contains(event.target)) {
+        setShowCartDropdown(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handleOutsidePointerDown);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
+  }, [showCartDropdown]);
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -115,23 +145,35 @@ export default function Lojinha() {
   };
 
   // Lógica real de adicionar ao carrinho
-  const handleAddToCart = (product: Product) => {
+  const handleAddToCart = (product: Product, quantity: number) => {
+    if (product.estoque <= 0) return;
+    const quantityToAdd = Math.min(Math.max(1, quantity), product.estoque);
+
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.product.id === product.id);
       if (existingItem) {
         return prevCart.map((item) =>
           item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: Math.min(item.quantity + quantityToAdd, product.estoque) }
             : item
         );
       }
-      return [...prevCart, { product, quantity: 1 }];
+      return [...prevCart, { product, quantity: quantityToAdd }];
     });
+  };
 
-    toast({
-      title: "Adicionado ao carrinho",
-      description: `${product.nome} foi adicionado com sucesso.`,
-    });
+  const handleProductQuantityChange = (product: Product, value: number) => {
+    const quantity = Math.min(product.estoque, Math.max(1, Math.floor(value) || 1));
+    const isInCart = cart.some((item) => item.product.id === product.id);
+
+    if (isInCart) {
+      setCart((prevCart) => prevCart.map((item) => (
+        item.product.id === product.id ? { ...item, quantity } : item
+      )));
+      return;
+    }
+
+    setProductQuantities((previous) => ({ ...previous, [product.id]: quantity }));
   };
 
   // Remover item do carrinho
@@ -263,44 +305,145 @@ export default function Lojinha() {
               Nenhum produto disponível no momento.
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {products.map((product, index) => (
-                <Card
-                  key={product.id}
-                  variant="interactive"
-                  className="animate-slide-up"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <CardHeader className="text-center">
-                    <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-5xl">
-                      {product.imagemUrl || "🎁"}
+            <Dialog
+              open={Boolean(selectedProduct)}
+              onOpenChange={(open) => {
+                if (!open) setSelectedProduct(null);
+              }}
+            >
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {products.map((product, index) => (
+                  <Card
+                    key={product.id}
+                    variant="interactive"
+                    className="animate-slide-up"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <DialogTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={`Ver detalhes de ${product.nome}`}
+                        className="w-full rounded-t-xl text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        onClick={() => setSelectedProduct(product)}
+                      >
+                        <CardHeader className="text-center">
+                          <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-5xl">
+                            {isProductImageUrl(product.imagemUrl) ? (
+                              <img src={product.imagemUrl} alt={product.nome} className="h-full w-full object-cover" />
+                            ) : (
+                              product.imagemUrl || "🎁"
+                            )}
+                          </div>
+                          <CardTitle className="text-xl">{product.nome}</CardTitle>
+                          <CardDescription>{product.descricao || "Toque para ver os detalhes do produto."}</CardDescription>
+                        </CardHeader>
+                        <div className="px-6 pb-4 text-center">
+                          <p className="font-display text-2xl font-bold text-primary">
+                            {formatCurrency(product.preco)}
+                          </p>
+                        </div>
+                      </button>
+                    </DialogTrigger>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <label className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+                          Qtd.
+                          <Input
+                            type="number"
+                            min={1}
+                            max={product.estoque}
+                            value={cart.find((item) => item.product.id === product.id)?.quantity ?? productQuantities[product.id] ?? 1}
+                            onChange={(event) => handleProductQuantityChange(product, Number(event.target.value))}
+                            aria-label={`Quantidade de ${product.nome}`}
+                            disabled={product.estoque <= 0}
+                            className="w-16 text-center"
+                          />
+                        </label>
+                        <Button
+                          variant="default"
+                          className="flex-1"
+                          onClick={() => handleAddToCart(product, productQuantities[product.id] ?? 1)}
+                          disabled={product.estoque <= 0 || cart.some((item) => item.product.id === product.id)}
+                        >
+                          {cart.some((item) => item.product.id === product.id)
+                            ? <Check className="mr-2 h-4 w-4" />
+                            : <ShoppingBag className="mr-2 h-4 w-4" />}
+                          {product.estoque <= 0
+                            ? "Esgotado"
+                            : cart.some((item) => item.product.id === product.id)
+                              ? "Adicionado"
+                              : "Adicionar"}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              {selectedProduct && (
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>{selectedProduct.nome}</DialogTitle>
+                    <DialogDescription>Detalhes do produto</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-5">
+                    <div className="flex h-56 items-center justify-center overflow-hidden rounded-md bg-muted">
+                      {isProductImageUrl(selectedProduct.imagemUrl) ? (
+                        <img src={selectedProduct.imagemUrl} alt={selectedProduct.nome} className="h-full w-full object-contain" />
+                      ) : (
+                        <span className="text-6xl">{selectedProduct.imagemUrl || "🎁"}</span>
+                      )}
                     </div>
-                    <CardTitle className="text-xl">{product.nome}</CardTitle>
-                    <CardDescription>{product.descricao}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="text-center space-y-4">
-                    <p className="font-display text-2xl font-bold text-primary">
-                      {formatCurrency(product.preco)}
+                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                      {selectedProduct.descricao || "Este produto não possui descrição."}
                     </p>
-                    <Button 
-                      variant="default" 
-                      className="w-full"
-                      onClick={() => handleAddToCart(product)}
-                      disabled={product.estoque <= 0}
-                    >
-                      <ShoppingBag className="mr-2 h-4 w-4" />
-                      {product.estoque > 0 ? "Adicionar ao Carrinho" : "Esgotado"}
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    <div className="flex flex-wrap items-center justify-between gap-4 border-t pt-4">
+                      <div>
+                        <p className="font-display text-2xl font-bold text-primary">
+                          {formatCurrency(selectedProduct.preco)}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedProduct.estoque > 0
+                            ? `${selectedProduct.estoque} disponível(is)`
+                            : "Produto esgotado"}
+                        </p>
+                      </div>
+                      <label className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+                        Qtd.
+                        <Input
+                          type="number"
+                          min={1}
+                          max={selectedProduct.estoque}
+                          value={cart.find((item) => item.product.id === selectedProduct.id)?.quantity ?? productQuantities[selectedProduct.id] ?? 1}
+                          onChange={(event) => handleProductQuantityChange(selectedProduct, Number(event.target.value))}
+                          aria-label={`Quantidade de ${selectedProduct.nome}`}
+                          disabled={selectedProduct.estoque <= 0}
+                          className="w-16 text-center"
+                        />
+                      </label>
+                      <Button
+                        onClick={() => handleAddToCart(selectedProduct, productQuantities[selectedProduct.id] ?? 1)}
+                        disabled={selectedProduct.estoque <= 0 || cart.some((item) => item.product.id === selectedProduct.id)}
+                      >
+                        {cart.some((item) => item.product.id === selectedProduct.id)
+                          ? <Check className="mr-2 h-4 w-4" />
+                          : <ShoppingBag className="mr-2 h-4 w-4" />}
+                        {selectedProduct.estoque <= 0
+                          ? "Esgotado"
+                          : cart.some((item) => item.product.id === selectedProduct.id)
+                            ? "Adicionado"
+                            : "Adicionar"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              )}
+            </Dialog>
           )}
         </div>
       </section>
 
       {/* Botão de Carrinho Flutuante e Janela de Conteúdo */}
-      <div className="fixed bottom-6 right-6 z-50">
+      <div ref={cartContainerRef} className="fixed bottom-6 right-6 z-50">
         <Button
           size="lg"
           className="h-14 w-14 rounded-full shadow-2xl relative bg-primary text-primary-foreground hover:bg-primary/95"

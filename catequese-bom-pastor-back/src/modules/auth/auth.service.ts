@@ -1,108 +1,26 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import { createHash, randomBytes } from 'crypto';
+import { PasswordSetupProfile } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { RegisterDto, LoginDto } from './dto/auth.dto';
+import { LoginDto, UpdateMyProfileDto } from './dto/auth.dto';
 import { USER_ROLES, UserRole } from '../../common/constants/user-roles';
+import { MailerService } from '../../common/mailer/mailer.service';
+import { S3StorageService } from '../../common/storage/s3-storage.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private mailerService: MailerService,
+    private s3StorageService: S3StorageService,
   ) {}
-
-  async register(dto: RegisterDto) {
-    // Validar se as senhas coincidem (caso confirmSenha seja enviado)
-    if (dto.confirmSenha && dto.senha !== dto.confirmSenha) {
-      throw new BadRequestException('As senhas não coincidem');
-    }
-
-    // Verificar se email já existe
-    const [existingAdmin, existingResponsavel, existingCatequista] = await Promise.all([
-      this.prisma.administrador.findUnique({ where: { email: dto.email } }),
-      this.prisma.responsavel.findUnique({ where: { email: dto.email } }),
-      this.prisma.catequista.findUnique({ where: { email: dto.email } }),
-    ]);
-
-    if (existingAdmin || existingResponsavel || existingCatequista) {
-      throw new ConflictException('Este email já está cadastrado');
-    }
-
-    // Mapear role do frontend para string
-    let userRole: UserRole = USER_ROLES.RESPONSAVEL;
-    if (dto.role) {
-      const roleNormalized = String(dto.role).toLowerCase().trim();
-      if (roleNormalized === 'admin' || roleNormalized === 'administrador' || roleNormalized === 'adminstrador') {
-        userRole = USER_ROLES.ADMINISTRADOR;
-      } else if (
-        roleNormalized === 'responsavel' ||
-        roleNormalized === 'responsável' ||
-        roleNormalized === 'pai/mãe' ||
-        roleNormalized === 'parent'
-      ) {
-        userRole = USER_ROLES.RESPONSAVEL;
-      }
-    }
-
-    // Hash da senha
-    const hashedPassword = await bcrypt.hash(dto.senha, 10);
-
-    // Criar usuário
-    const legacyRole = this.toLegacyRole(userRole);
-
-    if (userRole === USER_ROLES.ADMINISTRADOR) {
-      const admin = await this.prisma.administrador.create({
-        data: {
-          email: dto.email,
-          nome: dto.nome,
-          telefone: dto.telefone,
-          senha: hashedPassword,
-        },
-      });
-
-      const tokens = await this.generateTokens(admin.id, admin.email, userRole);
-
-      return {
-        user: {
-          id: admin.id,
-          email: admin.email,
-          nome: admin.nome,
-          role: userRole,
-          roleLegacy: legacyRole,
-          tipoUsuario: userRole,
-          primeiroAcesso: admin.primeiroAcesso,
-        },
-        ...tokens,
-      };
-    }
-
-    const responsavel = await this.prisma.responsavel.create({
-      data: {
-        email: dto.email,
-        nome: dto.nome,
-        telefone: dto.telefone,
-        senha: hashedPassword,
-      },
-    });
-
-    const tokens = await this.generateTokens(responsavel.id, responsavel.email, userRole);
-
-    return {
-      user: {
-        id: responsavel.id,
-        email: responsavel.email,
-        nome: responsavel.nome,
-        role: userRole,
-        roleLegacy: legacyRole,
-        tipoUsuario: userRole,
-        primeiroAcesso: responsavel.primeiroAcesso,
-      },
-      ...tokens,
-    };
-  }
 
   async login(dto: LoginDto) {
     // Buscar usuário
@@ -145,6 +63,10 @@ export class AuthService {
         throw new UnauthorizedException('Email ou senha inválidos');
       }
 
+      if (responsavel.primeiroAcesso) {
+        throw new UnauthorizedException('Use o link enviado por e-mail para criar sua senha antes de entrar.');
+      }
+
       const tokens = await this.generateTokens(responsavel.id, responsavel.email, USER_ROLES.RESPONSAVEL);
       const legacyRole = this.toLegacyRole(USER_ROLES.RESPONSAVEL);
 
@@ -174,6 +96,10 @@ export class AuthService {
 
     if (!passwordMatch) {
       throw new UnauthorizedException('Email ou senha inválidos');
+    }
+
+    if (catequista.primeiroAcesso) {
+      throw new UnauthorizedException('Use o link enviado por e-mail para criar sua senha antes de entrar.');
     }
 
     const tokens = await this.generateTokens(catequista.id, catequista.email, USER_ROLES.CATEQUISTA);
@@ -216,13 +142,20 @@ export class AuthService {
         email: true,
         nome: true,
         telefone: true,
+        fotoPerfilKey: true,
         primeiroAcesso: true,
         criadoEm: true,
       },
     });
 
     if (admin) {
-      return { ...admin, role: USER_ROLES.ADMINISTRADOR, roleLegacy: this.toLegacyRole(USER_ROLES.ADMINISTRADOR), tipoUsuario: USER_ROLES.ADMINISTRADOR };
+      return {
+        ...admin,
+        fotoUrl: await this.resolveProfilePhotoUrl(admin.fotoPerfilKey),
+        role: USER_ROLES.ADMINISTRADOR,
+        roleLegacy: this.toLegacyRole(USER_ROLES.ADMINISTRADOR),
+        tipoUsuario: USER_ROLES.ADMINISTRADOR,
+      };
     }
 
     const responsavel = await this.prisma.responsavel.findUnique({
@@ -232,13 +165,20 @@ export class AuthService {
         email: true,
         nome: true,
         telefone: true,
+        fotoPerfilKey: true,
         primeiroAcesso: true,
         criadoEm: true,
       },
     });
 
     if (responsavel) {
-      return { ...responsavel, role: USER_ROLES.RESPONSAVEL, roleLegacy: this.toLegacyRole(USER_ROLES.RESPONSAVEL), tipoUsuario: USER_ROLES.RESPONSAVEL };
+      return {
+        ...responsavel,
+        fotoUrl: await this.resolveProfilePhotoUrl(responsavel.fotoPerfilKey),
+        role: USER_ROLES.RESPONSAVEL,
+        roleLegacy: this.toLegacyRole(USER_ROLES.RESPONSAVEL),
+        tipoUsuario: USER_ROLES.RESPONSAVEL,
+      };
     }
 
     const catequista = await this.prisma.catequista.findUnique({
@@ -248,16 +188,168 @@ export class AuthService {
         email: true,
         nome: true,
         telefone: true,
+        fotoPerfilKey: true,
         primeiroAcesso: true,
         criadoEm: true,
       },
     });
 
     if (catequista) {
-      return { ...catequista, role: USER_ROLES.CATEQUISTA, roleLegacy: this.toLegacyRole(USER_ROLES.CATEQUISTA), tipoUsuario: USER_ROLES.CATEQUISTA };
+      return {
+        ...catequista,
+        fotoUrl: await this.resolveProfilePhotoUrl(catequista.fotoPerfilKey),
+        role: USER_ROLES.CATEQUISTA,
+        roleLegacy: this.toLegacyRole(USER_ROLES.CATEQUISTA),
+        tipoUsuario: USER_ROLES.CATEQUISTA,
+      };
     }
 
     throw new UnauthorizedException('User not found');
+  }
+
+  async updateMyProfile(
+    userId: string,
+    role: string,
+    dto: UpdateMyProfileDto,
+    foto?: { buffer: Buffer; mimetype?: string },
+  ) {
+    if (dto.removerFoto && foto) {
+      throw new BadRequestException('Escolha remover a foto ou enviar uma nova, não as duas opções.');
+    }
+
+    const passwordFieldsProvided = Boolean(dto.senhaAtual || dto.novaSenha || dto.confirmacaoNovaSenha);
+    if (passwordFieldsProvided) {
+      if (!dto.senhaAtual || !dto.novaSenha || !dto.confirmacaoNovaSenha) {
+        throw new BadRequestException('Preencha a senha atual, a nova senha e a confirmação.');
+      }
+      if (dto.novaSenha !== dto.confirmacaoNovaSenha) {
+        throw new BadRequestException('A nova senha e a confirmação não coincidem.');
+      }
+      this.assertStrongPassword(dto.novaSenha);
+    }
+
+    const normalizedRole = this.normalizeRole(role);
+    const profile = await this.findEditableProfile(userId, normalizedRole);
+    if (!profile) throw new UnauthorizedException('User not found');
+
+    let newPasswordHash: string | undefined;
+    if (dto.novaSenha) {
+      if (!(await bcrypt.compare(dto.senhaAtual!, profile.senha))) {
+        throw new BadRequestException('A senha atual está incorreta.');
+      }
+      newPasswordHash = await bcrypt.hash(dto.novaSenha, 12);
+    }
+
+    let newPhotoKey = profile.fotoPerfilKey;
+    if (foto) {
+      const mimeType = (foto.mimetype ?? '').toLowerCase();
+      if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(mimeType)) {
+        throw new BadRequestException('A foto deve estar no formato JPG, PNG ou WEBP.');
+      }
+      newPhotoKey = (await this.s3StorageService.uploadBufferDocument(
+        foto.buffer,
+        mimeType,
+        'perfis',
+        userId,
+      )).key;
+    } else if (dto.removerFoto) {
+      newPhotoKey = null;
+    }
+
+    const data: { nome?: string; telefone?: string | null; fotoPerfilKey?: string | null; senha?: string } = {};
+    if (dto.nome !== undefined) data.nome = dto.nome.trim();
+    if (dto.telefone !== undefined) data.telefone = dto.telefone.trim() || null;
+    if (newPhotoKey !== profile.fotoPerfilKey) data.fotoPerfilKey = newPhotoKey;
+    if (newPasswordHash) data.senha = newPasswordHash;
+
+    if (normalizedRole === USER_ROLES.ADMINISTRADOR) {
+      await this.prisma.administrador.update({ where: { id: userId }, data });
+    } else if (normalizedRole === USER_ROLES.CATEQUISTA) {
+      await this.prisma.catequista.update({ where: { id: userId }, data });
+    } else {
+      await this.prisma.responsavel.update({ where: { id: userId }, data });
+    }
+
+    if (profile.fotoPerfilKey && profile.fotoPerfilKey !== newPhotoKey) {
+      await this.s3StorageService.deleteObject(profile.fotoPerfilKey).catch(() => undefined);
+    }
+
+    return this.getMe(userId);
+  }
+
+  async sendPasswordSetupInvite(
+    profileType: PasswordSetupProfile,
+    profileId: string,
+    email: string,
+    nome: string,
+  ) {
+    return this.sendPasswordSetupEmail(profileType, profileId, email, nome, true, false);
+  }
+
+  async validatePasswordSetupToken(token: string) {
+    const setupToken = await this.findActivePasswordSetupToken(token);
+    const profile = await this.findPasswordSetupProfile(setupToken.profileType, setupToken.profileId);
+
+    if (!profile || profile.email.toLowerCase() !== setupToken.email.toLowerCase()) {
+      throw new BadRequestException('Este convite é inválido ou expirou. Solicite um novo e-mail à coordenação.');
+    }
+
+    return {
+      email: profile.email,
+      nome: profile.nome,
+      expiresAt: setupToken.expiresAt,
+    };
+  }
+
+  async completePasswordSetup(token: string, senha: string, confirmacao: string) {
+    if (senha !== confirmacao) {
+      throw new BadRequestException('As senhas não coincidem.');
+    }
+    this.assertStrongPassword(senha);
+
+    const setupToken = await this.findActivePasswordSetupToken(token);
+    const profile = await this.findPasswordSetupProfile(setupToken.profileType, setupToken.profileId);
+
+    if (!profile || profile.email.toLowerCase() !== setupToken.email.toLowerCase()) {
+      throw new BadRequestException('Este convite é inválido ou expirou. Solicite um novo e-mail à coordenação.');
+    }
+
+    const hashedPassword = await bcrypt.hash(senha, 12);
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      const consumedToken = await tx.passwordSetupToken.updateMany({
+        where: {
+          id: setupToken.id,
+          usedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: { usedAt: now },
+      });
+
+      if (consumedToken.count !== 1) {
+        throw new BadRequestException('Este convite já foi usado ou expirou. Solicite um novo e-mail à coordenação.');
+      }
+
+      if (setupToken.profileType === PasswordSetupProfile.RESPONSAVEL) {
+        await tx.responsavel.update({
+          where: { id: setupToken.profileId },
+          data: { senha: hashedPassword, primeiroAcesso: false },
+        });
+      } else if (setupToken.profileType === PasswordSetupProfile.CATEQUISTA) {
+        await tx.catequista.update({
+          where: { id: setupToken.profileId },
+          data: { senha: hashedPassword, primeiroAcesso: false },
+        });
+      } else {
+        await tx.administrador.update({
+          where: { id: setupToken.profileId },
+          data: { senha: hashedPassword, primeiroAcesso: false },
+        });
+      }
+    });
+
+    return { message: 'Senha criada com sucesso.' };
   }
 
   async forgotPassword(email: string) {
@@ -277,61 +369,152 @@ export class AuthService {
           where: { email },
         });
 
-    if (!admin && !responsavel && !catequista) {
-      // Não revelar que o usuário não existe por segurança
-      return { message: 'If the email exists, a reset link was sent' };
+    const profile = admin ?? responsavel ?? catequista;
+    if (profile) {
+      const profileType = admin
+        ? PasswordSetupProfile.ADMINISTRADOR
+        : responsavel
+          ? PasswordSetupProfile.RESPONSAVEL
+          : PasswordSetupProfile.CATEQUISTA;
+
+      try {
+        await this.sendPasswordSetupEmail(profileType, profile.id, profile.email, profile.nome, false, true);
+      } catch (error) {
+        this.logger.warn(`Password reset email could not be sent for ${profileType} profile ${profile.id}.`);
+      }
     }
 
-    // TODO: Gerar token de reset e enviar email
-    // Por enquanto, apenas retorna mensagem de sucesso
-    const resetToken = this.jwtService.sign(
-      {
-        sub: admin ? admin.id : responsavel ? responsavel.id : catequista!.id,
-        email: admin ? admin.email : responsavel ? responsavel.email : catequista!.email,
-        role: admin ? USER_ROLES.ADMINISTRADOR : responsavel ? USER_ROLES.RESPONSAVEL : USER_ROLES.CATEQUISTA,
-      },
-      {
-        secret: this.configService.get('JWT_SECRET'),
-        expiresIn: '1h',
-      },
-    );
-
-    console.log('Reset token:', resetToken);
-
-    return { message: 'If the email exists, a reset link was sent' };
+    return { message: 'Se o e-mail estiver cadastrado, enviaremos instruções para redefinir a senha.' };
   }
 
   async resetPassword(token: string, novaSenha: string) {
+    return this.completePasswordSetup(token, novaSenha, novaSenha);
+  }
+
+  private async findEditableProfile(userId: string, role: UserRole) {
+    const select = { id: true, email: true, nome: true, telefone: true, senha: true, fotoPerfilKey: true } as const;
+
+    if (role === USER_ROLES.ADMINISTRADOR) {
+      return this.prisma.administrador.findUnique({ where: { id: userId }, select });
+    }
+    if (role === USER_ROLES.CATEQUISTA) {
+      return this.prisma.catequista.findUnique({ where: { id: userId }, select });
+    }
+    return this.prisma.responsavel.findUnique({ where: { id: userId }, select });
+  }
+
+  private async resolveProfilePhotoUrl(photoKey: string | null) {
+    return photoKey ? this.s3StorageService.getFileUrl(photoKey) : null;
+  }
+
+  private async sendPasswordSetupEmail(
+    profileType: PasswordSetupProfile,
+    profileId: string,
+    email: string,
+    nome: string,
+    requireDelivery: boolean,
+    isPasswordReset: boolean,
+  ) {
+    const rawToken = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const setupToken = await this.prisma.passwordSetupToken.create({
+      data: { profileType, profileId, email, tokenHash, expiresAt },
+    });
+
     try {
-      const payload = this.jwtService.verify(token, {
-        secret: this.configService.get('JWT_SECRET'),
-      });
+      const frontendUrl =
+        this.configService.get<string>('FRONTEND_URL') ??
+        this.configService.get<string>('FRONTEND_URLS')?.split(',')[0]?.trim() ??
+        'http://localhost:8080';
+      const setupUrl = new URL('/criar-senha', frontendUrl);
+      setupUrl.searchParams.set('token', rawToken);
+      const subject = isPasswordReset
+        ? 'Redefina sua senha | Catequese Bom Pastor'
+        : 'Crie sua senha de acesso | Catequese Bom Pastor';
+      const action = isPasswordReset ? 'redefinir sua senha' : 'criar sua senha de acesso';
+      const text = [
+        `Olá, ${nome}.`,
+        '',
+        isPasswordReset
+          ? 'Recebemos uma solicitação para redefinir a senha da sua conta.'
+          : 'Seu acesso à Catequese Bom Pastor foi aprovado.',
+        `Use o link abaixo para ${action}:`,
+        setupUrl.toString(),
+        '',
+        'O link expira em 24 horas e só pode ser usado uma vez.',
+        'Se você não solicitou esta ação, ignore esta mensagem.',
+      ].join('\n');
 
-      const hashedPassword = await bcrypt.hash(novaSenha, 10);
+      const delivery = await this.mailerService.sendMail({
+        to: [email],
+        subject,
+        text,
+        html: `<p>Olá, ${this.escapeHtml(nome)}.</p><p>${this.escapeHtml(text.split('\n').slice(3, 4)[0])}</p><p><a href="${setupUrl.toString()}">Criar senha</a></p><p>O link expira em 24 horas e só pode ser usado uma vez.</p><p>Se você não solicitou esta ação, ignore esta mensagem.</p>`,
+      }, { requireDelivery });
 
-      const normalizedRole = this.normalizeRole(payload.tipoUsuario ?? payload.role);
-
-      if (normalizedRole === USER_ROLES.ADMINISTRADOR) {
-        await this.prisma.administrador.update({
-          where: { id: payload.sub },
-          data: { senha: hashedPassword },
-        });
-      } else if (normalizedRole === USER_ROLES.CATEQUISTA) {
-        await this.prisma.catequista.update({
-          where: { id: payload.sub },
-          data: { senha: hashedPassword },
-        });
-      } else {
-        await this.prisma.responsavel.update({
-          where: { id: payload.sub },
-          data: { senha: hashedPassword },
-        });
+      if (delivery?.skipped) {
+        await this.prisma.passwordSetupToken.delete({ where: { id: setupToken.id } });
+        return { emailSent: false, email };
       }
 
-      return { message: 'Password updated successfully' };
+      await this.prisma.passwordSetupToken.updateMany({
+        where: {
+          profileType,
+          profileId,
+          usedAt: null,
+          id: { not: setupToken.id },
+        },
+        data: { usedAt: new Date() },
+      });
+
+      return { emailSent: true, email, expiresAt };
     } catch (error) {
-      throw new BadRequestException('Invalid or expired token');
+      await this.prisma.passwordSetupToken.delete({ where: { id: setupToken.id } }).catch(() => undefined);
+      throw error;
     }
+  }
+
+  private async findActivePasswordSetupToken(token: string) {
+    if (!token) {
+      throw new BadRequestException('O link está incompleto. Solicite um novo e-mail à coordenação.');
+    }
+
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const setupToken = await this.prisma.passwordSetupToken.findUnique({ where: { tokenHash } });
+
+    if (!setupToken || setupToken.usedAt || setupToken.expiresAt <= new Date()) {
+      throw new BadRequestException('Este convite é inválido ou expirou. Solicite um novo e-mail à coordenação.');
+    }
+
+    return setupToken;
+  }
+
+  private async findPasswordSetupProfile(profileType: PasswordSetupProfile, profileId: string) {
+    if (profileType === PasswordSetupProfile.RESPONSAVEL) {
+      return this.prisma.responsavel.findUnique({ where: { id: profileId }, select: { id: true, email: true, nome: true } });
+    }
+    if (profileType === PasswordSetupProfile.CATEQUISTA) {
+      return this.prisma.catequista.findUnique({ where: { id: profileId }, select: { id: true, email: true, nome: true } });
+    }
+    return this.prisma.administrador.findUnique({ where: { id: profileId }, select: { id: true, email: true, nome: true } });
+  }
+
+  private assertStrongPassword(password: string) {
+    const isStrong = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$/.test(password);
+    if (!isStrong) {
+      throw new BadRequestException('A senha deve ter ao menos 12 caracteres, com maiúscula, minúscula, número e símbolo.');
+    }
+  }
+
+  private escapeHtml(value: string) {
+    return value.replace(/[&<>"']/g, (character) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    })[character] ?? character);
   }
 
   private async generateTokens(userId: string, email: string, role: UserRole) {
