@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SidebarNav } from "@/components/layout/SidebarNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePersistentSidebar } from "@/hooks/usePersistentSidebar";
 import { useToast } from "@/hooks/use-toast";

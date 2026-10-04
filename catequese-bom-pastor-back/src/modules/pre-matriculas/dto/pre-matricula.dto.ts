@@ -24,12 +24,37 @@ export class CreatePreMatriculaDto {
   @IsDateString()
   dataNascimento: string;
 
-  @ApiProperty({
-    description: 'Nome dos pais ou responsáveis',
-    example: 'Maria e José da Silva',
+  @ApiPropertyOptional({
+    description: 'Nome do pai (informe ao menos o pai ou a mãe)',
+    example: 'José da Silva',
   })
+  @IsOptional()
   @IsString()
-  nomePais: string;
+  nomePai?: string;
+
+  @ApiPropertyOptional({
+    description: 'Nome da mãe (informe ao menos o pai ou a mãe)',
+    example: 'Maria da Silva',
+  })
+  @IsOptional()
+  @IsString()
+  nomeMae?: string;
+
+  @ApiPropertyOptional({
+    description: 'Sacramentos do pai, separados por vírgula (BATISMO, EUCARISTIA, CRISMA, MATRIMONIO)',
+    example: 'BATISMO,CRISMA',
+  })
+  @IsOptional()
+  @IsString()
+  sacramentosPai?: string;
+
+  @ApiPropertyOptional({
+    description: 'Sacramentos da mãe, separados por vírgula (BATISMO, EUCARISTIA, CRISMA, MATRIMONIO)',
+    example: 'BATISMO,EUCARISTIA',
+  })
+  @IsOptional()
+  @IsString()
+  sacramentosMae?: string;
 
   @ApiProperty({
     description: 'E-mail para contato',
@@ -44,14 +69,6 @@ export class CreatePreMatriculaDto {
   })
   @IsString()
   telefone: string;
-
-  @ApiPropertyOptional({
-    description: 'Sacramentos dos pais/responsáveis (se aplicável)',
-    example: 'Batismo e Crisma',
-  })
-  @IsOptional()
-  @IsString()
-  sacramentosPais?: string;
 
   @ApiPropertyOptional({
     description: 'Certificado de batismo em Base64 (data URL)',

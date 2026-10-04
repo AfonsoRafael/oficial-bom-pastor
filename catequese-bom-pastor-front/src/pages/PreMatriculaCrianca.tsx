@@ -1,4 +1,4 @@
-import { MainLayout } from "@/components/layout/MainLayout";
+﻿import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,11 +13,13 @@ import { useMemo, useState } from "react";
 type CreatePreMatriculaDto = {
   nomeCatequizando: string;
   dataNascimento: string;
-  nomePais: string;
+  nomePai: string;
+  nomeMae: string;
   email: string;
   telefone: string;
   alergiasProblemasSaude?: string;
-  sacramentosPais?: string;
+  sacramentosPai: string[];
+  sacramentosMae: string[];
 };
 
 type PreMatriculaFormState = CreatePreMatriculaDto & {
@@ -25,6 +27,13 @@ type PreMatriculaFormState = CreatePreMatriculaDto & {
   aceiteCompromisso: boolean;
   aceiteRegulamento: boolean;
 };
+
+const SACRAMENT_OPTIONS = [
+  { value: "BATISMO", label: "Batismo" },
+  { value: "EUCARISTIA", label: "Eucaristia" },
+  { value: "CRISMA", label: "Crisma" },
+  { value: "MATRIMONIO", label: "Matrimônio" },
+] as const;
 
 type DocumentoUploadField = "certificadoBatismo" | "comprovanteEndereco" | "certidaoDeNascimento";
 
@@ -94,7 +103,8 @@ function parseApiErrors(payload: unknown): {
   const fields: Array<keyof CreatePreMatriculaDto> = [
     "nomeCatequizando",
     "dataNascimento",
-    "nomePais",
+    "nomePai",
+    "nomeMae",
     "email",
     "telefone",
   ];
@@ -110,7 +120,10 @@ function parseApiErrors(payload: unknown): {
     fieldErrors[field] = {
       nomeCatequizando: "Confira o nome informado.",
       dataNascimento: "Informe uma data de nascimento válida.",
-      nomePais: "Confira os nomes dos pais/responsáveis.",
+      nomePai: "Confira o nome do pai.",
+      nomeMae: "Confira o nome da mãe.",
+      sacramentosPai: "Confira os sacramentos do pai.",
+      sacramentosMae: "Confira os sacramentos da mãe.",
       email: "Informe um e-mail válido.",
       telefone: "Informe um telefone válido com DDD.",
     }[field];
@@ -123,15 +136,17 @@ function buildPayload(form: PreMatriculaFormState): CreatePreMatriculaDto {
   const payload: CreatePreMatriculaDto = {
     nomeCatequizando: form.nomeCatequizando.trim(),
     dataNascimento: normalizeDateToYyyyMmDd(form.dataNascimento),
-    nomePais: form.nomePais.trim(),
+    nomePai: form.nomePai.trim(),
+    nomeMae: form.nomeMae.trim(),
     email: form.email.trim(),
     telefone: formatBrazilianPhone(form.telefone),
     alergiasProblemasSaude: form.alergiasProblemasSaude?.trim(),
-    sacramentosPais: form.sacramentosPais?.trim(),
+    sacramentosPai: form.nomePai.trim() ? form.sacramentosPai : [],
+    sacramentosMae: form.nomeMae.trim() ? form.sacramentosMae : [],
   };
 
   return Object.fromEntries(
-    Object.entries(payload).filter(([, value]) => value !== undefined && value !== "")
+    Object.entries(payload).filter(([, value]) => value !== undefined && value !== "" && !(Array.isArray(value) && value.length === 0))
   ) as CreatePreMatriculaDto;
 }
 
@@ -141,11 +156,13 @@ export default function PreMatriculaCrianca() {
   const [data, setData] = useState<PreMatriculaFormState>({
     nomeCatequizando: "",
     dataNascimento: "",
-    nomePais: "",
+    nomePai: "",
+    nomeMae: "",
     email: "",
     telefone: "",
     alergiasProblemasSaude: "",
-    sacramentosPais: "",
+    sacramentosPai: [],
+    sacramentosMae: [],
     aceiteReunioes: false,
     aceiteCompromisso: false,
     aceiteRegulamento: false,
@@ -197,7 +214,7 @@ export default function PreMatriculaCrianca() {
       data.nomeCatequizando.trim().length > 0 &&
       data.dataNascimento.trim().length > 0 &&
       isValidDateString(data.dataNascimento) &&
-      data.nomePais.trim().length > 0 &&
+      (data.nomePai.trim().length > 0 || data.nomeMae.trim().length > 0) &&
       data.email.trim().length > 0 &&
       isValidEmail(data.email.trim()) &&
       data.telefone.trim().length > 0 &&
@@ -232,8 +249,8 @@ export default function PreMatriculaCrianca() {
     } else if (!isValidDateString(data.dataNascimento)) {
       nextErrors.dataNascimento = "Informe uma data de nascimento válida.";
     }
-    if (!data.nomePais.trim()) {
-      nextErrors.nomePais = "Informe o nome dos pais/responsáveis.";
+    if (!data.nomePai.trim() && !data.nomeMae.trim()) {
+      nextErrors.nomePai = "Informe o nome do pai ou da mãe.";
     }
     if (!data.email.trim()) {
       nextErrors.email = "Informe o e-mail.";
@@ -356,15 +373,19 @@ export default function PreMatriculaCrianca() {
     const formData = new FormData();
     formData.append("nomeCatequizando", payload.nomeCatequizando);
     formData.append("dataNascimento", payload.dataNascimento);
-    formData.append("nomePais", payload.nomePais);
+    if (payload.nomePai) formData.append("nomePai", payload.nomePai);
+    if (payload.nomeMae) formData.append("nomeMae", payload.nomeMae);
     formData.append("email", payload.email);
     formData.append("telefone", payload.telefone);
 
     if (payload.alergiasProblemasSaude) {
       formData.append("alergiasProblemasSaude", payload.alergiasProblemasSaude);
     }
-    if (payload.sacramentosPais) {
-      formData.append("sacramentosPais", payload.sacramentosPais);
+    if (payload.sacramentosPai?.length) {
+      formData.append("sacramentosPai", payload.sacramentosPai.join(","));
+    }
+    if (payload.sacramentosMae?.length) {
+      formData.append("sacramentosMae", payload.sacramentosMae.join(","));
     }
 
     formData.append("certificadoBatismo", documentosFiles.certificadoBatismo!);
@@ -404,11 +425,13 @@ export default function PreMatriculaCrianca() {
       setData({
         nomeCatequizando: "",
         dataNascimento: "",
-        nomePais: "",
+        nomePai: "",
+        nomeMae: "",
         email: "",
         telefone: "",
         alergiasProblemasSaude: "",
-        sacramentosPais: "",
+        sacramentosPai: [],
+        sacramentosMae: [],
         aceiteReunioes: false,
         aceiteCompromisso: false,
         aceiteRegulamento: false,
@@ -518,20 +541,45 @@ export default function PreMatriculaCrianca() {
                 <div className="rounded-xl border bg-card p-4 md:p-5">
                   <h3 className="mb-4 text-base font-semibold">Dados de Contato</h3>
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="nomePais">Nomes dos pais/responsáveis</Label>
-                      <Input
-                        id="nomePais"
-                        value={data.nomePais}
-                        onChange={(e) => setField("nomePais", e.target.value)}
-                        placeholder="Ex.: Maria Souza e João Silva"
-                      />
-                      {errors.nomePais && <p className="text-sm text-destructive">{errors.nomePais}</p>}
+                    <p className="text-sm text-muted-foreground">Informe ao menos o pai ou a mãe. Marque os sacramentos que cada um já recebeu; não é necessário enviar comprovante.</p>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {([
+                        { key: "nomePai", sacKey: "sacramentosPai", label: "Nome do pai" },
+                        { key: "nomeMae", sacKey: "sacramentosMae", label: "Nome da mãe" },
+                      ] as const).map(({ key, sacKey, label }) => (
+                        <div key={key} className="space-y-3 rounded-lg border p-3">
+                          <div className="space-y-2">
+                            <Label htmlFor={key}>{label}</Label>
+                            <Input id={key} value={data[key]} onChange={(e) => setField(key, e.target.value)} />
+                            {errors[key] && <p className="text-sm text-destructive">{errors[key]}</p>}
+                          </div>
+                          <fieldset className="space-y-2" disabled={!data[key].trim()}>
+                            <legend className="text-sm font-medium">Sacramentos</legend>
+                            {SACRAMENT_OPTIONS.map((option) => (
+                              <div key={option.value} className="flex items-center gap-2">
+                                <Checkbox
+                                  id={`${sacKey}-${option.value}`}
+                                  checked={data[sacKey].includes(option.value)}
+                                  onCheckedChange={(checked) =>
+                                    setField(
+                                      sacKey,
+                                      checked === true
+                                        ? [...data[sacKey], option.value]
+                                        : data[sacKey].filter((item) => item !== option.value),
+                                    )
+                                  }
+                                />
+                                <Label htmlFor={`${sacKey}-${option.value}`} className="font-normal">{option.label}</Label>
+                              </div>
+                            ))}
+                          </fieldset>
+                        </div>
+                      ))}
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <Label htmlFor="email">E-mail</Label>
+                        <Label htmlFor="email">E-mail do responsável</Label>
                         <Input
                           id="email"
                           type="email"
@@ -543,7 +591,7 @@ export default function PreMatriculaCrianca() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="telefone">Telefone</Label>
+                        <Label htmlFor="telefone">Telefone do responsável</Label>
                         <Input
                           id="telefone"
                           value={data.telefone}
@@ -566,20 +614,11 @@ export default function PreMatriculaCrianca() {
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="sacramentosPais">Sacramentos dos pais</Label>
-                      <Input
-                        id="sacramentosPais"
-                        value={data.sacramentosPais ?? ""}
-                        onChange={(e) => setField("sacramentosPais", e.target.value)}
-                        placeholder="Ex.: Batismo e Crisma"
-                      />
-                    </div>
                   </div>
                 </div>
 
                 <div className="rounded-xl border bg-card p-4 md:p-5">
-                  <h3 className="mb-2 text-base font-semibold">Documentos</h3>
+                  <h3 className="mb-2 text-base font-semibold">Documentos da criança</h3>
                   <p className="mb-4 text-sm text-muted-foreground">
                     Formatos aceitos: PDF, JPG, PNG e WEBP. Tamanho maximo:
                     {` ${MAX_DOCUMENT_SIZE_MB}MB por arquivo`}.

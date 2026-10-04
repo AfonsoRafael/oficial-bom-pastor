@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateCatequistaDto, CreateCatequistaInscricaoDto, UpdateCatequistaDto } from './dto/catequista.dto';
@@ -10,6 +10,8 @@ import { randomBytes } from 'crypto';
 
 @Injectable()
 export class CatequistasService {
+  private readonly logger = new Logger(CatequistasService.name);
+
   constructor(
     private prisma: PrismaService,
     private s3StorageService: S3StorageService,
@@ -312,7 +314,10 @@ export class CatequistasService {
         catequista.nome,
       );
       emailSent = result.emailSent;
-    } catch {
+    } catch (error) {
+      this.logger.error(
+        `Falha ao enviar convite de senha para ${approvedInscricao.email}: ${error instanceof Error ? error.message : String(error)}`,
+      );
       emailSent = false;
     }
 

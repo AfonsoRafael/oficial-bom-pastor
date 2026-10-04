@@ -46,15 +46,17 @@ export class PreMatriculasController {
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['nomeCatequizando', 'dataNascimento', 'nomePais', 'email', 'telefone'],
+      required: ['nomeCatequizando', 'dataNascimento', 'email', 'telefone'],
       properties: {
         nomeCatequizando: { type: 'string', example: 'Joao da Silva' },
         alergiasProblemasSaude: { type: 'string', example: 'Alergia a amendoim' },
         dataNascimento: { type: 'string', format: 'date', example: '2015-05-12' },
-        nomePais: { type: 'string', example: 'Maria e Jose da Silva' },
+        nomePai: { type: 'string', example: 'Jose da Silva' },
+        nomeMae: { type: 'string', example: 'Maria da Silva' },
+        sacramentosPai: { type: 'string', example: 'BATISMO,CRISMA' },
+        sacramentosMae: { type: 'string', example: 'BATISMO,EUCARISTIA' },
         email: { type: 'string', format: 'email', example: 'familia@email.com' },
         telefone: { type: 'string', example: '(11) 99999-9999' },
-        sacramentosPais: { type: 'string', example: 'Batismo e Crisma' },
         certificadoBatismo: {
           type: 'string',
           format: 'binary',

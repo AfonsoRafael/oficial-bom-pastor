@@ -50,7 +50,8 @@ export function ProfileMenuButton() {
     };
   }, [isAuthenticated, location.pathname, user?.id, user?.nome]);
 
-  if (!isAuthenticated) return null;
+  const isPrivateRoute = /^\/(perfil|pais|admin|catequista|comunicacao)(\/|$)/.test(location.pathname);
+  if (!isAuthenticated || !isPrivateRoute) return null;
 
   const displayName = profile?.nome || user?.nome || "Meu perfil";
   const roleName = role === "admin" ? "Administrador" : role === "catequista" ? "Catequista" : "Responsável";

@@ -64,7 +64,31 @@ export class PreMatriculasService {
     return preMatricula;
   }
 
+  private normalizeSacramentos(value?: string) {
+    const allowed = ['BATISMO', 'EUCARISTIA', 'CRISMA', 'MATRIMONIO'];
+    const items = (value ?? '')
+      .split(',')
+      .map((item) => item.trim().toUpperCase())
+      .filter(Boolean);
+
+    if (items.some((item) => !allowed.includes(item))) {
+      throw new BadRequestException('sacramentos invalidos. Use BATISMO, EUCARISTIA, CRISMA ou MATRIMONIO.');
+    }
+
+    return items.length ? [...new Set(items)].join(',') : null;
+  }
+
   async create(dto: CreatePreMatriculaDto) {
+    const nomePai = dto.nomePai?.trim() || null;
+    const nomeMae = dto.nomeMae?.trim() || null;
+
+    if (!nomePai && !nomeMae) {
+      throw new BadRequestException('nomePai: informe o nome do pai ou da mae.');
+    }
+
+    const sacramentosPai = nomePai ? this.normalizeSacramentos(dto.sacramentosPai) : null;
+    const sacramentosMae = nomeMae ? this.normalizeSacramentos(dto.sacramentosMae) : null;
+
     const certificadoBatismoUrl = await this.resolveDocumentLocation(
       dto.certificadoBatismoBase64,
       'certificado-batismo',
@@ -85,10 +109,13 @@ export class PreMatriculasService {
         nomeCatequizando: dto.nomeCatequizando,
         alergiasProblemasSaude: dto.alergiasProblemasSaude,
         dataNascimento: new Date(dto.dataNascimento),
-        nomePais: dto.nomePais,
+        nomePais: [nomeMae, nomePai].filter(Boolean).join(' e '),
+        nomePai,
+        nomeMae,
+        sacramentosPai,
+        sacramentosMae,
         email: dto.email,
         telefone: dto.telefone,
-        sacramentosPais: dto.sacramentosPais,
         CertificadoBatismo: certificadoBatismoUrl,
         ComprovanteEndereco: comprovanteEnderecoUrl,
         CertidaoDeNascimento: certidaoDeNascimentoUrl,

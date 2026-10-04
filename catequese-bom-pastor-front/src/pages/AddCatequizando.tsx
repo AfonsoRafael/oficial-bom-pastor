@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,11 +69,27 @@ interface PreMatricula {
   nomeCatequizando: string;
   dataNascimento: string;
   nomePais: string;
+  sacramentosPai?: string | null;
+  sacramentosMae?: string | null;
+  nomePai?: string | null;
+  nomeMae?: string | null;
   email: string;
   telefone: string;
   status: PreMatriculaStatus;
   criadoEm: string;
   needsPasswordSetup?: boolean;
+}
+
+const SACRAMENT_LABELS: Record<string, string> = {
+  BATISMO: "Batismo",
+  EUCARISTIA: "Eucaristia",
+  CRISMA: "Crisma",
+  MATRIMONIO: "Matrimônio",
+};
+
+function formatSacramentos(value?: string | null) {
+  const labels = (value ?? "").split(",").filter(Boolean).map((item) => SACRAMENT_LABELS[item] ?? item);
+  return labels.length ? ` (${labels.join(", ")})` : "";
 }
 
 export default function AddCatequizando() {
@@ -627,7 +643,12 @@ export default function AddCatequizando() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-slate-600">
-                                {preMatricula.nomePais}
+                                {preMatricula.nomePai || preMatricula.nomeMae ? (
+                                  <div className="space-y-1 text-sm">
+                                    {preMatricula.nomePai && <p>Pai: {preMatricula.nomePai}{formatSacramentos(preMatricula.sacramentosPai)}</p>}
+                                    {preMatricula.nomeMae && <p>Mãe: {preMatricula.nomeMae}{formatSacramentos(preMatricula.sacramentosMae)}</p>}
+                                  </div>
+                                ) : preMatricula.nomePais}
                               </TableCell>
                               <TableCell className="text-slate-600">
                                 {preMatricula.telefone || preMatricula.email || "-"}
