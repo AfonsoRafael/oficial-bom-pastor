@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagrama de Casos de Uso - Sistema de Gestão Catequética</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Mermaid.js -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <!-- SVG Pan Zoom -->
+  <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    #diagram-container svg {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col h-screen overflow-hidden">
+
+  <!-- Header -->
+  <header class="bg-slate-800 border-b border-slate-700 px-6 py-3 flex flex-wrap items-center justify-between shrink-0 z-10 gap-4">
+    <div class="flex items-center space-x-3">
+      <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
+        <i class="fa-solid fa-diagram-project text-xl"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold text-white leading-tight">Sistema de Gestão Catequética</h1>
+        <p class="text-xs text-slate-400">Diagrama Interativo de Casos de Uso (UML)</p>
+      </div>
+    </div>
+
+    <!-- Actions / Controls Header -->
+    <div class="flex items-center space-x-3">
+      <!-- Filter by Actor -->
+      <div class="flex items-center space-x-2 bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-1.5 text-xs">
+        <label for="filter-actor" class="text-slate-400 font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-user-tag text-indigo-400"></i> Ator:
+        </label>
+        <select id="filter-actor" class="bg-transparent text-slate-200 focus:outline-none cursor-pointer">
+          <option value="ALL" class="bg-slate-800">Todos os Atores</option>
+          <option value="Responsável" class="bg-slate-800">Responsável</option>
+          <option value="Catequista" class="bg-slate-800">Catequista</option>
+          <option value="Secretaria" class="bg-slate-800">Secretaria</option>
+          <option value="Coordenador" class="bg-slate-800">Coordenador</option>
+        </select>
+      </div>
+
+      <!-- Filter by Module -->
+      <div class="flex items-center space-x-2 bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-1.5 text-xs">
+        <label for="filter-module" class="text-slate-400 font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-cubes text-emerald-400"></i> Módulo:
+        </label>
+        <select id="filter-module" class="bg-transparent text-slate-200 focus:outline-none cursor-pointer">
+          <option value="ALL" class="bg-slate-800">Todos os Módulos</option>
+          <option value="MOD_AUTENTICACAO" class="bg-slate-800">Autenticação</option>
+          <option value="MOD_MATRICULAS" class="bg-slate-800">Matrículas</option>
+          <option value="MOD_DOCUMENTOS" class="bg-slate-800">Documentos</option>
+          <option value="MOD_FREQUENCIA" class="bg-slate-800">Frequência e Reposições</option>
+          <option value="MOD_CONTEUDO" class="bg-slate-800">Conteúdo Catequético</option>
+          <option value="MOD_COMUNICACAO" class="bg-slate-800">Comunicação</option>
+          <option value="MOD_CATEQUIZANDOS" class="bg-slate-800">Catequizandos</option>
+          <option value="MOD_TURMAS" class="bg-slate-800">Turmas e Etapas</option>
+          <option value="MOD_EVENTOS" class="bg-slate-800">Eventos</option>
+          <option value="MOD_RELATORIOS" class="bg-slate-800">Relatórios</option>
+        </select>
+      </div>
+
+      <button id="btn-toggle-code" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors">
+        <i class="fa-solid fa-code"></i> Ver Código Source
+      </button>
+
+      <button id="btn-reset-zoom" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors" title="Redefinir Zoom">
+        <i class="fa-solid fa-expand"></i> Ajustar
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- Left Sidebar: Info & Legend -->
+    <aside id="sidebar-info" class="w-80 bg-slate-800/90 backdrop-blur border-r border-slate-700 p-4 flex flex-col justify-between overflow-y-auto custom-scrollbar z-10 shrink-0">
+      <div class="space-y-5">
+        <!-- Atores Legend -->
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-users text-indigo-400"></i> Atores do Sistema
+          </h3>
+          <div class="space-y-2 text-xs">
+            <div class="p-2.5 rounded-lg bg-slate-900/60 border border-slate-700/60 hover:border-indigo-500/40 transition">
+              <div class="font-semibold text-indigo-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-user"></i> Responsável
+              </div>
+              <p class="text-slate-400 text-[11px] mt-1">Pai, mãe ou legal pelo catequizando. Solicita matrículas, envia documentos e acompanha frequência.</p>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-900/60 border border-slate-700/60 hover:border-amber-500/40 transition">
+              <div class="font-semibold text-amber-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-chalkboard-user"></i> Catequista
+              </div>
+              <p class="text-slate-400 text-[11px] mt-1">Ministra encontros, registra chamadas, conteúdos e gerencia justificativas de falta.</p>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-900/60 border border-slate-700/60 hover:border-emerald-500/40 transition">
+              <div class="font-semibold text-emerald-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-clipboard-check"></i> Secretaria
+              </div>
+              <p class="text-slate-400 text-[11px] mt-1">Análise administrativa, conferência de documentos e cadastro geral.</p>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-900/60 border border-slate-700/60 hover:border-purple-500/40 transition">
+              <div class="font-semibold text-purple-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-user-shield"></i> Coordenador
+              </div>
+              <p class="text-slate-400 text-[11px] mt-1">Gestão geral. <span class="text-purple-400 font-medium">Herda todas as funções do Catequista</span> e possui alçadas de aprovação, turmas e relatórios.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Relacionamentos Legend -->
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-route text-indigo-400"></i> Convenção de Notações
+          </h3>
+          <div class="space-y-2 text-xs">
+            <div class="flex items-center justify-between p-2 rounded bg-slate-900/40 border border-slate-700/40">
+              <span class="text-slate-300">&lt;&lt;include&gt;&gt;</span>
+              <span class="text-slate-400 text-[11px]">Execução Obrigatória</span>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded bg-slate-900/40 border border-slate-700/40">
+              <span class="text-slate-300">&lt;&lt;extend&gt;&gt;</span>
+              <span class="text-slate-400 text-[11px]">Comportamento Opcional</span>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded bg-slate-900/40 border border-slate-700/40">
+              <span class="text-purple-300 font-semibold">&mdash;&mdash;&mdash;&gt;</span>
+              <span class="text-slate-400 text-[11px]">Generalização (Herança)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Info -->
+      <div class="pt-4 border-t border-slate-700/80 text-[11px] text-slate-500 flex justify-between items-center">
+        <span>UML 2.5 Standard</span>
+        <span class="flex items-center gap-1"><i class="fa-solid fa-mouse text-slate-400"></i> Pan & Zoom Ativos</span>
+      </div>
+    </aside>
+
+    <!-- Diagram Display Window -->
+    <main class="flex-1 relative bg-slate-950 flex flex-col items-center justify-center overflow-hidden">
+      <!-- Floating Pan/Zoom Controls -->
+      <div class="absolute bottom-6 right-6 z-20 flex flex-col bg-slate-800/90 border border-slate-700 rounded-xl shadow-xl overflow-hidden backdrop-blur">
+        <button id="btn-zoom-in" class="p-2.5 hover:bg-slate-700 text-slate-200 transition border-b border-slate-700" title="Aumentar Zoom">
+          <i class="fa-solid fa-plus w-4 h-4 text-center"></i>
+        </button>
+        <button id="btn-zoom-out" class="p-2.5 hover:bg-slate-700 text-slate-200 transition border-b border-slate-700" title="Diminuir Zoom">
+          <i class="fa-solid fa-minus w-4 h-4 text-center"></i>
+        </button>
+        <button id="btn-zoom-reset-floating" class="p-2.5 hover:bg-slate-700 text-slate-200 transition" title="Centralizar Diagrama">
+          <i class="fa-solid fa-arrows-to-dot w-4 h-4 text-center"></i>
+        </button>
+      </div>
+
+      <!-- Loading Spinner -->
+      <div id="loading" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 z-30">
+        <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <p class="text-sm font-medium text-slate-300">Renderizando Diagrama UML...</p>
+      </div>
+
+      <!-- Container where SVG Mermaid will render -->
+      <div id="diagram-container" class="w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing select-none p-4"></div>
+    </main>
+  </div>
+
+  <!-- Source Code Modal -->
+  <div id="code-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-800/50">
+        <div class="flex items-center space-x-3">
+          <i class="fa-solid fa-code text-indigo-400 text-lg"></i>
+          <h2 class="font-bold text-white">Especificação do Diagrama UML</h2>
+        </div>
+        <button id="btn-close-modal" class="text-slate-400 hover:text-white transition p-1">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Tabs Header -->
+      <div class="flex border-b border-slate-800 bg-slate-900 px-6">
+        <button id="tab-mermaid-btn" class="px-4 py-3 text-xs font-semibold text-indigo-400 border-b-2 border-indigo-500 focus:outline-none">
+          Notação Mermaid.js
+        </button>
+        <button id="tab-plantuml-btn" class="px-4 py-3 text-xs font-semibold text-slate-400 hover:text-slate-200 border-b-2 border-transparent focus:outline-none">
+          Notação PlantUML
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="flex-1 p-6 overflow-y-auto custom-scrollbar relative bg-slate-950">
+        <!-- Copy Button -->
+        <button id="btn-copy-code" class="absolute top-8 right-8 bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-md transition">
+          <i class="fa-regular fa-copy"></i> Copiar Código
+        </button>
+
+        <pre id="code-content" class="text-xs font-mono text-slate-300 leading-relaxed whitespace-pre font-normal"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-xl shadow-2xl text-xs font-medium flex items-center space-x-2 transition-all duration-300 opacity-0 pointer-events-none z-50">
+    <i class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toast-msg">Código copiado com sucesso!</span>
+  </div>
+
+  <script>
+    // System Raw Specifications (Mermaid source)
+    const mermaidCodeFull = `
+graph LR
+  %% ATORES
+  Actor_Resp["<b>Responsável</b>"]
+  Actor_Cat["<b>Catequista</b>"]
+  Actor_Sec["<b>Secretaria</b>"]
+  Actor_Coord["<b>Coordenador</b>"]
+
+  %% Generalização
+  Actor_Coord -- Generalização --> Actor_Cat
+
+  subgraph SGC ["<b>Sistema de Gestão Catequética</b>"]
+
+    %% AUTENTICAÇÃO
+    subgraph MOD_AUTENTICACAO ["<b>Autenticação</b>"]
+      UC_Login("Realizar Login")
+      UC_RecuperarSenha("Recuperar Senha")
+      UC_AlterarSenha("Alterar Senha")
+    end
+
+    %% MATRÍCULAS
+    subgraph MOD_MATRICULAS ["<b>Matrículas</b>"]
+      UC_SolicitarMatricula("Solicitar Matrícula")
+      UC_AcompanharMatricula("Acompanhar Status da Matrícula")
+      UC_AnalisarMatriculas("Analisar Matrículas")
+      UC_EmitirParecerMatricula("Emitir Parecer Matrícula")
+      UC_ConsultarMatriculasPendentes("Consultar Matrículas Pendentes")
+      UC_AprovarMatricula("Aprovar Matrícula")
+      UC_RejeitarMatricula("Rejeitar Matrícula")
+      UC_DefinirPeriodoMatricula("Definir Período de Matrícula")
+    end
+
+    %% DOCUMENTOS
+    subgraph MOD_DOCUMENTOS ["<b>Documentos</b>"]
+      UC_EnviarDocumentos("Enviar Documentos")
+      UC_ConferirDocumentos("Conferir Documentos")
+      UC_SolicitarReenvio("Solicitar Reenvio")
+      UC_EmitirParecerDoc("Emitir Parecer Documental")
+      UC_ConsultarDocsPendentes("Consultar Documentos Pendentes")
+      UC_AprovarDoc("Aprovar Documento")
+      UC_RejeitarDoc("Rejeitar Documento")
+    end
+
+    %% FREQUÊNCIA
+    subgraph MOD_FREQUENCIA ["<b>Frequência e Reposições</b>"]
+      UC_ConsultarFrequencia("Consultar Frequência")
+      UC_JustificarFalta("Justificar Falta")
+      UC_RealizarChamada("Realizar Chamada")
+      UC_AnalisarJustificativa("Analisar Justificativa")
+      UC_CadastrarReposicao("Cadastrar Reposição")
+      UC_RegistrarPartReposicao("Registrar Participação em Reposição")
+    end
+
+    %% CONTEÚDO
+    subgraph MOD_CONTEUDO ["<b>Conteúdo Catequético</b>"]
+      UC_ConsultarConteudosMinistrados("Consultar Conteúdos Ministrados")
+      UC_RegistrarConteudo("Registrar Conteúdo Ministrado")
+      UC_ConsultarConteudosDisp("Consultar Conteúdos Disponibilizados")
+      UC_ConsultarMateriais("Consultar Materiais de Apoio")
+      UC_CadastrarConteudo("Cadastrar Conteúdo Catequético")
+      UC_EditarConteudo("Editar Conteúdo Catequético")
+      UC_AtivarConteudo("Ativar Conteúdo")
+      UC_DesativarConteudo("Desativar Conteúdo")
+      UC_DispConteudoCat("Disponibilizar Conteúdo para Catequistas")
+      UC_DispConteudoEtapa("Disponibilizar Conteúdo por Etapa")
+      UC_CadastrarMaterial("Cadastrar Material de Apoio")
+      UC_CategorizarMaterial("Categorizar Material")
+    end
+
+    %% COMUNICAÇÃO
+    subgraph MOD_COMUNICACAO ["<b>Comunicação</b>"]
+      UC_EnviarMensagem("Enviar Mensagem")
+      UC_ResponderMensagens("Responder Mensagens")
+      UC_NotificarPendencias("Notificar Pendências")
+      UC_PublicarComunicadoGeral("Publicar Comunicado Geral")
+      UC_PublicarComunicadoTurma("Publicar Comunicado para Turma")
+    end
+
+    %% CATEQUIZANDOS
+    subgraph MOD_CATEQUIZANDOS ["<b>Catequizandos</b>"]
+      UC_AtualizarCadastro("Atualizar Cadastro")
+      UC_ConsultarHistorico("Consultar Histórico do Catequizando")
+      UC_EditarCatequizando("Editar Catequizando")
+      UC_ConsultarHistSacramental("Consultar Histórico Sacramental")
+    end
+
+    %% TURMAS
+    subgraph MOD_TURMAS ["<b>Turmas e Etapas</b>"]
+      UC_ConsultarTurmas("Consultar Turmas")
+      UC_CriarTurma("Criar Turma")
+      UC_EditarTurma("Editar Turma")
+      UC_DefinirHorarioTurma("Definir Horário")
+      UC_DefinirLocalTurma("Definir Local")
+      UC_AssociarCatequista("Associar Catequista")
+      UC_TrocarCatequista("Trocar Catequista")
+      UC_TransferirCatequizando("Transferir Catequizando")
+      UC_CadastrarEtapa("Cadastrar Etapa Catequética")
+      UC_EditarEtapa("Editar Etapa Catequética")
+      UC_AtivarEtapa("Ativar Etapa")
+      UC_DesativarEtapa("Desativar Etapa")
+      UC_PromoverCatequizando("Promover Catequizando")
+      UC_RegistrarConclusaoEtapa("Registrar Conclusão de Etapa")
+    end
+
+    %% EVENTOS
+    subgraph MOD_EVENTOS ["<b>Eventos</b>"]
+      UC_ConsultarEventos("Consultar Eventos")
+      UC_CadastrarEvento("Cadastrar Evento")
+      UC_RegistrarParticipacaoEvento("Registrar Participação em Evento")
+    end
+
+    %% RELATÓRIOS
+    subgraph MOD_RELATORIOS ["<b>Relatórios</b>"]
+      UC_GerarRelatoriosAdmin("Gerar Relatórios Administrativos")
+      UC_GerarRelatorioFreq("Relatório Frequência")
+      UC_GerarRelatorioMatriculas("Relatório Matrículas")
+      UC_GerarRelatorioDocs("Relatório Documentos Pendentes")
+      UC_GerarRelatorioReposicoes("Relatório Reposições")
+      UC_GerarRelatorioEventos("Relatório Eventos")
+      UC_GerarRelatorioEtapa("Relatório por Etapa")
+    end
+
+  end
+
+  %% INCLUDE / EXTEND
+  UC_AnalisarMatriculas -. "<<include>>" .-> UC_EmitirParecerMatricula
+  UC_ConferirDocumentos -. "<<include>>" .-> UC_EmitirParecerDoc
+  UC_SolicitarReenvio -. "<<extend>>" .-> UC_ConferirDocumentos
+  UC_AprovarMatricula -. "<<extend>>" .-> UC_AnalisarMatriculas
+  UC_RejeitarMatricula -. "<<extend>>" .-> UC_AnalisarMatriculas
+  UC_AprovarDoc -. "<<extend>>" .-> UC_ConferirDocumentos
+  UC_RejeitarDoc -. "<<extend>>" .-> UC_ConferirDocumentos
+  UC_PromoverCatequizando -. "<<include>>" .-> UC_RegistrarConclusaoEtapa
+  UC_DispConteudoCat -. "<<include>>" .-> UC_CadastrarConteudo
+  UC_DispConteudoEtapa -. "<<include>>" .-> UC_CadastrarConteudo
+  UC_CadastrarConteudo -. "<<include>>" .-> UC_CadastrarMaterial
+
+  %% RESPONSÁVEL
+  Actor_Resp --- UC_Login
+  Actor_Resp --- UC_RecuperarSenha
+  Actor_Resp --- UC_AlterarSenha
+  Actor_Resp --- UC_SolicitarMatricula
+  Actor_Resp --- UC_AcompanharMatricula
+  Actor_Resp --- UC_EnviarDocumentos
+  Actor_Resp --- UC_ConsultarFrequencia
+  Actor_Resp --- UC_JustificarFalta
+  Actor_Resp --- UC_ConsultarConteudosMinistrados
+  Actor_Resp --- UC_ConsultarEventos
+  Actor_Resp --- UC_EnviarMensagem
+  Actor_Resp --- UC_ConsultarHistSacramental
+
+  %% CATEQUISTA
+  Actor_Cat --- UC_Login
+  Actor_Cat --- UC_ConsultarTurmas
+  Actor_Cat --- UC_RealizarChamada
+  Actor_Cat --- UC_RegistrarConteudo
+  Actor_Cat --- UC_ConsultarConteudosDisp
+  Actor_Cat --- UC_ConsultarMateriais
+  Actor_Cat --- UC_ResponderMensagens
+  Actor_Cat --- UC_AnalisarJustificativa
+  Actor_Cat --- UC_CadastrarReposicao
+  Actor_Cat --- UC_RegistrarPartReposicao
+
+  %% SECRETARIA
+  Actor_Sec --- UC_Login
+  Actor_Sec --- UC_AnalisarMatriculas
+  Actor_Sec --- UC_ConferirDocumentos
+  Actor_Sec --- UC_AtualizarCadastro
+  Actor_Sec --- UC_ConsultarHistorico
+  Actor_Sec --- UC_EditarCatequizando
+  Actor_Sec --- UC_ConsultarMatriculasPendentes
+  Actor_Sec --- UC_ConsultarDocsPendentes
+  Actor_Sec --- UC_GerarRelatoriosAdmin
+  Actor_Sec --- UC_NotificarPendencias
+
+  %% COORDENADOR
+  Actor_Coord --- UC_Login
+  Actor_Coord --- UC_AprovarMatricula
+  Actor_Coord --- UC_RejeitarMatricula
+  Actor_Coord --- UC_AprovarDoc
+  Actor_Coord --- UC_RejeitarDoc
+  Actor_Coord --- UC_DefinirPeriodoMatricula
+  Actor_Coord --- UC_CriarTurma
+  Actor_Coord --- UC_EditarTurma
+  Actor_Coord --- UC_DefinirHorarioTurma
+  Actor_Coord --- UC_DefinirLocalTurma
+  Actor_Coord --- UC_AssociarCatequista
+  Actor_Coord --- UC_TrocarCatequista
+  Actor_Coord --- UC_TransferirCatequizando
+  Actor_Coord --- UC_CadastrarEtapa
+  Actor_Coord --- UC_EditarEtapa
+  Actor_Coord --- UC_AtivarEtapa
+  Actor_Coord --- UC_DesativarEtapa
+  Actor_Coord --- UC_PromoverCatequizando
+  Actor_Coord --- UC_RegistrarConclusaoEtapa
+  Actor_Coord --- UC_CadastrarConteudo
+  Actor_Coord --- UC_EditarConteudo
+  Actor_Coord --- UC_AtivarConteudo
+  Actor_Coord --- UC_DesativarConteudo
+  Actor_Coord --- UC_DispConteudoCat
+  Actor_Coord --- UC_DispConteudoEtapa
+  Actor_Coord --- UC_CadastrarMaterial
+  Actor_Coord --- UC_CategorizarMaterial
+  Actor_Coord --- UC_PublicarComunicadoGeral
+  Actor_Coord --- UC_PublicarComunicadoTurma
+  Actor_Coord --- UC_CadastrarEvento
+  Actor_Coord --- UC_RegistrarParticipacaoEvento
+  Actor_Coord --- UC_ConsultarHistSacramental
+  Actor_Coord --- UC_AtualizarCadastro
+  Actor_Coord --- UC_ConsultarHistorico
+  Actor_Coord --- UC_EditarCatequizando
+  Actor_Coord --- UC_GerarRelatorioFreq
+  Actor_Coord --- UC_GerarRelatorioMatriculas
+  Actor_Coord --- UC_GerarRelatorioDocs
+  Actor_Coord --- UC_GerarRelatorioReposicoes
+  Actor_Coord --- UC_GerarRelatorioEventos
+  Actor_Coord --- UC_GerarRelatorioEtapa
+
+  %% STYLING
+  classDef actorStyle fill:#1e293b,stroke:#6366f1,stroke-width:2px,color:#fff;
+  classDef ucStyle fill:#0f172a,stroke:#38bdf8,stroke-width:1.5px,color:#e2e8f0;
+  class Actor_Resp,Actor_Cat,Actor_Sec,Actor_Coord actorStyle;
+  class UC_Login,UC_RecuperarSenha,UC_AlterarSenha,UC_SolicitarMatricula,UC_AcompanharMatricula,UC_AnalisarMatriculas,UC_EmitirParecerMatricula,UC_ConsultarMatriculasPendentes,UC_AprovarMatricula,UC_RejeitarMatricula,UC_DefinirPeriodoMatricula,UC_EnviarDocumentos,UC_ConferirDocumentos,UC_SolicitarReenvio,UC_EmitirParecerDoc,UC_ConsultarDocsPendentes,UC_AprovarDoc,UC_RejeitarDoc,UC_ConsultarFrequencia,UC_JustificarFalta,UC_RealizarChamada,UC_AnalisarJustificativa,UC_CadastrarReposicao,UC_RegistrarPartReposicao,UC_ConsultarConteudosMinistrados,UC_RegistrarConteudo,UC_ConsultarConteudosDisp,UC_ConsultarMateriais,UC_CadastrarConteudo,UC_EditarConteudo,UC_AtivarConteudo,UC_DesativarConteudo,UC_DispConteudoCat,UC_DispConteudoEtapa,UC_CadastrarMaterial,UC_CategorizarMaterial,UC_EnviarMensagem,UC_ResponderMensagens,UC_NotificarPendencias,UC_PublicarComunicadoGeral,UC_PublicarComunicadoTurma,UC_AtualizarCadastro,UC_ConsultarHistorico,UC_EditarCatequizando,UC_ConsultarHistSacramental,UC_ConsultarTurmas,UC_CriarTurma,UC_EditarTurma,UC_DefinirHorarioTurma,UC_DefinirLocalTurma,UC_AssociarCatequista,UC_TrocarCatequista,UC_TransferirCatequizando,UC_CadastrarEtapa,UC_EditarEtapa,UC_AtivarEtapa,UC_DesativarEtapa,UC_PromoverCatequizando,UC_RegistrarConclusaoEtapa,UC_ConsultarEventos,UC_CadastrarEvento,UC_RegistrarParticipacaoEvento,UC_GerarRelatoriosAdmin,UC_GerarRelatorioFreq,UC_GerarRelatorioMatriculas,UC_GerarRelatorioDocs,UC_GerarRelatorioReposicoes,UC_GerarRelatorioEventos,UC_GerarRelatorioEtapa ucStyle;
+`;
+
+    // PlantUML Format Source
+    const plantUmlCode = `@startuml Sistema_de_Gestao_Catequetica
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle solid
+skinparam shadowing false
+
+actor "Responsável" as Resp
+actor "Catequista" as Cat
+actor "Secretaria" as Sec
+actor "Coordenador" as Coord
+
+' Herança / Generalização
+Coord --|> Cat
+
+rectangle "Sistema de Gestão Catequética" {
+
+  package "Autenticação" {
+    usecase "Realizar Login" as UC_Login
+    usecase "Recuperar Senha" as UC_RecuperarSenha
+    usecase "Alterar Senha" as UC_AlterarSenha
+  }
+
+  package "Matrículas" {
+    usecase "Solicitar Matrícula" as UC_SolicitarMatricula
+    usecase "Acompanhar Status da Matrícula" as UC_AcompanharMatricula
+    usecase "Analisar Matrículas" as UC_AnalisarMatriculas
+    usecase "Emitir Parecer Matrícula" as UC_EmitirParecerMatricula
+    usecase "Consultar Matrículas Pendentes" as UC_ConsultarMatriculasPendentes
+    usecase "Aprovar Matrícula" as UC_AprovarMatricula
+    usecase "Rejeitar Matrícula" as UC_RejeitarMatricula
+    usecase "Definir Período de Matrícula" as UC_DefinirPeriodoMatricula
+  }
+
+  package "Documentos" {
+    usecase "Enviar Documentos" as UC_EnviarDocumentos
+    usecase "Conferir Documentos" as UC_ConferirDocumentos
+    usecase "Solicitar Reenvio" as UC_SolicitarReenvio
+    usecase "Emitir Parecer Documental" as UC_EmitirParecerDoc
+    usecase "Consultar Documentos Pendentes" as UC_ConsultarDocsPendentes
+    usecase "Aprovar Documento" as UC_AprovarDoc
+    usecase "Rejeitar Documento" as UC_RejeitarDoc
+  }
+
+  package "Frequência e Reposições" {
+    usecase "Consultar Frequência" as UC_ConsultarFrequencia
+    usecase "Justificar Falta" as UC_JustificarFalta
+    usecase "Realizar Chamada" as UC_RealizarChamada
+    usecase "Analisar Justificativa" as UC_AnalisarJustificativa
+    usecase "Cadastrar Reposição" as UC_CadastrarReposicao
+    usecase "Registrar Participação em Reposição" as UC_RegistrarPartReposicao
+  }
+
+  package "Conteúdo Catequético" {
+    usecase "Consultar Conteúdos Ministrados" as UC_ConsultarConteudosMinistrados
+    usecase "Registrar Conteúdo Ministrado" as UC_RegistrarConteudo
+    usecase "Consultar Conteúdos Disponibilizados" as UC_ConsultarConteudosDisp
+    usecase "Consultar Materiais de Apoio" as UC_ConsultarMateriais
+    usecase "Cadastrar Conteúdo Catequético" as UC_CadastrarConteudo
+    usecase "Editar Conteúdo Catequético" as UC_EditarConteudo
+    usecase "Ativar Conteúdo" as UC_AtivarConteudo
+    usecase "Desativar Conteúdo" as UC_DesativarConteudo
+    usecase "Disponibilizar Conteúdo para Catequistas" as UC_DispConteudoCat
+    usecase "Disponibilizar Conteúdo por Etapa" as UC_DispConteudoEtapa
+    usecase "Cadastrar Material de Apoio" as UC_CadastrarMaterial
+    usecase "Categorizar Material" as UC_CategorizarMaterial
+  }
+
+  package "Comunicação" {
+    usecase "Enviar Mensagem" as UC_EnviarMensagem
+    usecase "Responder Mensagens" as UC_ResponderMensagens
+    usecase "Notificar Pendências" as UC_NotificarPendencias
+    usecase "Publicar Comunicado Geral" as UC_PublicarComunicadoGeral
+    usecase "Publicar Comunicado para Turma" as UC_PublicarComunicadoTurma
+  }
+
+  package "Catequizandos" {
+    usecase "Atualizar Cadastro" as UC_AtualizarCadastro
+    usecase "Consultar Histórico do Catequizando" as UC_ConsultarHistorico
+    usecase "Editar Catequizando" as UC_EditarCatequizando
+    usecase "Consultar Histórico Sacramental" as UC_ConsultarHistSacramental
+  }
+
+  package "Turmas e Etapas" {
+    usecase "Consultar Turmas" as UC_ConsultarTurmas
+    usecase "Criar Turma" as UC_CriarTurma
+    usecase "Editar Turma" as UC_EditarTurma
+    usecase "Definir Horário" as UC_DefinirHorarioTurma
+    usecase "Definir Local" as UC_DefinirLocalTurma
+    usecase "Associar Catequista" as UC_AssociarCatequista
+    usecase "Trocar Catequista" as UC_TrocarCatequista
+    usecase "Transferir Catequizando" as UC_TransferirCatequizando
+    usecase "Cadastrar Etapa Catequética" as UC_CadastrarEtapa
+    usecase "Editar Etapa Catequética" as UC_EditarEtapa
+    usecase "Ativar Etapa" as UC_AtivarEtapa
+    usecase "Desativar Etapa" as UC_DesativarEtapa
+    usecase "Promover Catequizando" as UC_PromoverCatequizando
+    usecase "Registrar Conclusão de Etapa" as UC_RegistrarConclusaoEtapa
+  }
+
+  package "Eventos" {
+    usecase "Consultar Eventos" as UC_ConsultarEventos
+    usecase "Cadastrar Evento" as UC_CadastrarEvento
+    usecase "Registrar Participação em Evento" as UC_RegistrarParticipacaoEvento
+  }
+
+  package "Relatórios" {
+    usecase "Gerar Relatórios Administrativos" as UC_GerarRelatoriosAdmin
+    usecase "Relatório Frequência" as UC_GerarRelatorioFreq
+    usecase "Relatório Matrículas" as UC_GerarRelatorioMatriculas
+    usecase "Relatório Documentos Pendentes" as UC_GerarRelatorioDocs
+    usecase "Relatório Reposições" as UC_GerarRelatorioReposicoes
+    usecase "Relatório Eventos" as UC_GerarRelatorioEventos
+    usecase "Relatório por Etapa" as UC_GerarRelatorioEtapa
+  }
+}
+
+' Relacionamentos Internos (Includes / Extends)
+UC_AnalisarMatriculas .> UC_EmitirParecerMatricula : <<include>>
+UC_ConferirDocumentos .> UC_EmitirParecerDoc : <<include>>
+UC_SolicitarReenvio .> UC_ConferirDocumentos : <<extend>>
+UC_AprovarMatricula .> UC_AnalisarMatriculas : <<extend>>
+UC_RejeitarMatricula .> UC_AnalisarMatriculas : <<extend>>
+UC_AprovarDoc .> UC_ConferirDocumentos : <<extend>>
+UC_RejeitarDoc .> UC_ConferirDocumentos : <<extend>>
+UC_PromoverCatequizando .> UC_RegistrarConclusaoEtapa : <<include>>
+UC_DispConteudoCat .> UC_CadastrarConteudo : <<include>>
+UC_DispConteudoEtapa .> UC_CadastrarConteudo : <<include>>
+UC_CadastrarConteudo .> UC_CadastrarMaterial : <<include>>
+
+' Associações: Responsável
+Resp --> UC_Login
+Resp --> UC_RecuperarSenha
+Resp --> UC_AlterarSenha
+Resp --> UC_SolicitarMatricula
+Resp --> UC_AcompanharMatricula
+Resp --> UC_EnviarDocumentos
+Resp --> UC_ConsultarFrequencia
+Resp --> UC_JustificarFalta
+Resp --> UC_ConsultarConteudosMinistrados
+Resp --> UC_ConsultarEventos
+Resp --> UC_EnviarMensagem
+Resp --> UC_ConsultarHistSacramental
+
+' Associações: Catequista
+Cat --> UC_Login
+Cat --> UC_ConsultarTurmas
+Cat --> UC_RealizarChamada
+Cat --> UC_RegistrarConteudo
+Cat --> UC_ConsultarConteudosDisp
+Cat --> UC_ConsultarMateriais
+Cat --> UC_ResponderMensagens
+Cat --> UC_AnalisarJustificativa
+Cat --> UC_CadastrarReposicao
+Cat --> UC_RegistrarPartReposicao
+
+' Associações: Secretaria
+Sec --> UC_Login
+Sec --> UC_AnalisarMatriculas
+Sec --> UC_ConferirDocumentos
+Sec --> UC_AtualizarCadastro
+Sec --> UC_ConsultarHistorico
+Sec --> UC_EditarCatequizando
+Sec --> UC_ConsultarMatriculasPendentes
+Sec --> UC_ConsultarDocsPendentes
+Sec --> UC_GerarRelatoriosAdmin
+Sec --> UC_NotificarPendencias
+
+' Associações: Coordenador
+Coord --> UC_Login
+Coord --> UC_AprovarMatricula
+Coord --> UC_RejeitarMatricula
+Coord --> UC_AprovarDoc
+Coord --> UC_RejeitarDoc
+Coord --> UC_DefinirPeriodoMatricula
+Coord --> UC_CriarTurma
+Coord --> UC_EditarTurma
+Coord --> UC_DefinirHorarioTurma
+Coord --> UC_DefinirLocalTurma
+Coord --> UC_AssociarCatequista
+Coord --> UC_TrocarCatequista
+Coord --> UC_TransferirCatequizando
+Coord --> UC_CadastrarEtapa
+Coord --> UC_EditarEtapa
+Coord --> UC_AtivarEtapa
+Coord --> UC_DesativarEtapa
+Coord --> UC_PromoverCatequizando
+Coord --> UC_RegistrarConclusaoEtapa
+Coord --> UC_CadastrarConteudo
+Coord --> UC_EditarConteudo
+Coord --> UC_AtivarConteudo
+Coord --> UC_DesativarConteudo
+Coord --> UC_DispConteudoCat
+Coord --> UC_DispConteudoEtapa
+Coord --> UC_CadastrarMaterial
+Coord --> UC_CategorizarMaterial
+Coord --> UC_PublicarComunicadoGeral
+Coord --> UC_PublicarComunicadoTurma
+Coord --> UC_CadastrarEvento
+Coord --> UC_RegistrarParticipacaoEvento
+Coord --> UC_ConsultarHistSacramental
+Coord --> UC_AtualizarCadastro
+Coord --> UC_ConsultarHistorico
+Coord --> UC_EditarCatequizando
+Coord --> UC_GerarRelatorioFreq
+Coord --> UC_GerarRelatorioMatriculas
+Coord --> UC_GerarRelatorioDocs
+Coord --> UC_GerarRelatorioReposicoes
+Coord --> UC_GerarRelatorioEventos
+Coord --> UC_GerarRelatorioEtapa
+
+@enduml`;
+
+    let panZoomInstance = null;
+    let currentTab = 'mermaid';
+
+    // Initialize Mermaid Configuration
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      securityLevel: 'loose',
+      flowchart: {
+        useMaxWidth: false,
+        htmlLabels: true,
+        curve: 'basis'
+      }
+    });
+
+    // Render Diagram Logic
+    async function renderDiagram() {
+      const container = document.getElementById('diagram-container');
+      const loading = document.getElementById('loading');
+      loading.classList.remove('hidden');
+
+      if (panZoomInstance) {
+        panZoomInstance.destroy();
+        panZoomInstance = null;
+      }
+      container.innerHTML = '';
+
+      try {
+        const id = 'mermaid-svg-' + Date.now();
+        const { svg } = await mermaid.render(id, mermaidCodeFull);
+        container.innerHTML = svg;
+
+        const svgElement = container.querySelector('svg');
+        if (svgElement) {
+          svgElement.setAttribute('width', '100%');
+          svgElement.setAttribute('height', '100%');
+
+          // Attach Pan Zoom
+          panZoomInstance = svgPanZoom(svgElement, {
+            zoomEnabled: true,
+            controlIconsEnabled: false,
+            fit: true,
+            center: true,
+            minZoom: 0.2,
+            maxZoom: 10,
+            zoomScaleSensitivity: 0.3
+          });
+        }
+      } catch (err) {
+        console.error("Rendering error:", err);
+        container.innerHTML = `<div class="text-rose-400 text-sm p-4 text-center">Falha ao renderizar o diagrama. Verifique a sintaxe.</div>`;
+      } finally {
+        loading.classList.add('hidden');
+      }
+    }
+
+    // Filter Highlight Logic
+    function applyFilters() {
+      const selectedActor = document.getElementById('filter-actor').value;
+      const selectedModule = document.getElementById('filter-module').value;
+      
+      const svg = document.querySelector('#diagram-container svg');
+      if (!svg) return;
+
+      const nodes = svg.querySelectorAll('.node, .cluster');
+      const edgePaths = svg.querySelectorAll('.edgePaths path, .edgeLabels');
+
+      // Reset opacity when filters are default
+      if (selectedActor === 'ALL' && selectedModule === 'ALL') {
+        nodes.forEach(el => el.style.opacity = '1');
+        edgePaths.forEach(el => el.style.opacity = '1');
+        return;
+      }
+
+      // Dim elements based on active selection
+      nodes.forEach(el => {
+        const text = el.textContent || '';
+        const id = el.id || '';
+        
+        let matchesActor = true;
+        let matchesModule = true;
+
+        if (selectedActor !== 'ALL') {
+          matchesActor = text.includes(selectedActor) || id.includes(selectedActor);
+        }
+
+        if (selectedModule !== 'ALL') {
+          matchesModule = id.includes(selectedModule);
+        }
+
+        if (matchesActor && matchesModule) {
+          el.style.opacity = '1';
+        } else {
+          el.style.opacity = '0.15';
+        }
+      });
+    }
+
+    // Toast Notification helper
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      toastMsg.innerText = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 2500);
+    }
+
+    // Copying to Clipboard helper
+    function copyToClipboard(text) {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        showToast('Código copiado para a área de transferência!');
+      } catch (err) {
+        showToast('Erro ao copiar código.');
+      }
+      document.body.removeChild(textArea);
+    }
+
+    // Modal Control Functions
+    function openModal() {
+      document.getElementById('code-modal').classList.remove('hidden');
+      updateCodeTab();
+    }
+
+    function closeModal() {
+      document.getElementById('code-modal').classList.add('hidden');
+    }
+
+    function updateCodeTab() {
+      const codeContainer = document.getElementById('code-content');
+      const mermaidBtn = document.getElementById('tab-mermaid-btn');
+      const plantUmlBtn = document.getElementById('tab-plantuml-btn');
+
+      if (currentTab === 'mermaid') {
+        codeContainer.innerText = mermaidCodeFull;
+        mermaidBtn.className = "px-4 py-3 text-xs font-semibold text-indigo-400 border-b-2 border-indigo-500 focus:outline-none";
+        plantUmlBtn.className = "px-4 py-3 text-xs font-semibold text-slate-400 hover:text-slate-200 border-b-2 border-transparent focus:outline-none";
+      } else {
+        codeContainer.innerText = plantUmlCode;
+        plantUmlBtn.className = "px-4 py-3 text-xs font-semibold text-indigo-400 border-b-2 border-indigo-500 focus:outline-none";
+        mermaidBtn.className = "px-4 py-3 text-xs font-semibold text-slate-400 hover:text-slate-200 border-b-2 border-transparent focus:outline-none";
+      }
+    }
+
+    // Event Listeners initialization on Window Load
+    window.onload = function() {
+      renderDiagram();
+
+      // Zoom Controls
+      document.getElementById('btn-zoom-in').addEventListener('click', () => panZoomInstance && panZoomInstance.zoomIn());
+      document.getElementById('btn-zoom-out').addEventListener('click', () => panZoomInstance && panZoomInstance.zoomOut());
+      document.getElementById('btn-zoom-reset-floating').addEventListener('click', () => {
+        if (panZoomInstance) {
+          panZoomInstance.resetZoom();
+          panZoomInstance.center();
+        }
+      });
+      document.getElementById('btn-reset-zoom').addEventListener('click', () => {
+        if (panZoomInstance) {
+          panZoomInstance.resetZoom();
+          panZoomInstance.center();
+        }
+      });
+
+      // Filter Listeners
+      document.getElementById('filter-actor').addEventListener('change', applyFilters);
+      document.getElementById('filter-module').addEventListener('change', applyFilters);
+
+      // Modal Listeners
+      document.getElementById('btn-toggle-code').addEventListener('click', openModal);
+      document.getElementById('btn-close-modal').addEventListener('click', closeModal);
+
+      document.getElementById('tab-mermaid-btn').addEventListener('click', () => {
+        currentTab = 'mermaid';
+        updateCodeTab();
+      });
+
+      document.getElementById('tab-plantuml-btn').addEventListener('click', () => {
+        currentTab = 'plantuml';
+        updateCodeTab();
+      });
+
+      document.getElementById('btn-copy-code').addEventListener('click', () => {
+        const textToCopy = currentTab === 'mermaid' ? mermaidCodeFull : plantUmlCode;
+        copyToClipboard(textToCopy);
+      });
+    };
+  </script>
+</body>
+</html>
