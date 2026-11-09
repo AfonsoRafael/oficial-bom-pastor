@@ -82,19 +82,7 @@ Após iniciar o servidor, acesse:
 
 ## 🔐 Autenticação
 
-A API usa JWT (JSON Web Tokens) para autenticação.
-
-### Registrar novo usuário
-
-```bash
-POST /api/auth/register
-{
-  "email": "usuario@example.com",
-  "nome": "Nome do Usuário",
-  "senha": "senha123",
-  "role": "RESPONSAVEL" // ou "ADMINISTRADOR"
-}
-```
+A API usa `Usuario`, `UsuarioPerfil` e `Perfil` para autenticação e autorização. A criação de usuários e a emissão de convites de primeiro acesso dependem da adaptação dos módulos que criam usuários; não há endpoint de registro no Auth.
 
 ### Login
 
@@ -109,11 +97,29 @@ POST /api/auth/login
 Retorna:
 ```json
 {
-  "user": { "id": "...", "email": "...", "role": "..." },
+  "user": {
+    "id": "1",
+    "email": "usuario@example.com",
+    "nome": "Nome do Usuário",
+    "perfis": ["RESPONSAVEL"],
+    "role": "RESPONSAVEL",
+    "primeiroAcesso": false
+  },
   "accessToken": "...",
   "refreshToken": "..."
 }
 ```
+
+O `id` é serializado como string para preservar a precisão de `BigInt`. O campo `role` é fornecido apenas para usuários com um único perfil, por compatibilidade; o JWT contém `sub`, `email`, `perfis` e `tokenUse`, além dos campos padrão de emissão e expiração. Tokens emitidos pelo contrato antigo exigem novo login.
+
+### Senhas e renovação
+
+- `POST /api/auth/refresh`: recebe `{ "refreshToken": "..." }` e consulta os perfis atuais antes de emitir novos tokens.
+- `POST /api/auth/forgot-password`: recebe `{ "email": "..." }` e responde com mensagem genérica.
+- `GET /api/auth/password-setup?token=...` e `POST /api/auth/password-setup`: validam e consomem tokens de primeiro acesso ou recuperação. O POST recebe `token`, `senha` e `confirmacao`.
+- `POST /api/auth/reset-password`: recebe `token` e `novaSenha` e aceita somente tokens de recuperação.
+
+Os tokens de senha são armazenados como hash, expiram em 24 horas e são de uso único. O refresh é stateless e não possui revogação individual persistente. O endpoint de edição de perfil rejeita operações de foto enquanto o schema não tiver suporte para elas.
 
 ### Usar token nas requisições
 
@@ -124,14 +130,14 @@ Authorization: Bearer {accessToken}
 
 ## 👥 Tipos de Usuário
 
-- **ADMINISTRADOR**: Acesso total ao sistema
-- **RESPONSAVEL**: Acesso aos próprios catequizandos, inscrições, pagamentos
+- `ADMINISTRADOR`, `COORDENADOR`, `SECRETARIA`, `CATEQUISTA` e `RESPONSAVEL`.
+- Os módulos legados ainda precisam ser adaptados para os novos IDs e múltiplos perfis; a presença de um perfil não significa que todas as telas antigas estejam prontas.
 
 ## 📦 Módulos Principais
 
 ### Auth
-- Registro, login, refresh token
-- Reset de senha
+- Login e refresh token
+- Primeiro acesso e recuperação de senha
 - Perfil do usuário
 
 ### Turmas

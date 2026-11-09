@@ -1,8 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { USER_ROLES, UserRole } from '../../../common/constants/user-roles';
+import { isUserRole, UserRole } from '../../../common/constants/user-roles';
+
+export interface AuthTokenPayload {
+  sub: string;
+  email: string;
+  perfis: UserRole[];
+  tokenUse: 'access' | 'refresh';
+}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -14,22 +21,26 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: any) {
+  async validate(payload: AuthTokenPayload) {
+    if (
+      !payload ||
+      typeof payload.sub !== 'string' ||
+      !/^[1-9]\d*$/.test(payload.sub) ||
+      typeof payload.email !== 'string' ||
+      !payload.email ||
+      !Array.isArray(payload.perfis) ||
+      payload.perfis.length === 0 ||
+      !payload.perfis.every((perfil) => typeof perfil === 'string' && isUserRole(perfil)) ||
+      payload.tokenUse !== 'access'
+    ) {
+      throw new UnauthorizedException('Token inválido');
+    }
+
     return {
       id: payload.sub,
       email: payload.email,
-      role: this.normalizeRole(payload.tipoUsuario ?? payload.role),
+      perfis: payload.perfis,
+      role: payload.perfis.length === 1 ? payload.perfis[0] : undefined,
     };
-  }
-
-  private normalizeRole(role: string): UserRole {
-    const normalized = String(role || '').toLowerCase().trim();
-    if (normalized === 'admin' || normalized === 'administrador' || normalized === 'adminstrador') {
-      return USER_ROLES.ADMINISTRADOR;
-    }
-    if (normalized === 'catequista' || normalized === 'catechist') {
-      return USER_ROLES.CATEQUISTA;
-    }
-    return USER_ROLES.RESPONSAVEL;
   }
 }

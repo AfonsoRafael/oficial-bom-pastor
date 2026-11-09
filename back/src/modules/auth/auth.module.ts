@@ -6,7 +6,6 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { MailerModule } from '../../common/mailer/mailer.module';
-import { S3StorageService } from '../../common/storage/s3-storage.service';
 
 @Module({
   imports: [
@@ -16,7 +15,7 @@ import { S3StorageService } from '../../common/storage/s3-storage.service';
     MailerModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, S3StorageService],
+  providers: [AuthService, JwtStrategy],
   exports: [AuthService],
 })
 export class AuthModule {}

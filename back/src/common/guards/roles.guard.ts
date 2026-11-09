@@ -18,7 +18,7 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const authDisabled = process.env.DISABLE_AUTH === 'true';
+    const authDisabled = process.env.DISABLE_AUTH === 'true' && process.env.NODE_ENV !== 'production';
 
     if (authDisabled) {
       return true;
@@ -39,7 +39,7 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('User not authenticated');
     }
 
-    const hasRole = requiredRoles.some((role) => user.role === role);
+    const hasRole = Array.isArray(user.perfis) && requiredRoles.some((role) => user.perfis.includes(role));
 
     if (!hasRole) {
       throw new ForbiddenException(`User does not have required role. Required: ${requiredRoles.join(', ')}`);

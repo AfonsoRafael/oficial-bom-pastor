@@ -95,7 +95,6 @@ export class AuthController {
   @UseInterceptors(FileInterceptor('fotoPerfil', { limits: { fileSize: 5 * 1024 * 1024 } }))
   async updateMe(
     @GetUser('id') userId: string,
-    @GetUser('role') role: string,
     @Body() dto: UpdateMyProfileDto,
     @UploadedFile() foto?: ProfilePhotoFile,
   ) {
@@ -103,6 +102,6 @@ export class AuthController {
       throw new BadRequestException('A foto deve estar no formato JPG, PNG ou WEBP.');
     }
 
-    return this.authService.updateMyProfile(userId, role, dto, foto);
+    return this.authService.updateMyProfile(userId, dto, foto);
   }
 }

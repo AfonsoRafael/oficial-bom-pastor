@@ -56,13 +56,13 @@ export class UpdateMyProfileDto {
   @IsOptional()
   @IsString()
   @MinLength(2)
-  @MaxLength(100)
+  @MaxLength(150)
   nome?: string;
 
   @ApiPropertyOptional({ example: '(11) 99999-9999' })
   @IsOptional()
   @IsString()
-  @MaxLength(30)
+  @MaxLength(20)
   telefone?: string;
 
   @ApiPropertyOptional({ description: 'Remover a foto de perfil atual' })

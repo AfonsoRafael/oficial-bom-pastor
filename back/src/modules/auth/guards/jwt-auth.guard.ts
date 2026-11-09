@@ -27,13 +27,14 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 		}
 
 		// Auth is enabled by default. Set DISABLE_AUTH=true only for local/dev bypass.
-		const authDisabled = process.env.DISABLE_AUTH === 'true';
+		const authDisabled = process.env.DISABLE_AUTH === 'true' && process.env.NODE_ENV !== 'production';
 
 		if (authDisabled) {
 			request.user = request.user ?? {
-				id: 'dev-user',
+				id: '1',
 				email: 'dev@local',
 				role: USER_ROLES.ADMINISTRADOR,
+				perfis: [USER_ROLES.ADMINISTRADOR],
 			};
 
 			return true;
