@@ -142,3 +142,14 @@ git push
 ## Observação
 
 Algumas integrações podem depender de variáveis adicionais no backend, como envio de e-mail, armazenamento de arquivos e autenticação. Consulte a documentação específica de cada pasta antes de publicar em produção.
+
+## Pré-matrícula e renovação
+
+- Na pré-matrícula são exigidos os três documentos e as confirmações do formulário. A coordenação consulta os dados e anexos em **Catequizandos**, aprova ou recusa e, ao aprovar, cria o acesso do responsável quando necessário.
+- O responsável acessa **Renovação**, seleciona o catequizando e o ano atual ou seguinte e anexa o comprovante do Pix de R$ 50. Documentos já cadastrados não são exigidos novamente; documentos faltantes são obrigatórios e os existentes podem ser substituídos. A solicitação só é confirmada após análise em **Renovações** pela coordenação. Se recusada, o motivo aparece para o responsável, que pode reenviar.
+- A aprovação da renovação registra a decisão; ela não movimenta o catequizando de turma automaticamente nem verifica o Pix com o banco.
+- Antes da publicação, execute `npm run prisma:deploy` e `npm run prisma:generate` no backend e reinicie a API. Configure PostgreSQL, S3/R2 e SMTP; o endpoint público do S3 deve ser acessível pelo navegador, pois os links dos documentos são temporários. Sem SMTP, a coordenação precisa reenviar o convite depois da configuração.
+- Configure `VITE_API_URL` com a URL pública da API ao compilar o frontend se ela estiver em outro domínio, e inclua o endereço público do site em `FRONTEND_URLS` no backend. Sem `VITE_API_URL`, a versão de produção usa a mesma origem do site, que deve encaminhar `/api` ao backend.
+- A página de histórico e o controle de presença de reuniões ainda não estão integrados aos dados reais; use o cronograma para cadastrar reuniões.
+
+Os testes de integração podem ser executados contra um **banco de teste isolado**, após aplicar as migrations nele, definindo `TEST_DATABASE_URL` e executando `npm run test:e2e` no backend. Os testes simulam o armazenamento de arquivos e não devem apontar para o banco de produção.

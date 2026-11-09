@@ -1,7 +1,7 @@
 import logoParoquia from "@/assets/logo-paroquia.jpg";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { BookOpen, Heart, Home, LogIn, Menu, X } from "lucide-react";
+import { BookOpen, ClipboardList, Heart, Home, LogIn, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -13,6 +13,7 @@ export function Header() {
     { label: "Início", href: "/", icon: Home },
     { label: "Sobre", href: "/sobre", icon: BookOpen },
     { label: "Lojinha", href: "/lojinha", icon: Heart },
+    { label: "Pré-matrícula", href: "/pre-matricula", icon: ClipboardList },
   ];
 
   const isActive = (href: string) => {
@@ -77,6 +78,8 @@ export function Header() {
           size="icon"
           className="md:hidden"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
+          aria-label={isMenuOpen ? "Fechar menu" : "Abrir menu"}
+          aria-expanded={isMenuOpen}
         >
           {isMenuOpen ? (
             <X className="h-5 w-5" />

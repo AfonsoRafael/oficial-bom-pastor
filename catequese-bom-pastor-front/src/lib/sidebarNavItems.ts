@@ -15,6 +15,7 @@ export const ADMIN_NAV_ITEMS: SidebarNavItem[] = [
   { label: "Dashboard", to: "/admin", icon: Users },
   { label: "Turmas", to: "/admin/turmas", icon: Users },
   { label: "Catequizandos", to: "/admin/add-catequizando", icon: Users },
+  { label: "Renovações", to: "/admin/renovacoes", icon: ClipboardList },
   { label: "Catequistas", to: "/admin/inscricoes-catequistas", icon: ClipboardList },
   { label: "Chamada", to: "/admin/chamada", icon: ClipboardList },
   { label: "Minhas Turmas", to: "/admin/minhas-turmas", icon: Users },
@@ -39,9 +40,9 @@ export const CATECHIST_NAV_ITEMS: SidebarNavItem[] = [
 
 export const PARENT_NAV_ITEMS: SidebarNavItem[] = [
   { label: "Meus Filhos", to: "/pais", icon: Users },
-  { label: "Documentos", to: "/pais/documentos", icon: FileText },
+  { label: "Renovação", to: "/pais/renovacao", icon: ClipboardList },
   { label: "Cronograma", to: "/pais/cronograma", icon: Calendar },
-  // { label: "Galeria", to: "/pais/galeria", icon: Camera },
+  { label: "Galeria", to: "/pais/galeria", icon: Camera },
   { label: "Comunicação", to: "/comunicacao", icon: MessageSquare },
 ];
 

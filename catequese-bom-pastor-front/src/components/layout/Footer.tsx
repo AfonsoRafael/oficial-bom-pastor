@@ -1,5 +1,5 @@
 import logoParoquia from "@/assets/logo-paroquia.jpg";
-import { Heart, Mail, MapPin, Phone } from "lucide-react";
+import { Heart, MapPin, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export function Footer() {
@@ -53,7 +53,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  to="/#lojinha"
+                  to="/lojinha"
                   className="transition-colors hover:text-gold"
                 >
                   Lojinha
@@ -68,15 +68,11 @@ export function Footer() {
             <ul className="space-y-3 text-sm text-primary-foreground/80">
               <li className="flex items-center gap-2">
                 <Phone className="h-4 w-4 text-gold" />
-                (11) 1234-5678
-              </li>
-              <li className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-gold" />
-                catequese@paroquia.org.br
+                (61) 98234-5451
               </li>
               <li className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 text-gold shrink-0 mt-0.5" />
-                Vicente Pires, rua 4
+                Rua A, AE 01, Lote 05, Vicente Pires
                 <br />
                 Brasília - DF
               </li>
@@ -90,12 +86,7 @@ export function Footer() {
               <li>
                 <strong className="text-gold">Secretaria:</strong>
                 <br />
-                Seg a Sex: 9h às 17h
-              </li>
-              <li>
-                <strong className="text-gold">Aulas de Catequese:</strong>
-                <br />
-                Sábados: 9h às 11h
+                Seg a Sáb: 8h às 18h
               </li>
             </ul>
           </div>

@@ -343,6 +343,7 @@ export default function PreMatriculaCrianca() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const formElement = e.currentTarget as HTMLFormElement;
     setFormError("");
 
     const isFormValid = validateForm();
@@ -377,6 +378,7 @@ export default function PreMatriculaCrianca() {
     if (payload.nomeMae) formData.append("nomeMae", payload.nomeMae);
     formData.append("email", payload.email);
     formData.append("telefone", payload.telefone);
+    formData.append("aceiteTermos", "true");
 
     if (payload.alergiasProblemasSaude) {
       formData.append("alergiasProblemasSaude", payload.alergiasProblemasSaude);
@@ -422,6 +424,7 @@ export default function PreMatriculaCrianca() {
         description: "Sua solicitação foi enviada para a coordenação e será avaliada.",
       });
 
+      formElement.reset();
       setData({
         nomeCatequizando: "",
         dataNascimento: "",

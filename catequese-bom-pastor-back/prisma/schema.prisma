@@ -42,6 +42,7 @@ model Responsavel {
   catequizandos Catequizando[]
   inscricoes    Inscricao[]
   pagamentos    Pagamento[]
+  renovacoes    Renovacao[]
 
   @@map("responsaveis")
 }
@@ -82,11 +83,29 @@ model Catequizando {
   responsavel    Responsavel             @relation(fields: [responsavelId], references: [id], onDelete: Cascade)
   inscricoes     Inscricao[]
   documentos     CatequizandoDocumento[]
+  renovacoes     Renovacao[]
   observacoes    String?                 @map("dsc_observacoes")
   criadoEm       DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
 
   @@map("catequizandos")
+}
+
+model Renovacao {
+  id              String       @id @default(uuid())
+  catequizandoId  String
+  catequizando    Catequizando @relation(fields: [catequizandoId], references: [id], onDelete: Cascade)
+  responsavelId   String
+  responsavel     Responsavel  @relation(fields: [responsavelId], references: [id], onDelete: Cascade)
+  ano             Int
+  status          String       @default("PENDING")
+  comprovanteKey  String
+  observacoes     String?
+  criadoEm        DateTime     @default(now())
+  atualizadoEm    DateTime     @updatedAt
+
+  @@unique([catequizandoId, ano])
+  @@map("renovacoes")
 }
 
 model PreMatricula {
@@ -106,6 +125,7 @@ model PreMatricula {
   CertificadoBatismo     String?   @map("dsc_certificado_batismo")
   ComprovanteEndereco    String?   @map("dsc_comprovante_endereco")
   CertidaoDeNascimento   String?   @map("dsc_certidao_nascimento")
+  aceiteTermosEm         DateTime? @map("dat_aceite_termos")
   decisaoEm              DateTime? @map("dat_decisao")
   decisaoPorId           String?   @map("cod_administrador")
   observacoesAdmin       String?

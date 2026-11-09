@@ -73,6 +73,10 @@ interface PreMatricula {
   sacramentosMae?: string | null;
   nomePai?: string | null;
   nomeMae?: string | null;
+  alergiasProblemasSaude?: string | null;
+  CertificadoBatismo?: string | null;
+  ComprovanteEndereco?: string | null;
+  CertidaoDeNascimento?: string | null;
   email: string;
   telefone: string;
   status: PreMatriculaStatus;
@@ -145,6 +149,14 @@ export default function AddCatequizando() {
         nomeCatequizando: preMatricula.nomeCatequizando,
         dataNascimento: preMatricula.dataNascimento,
         nomePais: preMatricula.nomePais,
+        nomePai: preMatricula.nomePai,
+        nomeMae: preMatricula.nomeMae,
+        sacramentosPai: preMatricula.sacramentosPai,
+        sacramentosMae: preMatricula.sacramentosMae,
+        alergiasProblemasSaude: preMatricula.alergiasProblemasSaude,
+        CertificadoBatismo: preMatricula.CertificadoBatismo,
+        ComprovanteEndereco: preMatricula.ComprovanteEndereco,
+        CertidaoDeNascimento: preMatricula.CertidaoDeNascimento,
         email: preMatricula.email,
         telefone: preMatricula.telefone,
         status: preMatricula.status,
@@ -246,10 +258,12 @@ export default function AddCatequizando() {
       const result = await response.json().catch(() => ({}));
       toast({
         title: "Pré-matrícula aprovada",
-        description: result.emailSent
+        description: result.needsPasswordSetup === false
+          ? "Pré-matrícula aprovada. O responsável já possui acesso."
+          : result.emailSent
           ? `Convite para criar a senha enviado para ${preMatricula.email}.`
           : "A aprovação foi registrada, mas o convite não foi enviado. Verifique o SMTP e reenvie pela lista de aprovadas.",
-        variant: result.emailSent ? "default" : "destructive",
+        variant: result.emailSent || result.needsPasswordSetup === false ? "default" : "destructive",
       });
 
       await carregarDados();
@@ -631,6 +645,16 @@ export default function AddCatequizando() {
                                   </Avatar>
                                   <div>
                                     <p className="font-medium">{preMatricula.nomeCatequizando}</p>
+                                    <p className="text-sm">Saúde: {preMatricula.alergiasProblemasSaude || "Não informado"}</p>
+                                    <div className="flex flex-col text-sm">
+                                      {([
+                                        ["Certificado de batismo", preMatricula.CertificadoBatismo],
+                                        ["Comprovante de endereço", preMatricula.ComprovanteEndereco],
+                                        ["Certidão de nascimento", preMatricula.CertidaoDeNascimento],
+                                      ] as const).map(([label, url]) => url ? (
+                                        <a key={label} href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline">{label}</a>
+                                      ) : <span key={label}>{label}: não enviado</span>)}
+                                    </div>
                                     <p className="text-sm text-slate-500">
                                       Pré-matrícula em {new Date(preMatricula.criadoEm).toLocaleDateString("pt-BR")}
                                     </p>
@@ -651,7 +675,8 @@ export default function AddCatequizando() {
                                 ) : preMatricula.nomePais}
                               </TableCell>
                               <TableCell className="text-slate-600">
-                                {preMatricula.telefone || preMatricula.email || "-"}
+                                <div>{preMatricula.telefone || "-"}</div>
+                                <div>{preMatricula.email || "-"}</div>
                               </TableCell>
                               <TableCell>
                                 {getStatusBadge(preMatricula.status)}

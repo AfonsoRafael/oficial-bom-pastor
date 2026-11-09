@@ -3,10 +3,23 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateCatequizandoDto, UpdateCatequizandoDto } from './dto/aluno.dto';
 import { UpdateCatequizandoDocumentoDto } from './dto/aluno-documento.dto';
 import { USER_ROLES, UserRole } from '../../common/constants/user-roles';
+import { S3StorageService } from '../../common/storage/s3-storage.service';
 
 @Injectable()
 export class CatequizandosService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private storage: S3StorageService) {}
+
+  private async signDocuments<T extends { documentos: Array<{ fileUrl: string | null }> }>(child: T): Promise<T> {
+    return {
+      ...child,
+      documentos: await Promise.all(child.documentos.map(async (doc) => ({
+        ...doc,
+        fileUrl: doc.fileUrl && /^(pre-matriculas|renovacoes)\//.test(doc.fileUrl)
+          ? await this.storage.getStoredFileUrl(doc.fileUrl)
+          : doc.fileUrl,
+      }))),
+    };
+  }
 
   async findAll(turmaId?: string, responsavelId?: string, userId?: string, userRole?: UserRole, limit: number = 20, offset: number = 0, semTurma?: boolean) {
     let where: any = {};
@@ -17,14 +30,9 @@ export class CatequizandosService {
       where.turmaId = turmaId;
     }
 
-    if (responsavelId === 'me' && userRole === USER_ROLES.RESPONSAVEL) {
-      const responsavel = await this.prisma.responsavel.findUnique({
-        where: { id: userId },
-      });
-
-      if (responsavel) {
-        where.responsavelId = responsavel.id;
-      }
+    if (userRole === USER_ROLES.RESPONSAVEL) {
+      if (!userId) throw new ForbiddenException('Responsável não identificado');
+      where.responsavelId = userId;
     } else if (responsavelId && responsavelId !== 'me') {
       where.responsavelId = responsavelId;
     }
@@ -34,7 +42,7 @@ export class CatequizandosService {
         where,
         include: {
           turma: true,
-          responsavel: true,
+          responsavel: { select: { id: true, nome: true, email: true, telefone: true } },
           documentos: true,
         },
         take: limit,
@@ -44,7 +52,7 @@ export class CatequizandosService {
       this.prisma.catequizando.count({ where }),
     ]);
 
-    return { total, catequizandos };
+    return { total, catequizandos: await Promise.all(catequizandos.map((child) => this.signDocuments(child))) };
   }
 
   async findOne(id: string, userId?: string, userRole?: UserRole) {
@@ -52,7 +60,7 @@ export class CatequizandosService {
       where: { id },
       include: {
         turma: true,
-        responsavel: true,
+        responsavel: { select: { id: true, nome: true, email: true, telefone: true } },
         documentos: true,
         inscricoes: {
           include: {
@@ -77,7 +85,7 @@ export class CatequizandosService {
       }
     }
 
-    return catequizando;
+    return this.signDocuments(catequizando);
   }
 
   async create(dto: CreateCatequizandoDto, userId?: string, userRole?: UserRole) {

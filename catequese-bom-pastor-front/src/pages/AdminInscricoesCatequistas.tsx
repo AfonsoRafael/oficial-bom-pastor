@@ -215,8 +215,6 @@ export default function AdminInscricoesCatequistas() {
     void carregarTurmas();
     carregarDados();
     carregarCatequistas();
-    // Simulação ou chamada real para buscar reuniões agendadas
-    carregarReunioes();
   }, [isAdminRoute]);
 
   const carregarDados = async (silencioso = false) => {
@@ -420,23 +418,6 @@ export default function AdminInscricoesCatequistas() {
     } finally {
       setCatequistasLoading(false);
     }
-  };
-
-  // Mock ou chamada API para preencher as reuniões organizadas
-  const carregarReunioes = () => {
-    // Exemplo estrutural mockado inicial
-    setReunioes([
-      {
-        id: "1",
-        titulo: "Planejamento Semestral da Catequese",
-        dataHora: "2026-08-10T19:30",
-        pauta: "Definição do calendário litúrgico e distribuição dos materiais didáticos.",
-        presencas: [
-          { catequistaId: "101", nome: "Maria Silva", confirmado: "CONFIRMADO" },
-          { catequistaId: "102", nome: "João Santos", confirmado: "PENDENTE" },
-        ],
-      },
-    ]);
   };
 
   const filteredInscricoes = useMemo(() => {
@@ -1100,9 +1081,11 @@ export default function AdminInscricoesCatequistas() {
                   <UserPlus className="h-4 w-4" />
                   Novo catequista
                 </Button>
-                <Button className="gap-2" onClick={() => setReuniaoDialogOpen(true)}>
+                <Button className="gap-2" asChild>
+                  <Link to="/admin/cronograma">
                   <Calendar className="h-4 w-4" />
-                  Marcar reunião
+                  Marcar reunião no cronograma
+                  </Link>
                 </Button>
               </div>
             </div>
@@ -1204,6 +1187,7 @@ export default function AdminInscricoesCatequistas() {
                   </TabsList>
 
                   <TabsContent value="REUNIOES" className="space-y-6 m-0 pt-2">
+                    <p className="text-sm text-muted-foreground">As reuniões são cadastradas e consultadas no <Link className="text-primary underline" to="/admin/cronograma">cronograma</Link>. O controle de presença de reuniões ainda não está disponível.</p>
                     {reunioes.length === 0 ? (
                       <div className="py-10 text-center text-muted-foreground border rounded-lg">
                         Nenhuma reunião agendada no momento.

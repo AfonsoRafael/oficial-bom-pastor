@@ -1,7 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEmail, IsOptional, IsString } from 'class-validator';
+import { Equals, IsDateString, IsEmail, IsOptional, IsString } from 'class-validator';
 
 export class CreatePreMatriculaDto {
+  @Equals('true')
+  aceiteTermos: string;
+
   @ApiProperty({
     description: 'Nome completo da criança',
     example: 'João da Silva',

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { fetchPublic } from "@/lib/api";
 import { API_ROUTES } from "@/lib/routes";
+import { PIX_KEY, PIX_RECIPIENT } from "@/lib/contact";
 import {
   Card,
   CardContent,
@@ -93,7 +94,7 @@ export default function Lojinha() {
   const cartContainerRef = useRef<HTMLDivElement>(null);
 
   const { toast } = useToast();
-  const pixKey = "catequese@paroquia.org.br";
+  const pixKey = PIX_KEY;
 
   useEffect(() => {
     if (!showCartDropdown) return;
@@ -136,12 +137,13 @@ export default function Lojinha() {
     loadProducts();
   }, [toast]);
 
-  const copyPixKey = () => {
-    navigator.clipboard.writeText(pixKey);
-    toast({
-      title: "Chave PIX copiada!",
-      description: "A chave foi copiada para a área de transferência.",
-    });
+  const copyPixKey = async () => {
+    try {
+      await navigator.clipboard.writeText(pixKey);
+      toast({ title: "Chave PIX copiada!", description: "A chave foi copiada para a área de transferência." });
+    } catch {
+      toast({ title: "Não foi possível copiar", description: "Selecione e copie a chave exibida manualmente.", variant: "destructive" });
+    }
   };
 
   // Lógica real de adicionar ao carrinho
@@ -503,6 +505,7 @@ export default function Lojinha() {
                   <div className="rounded-lg border border-gold/40 bg-gold/10 p-3 text-sm">
                     <p className="font-semibold">Pagamento via PIX</p>
                     <p className="mt-1 text-muted-foreground">Chave: <span className="font-mono text-foreground">{pixKey}</span></p>
+                    <p className="mt-1 text-muted-foreground">Beneficiário: {PIX_RECIPIENT}</p>
                     <button type="button" onClick={copyPixKey} className="mt-2 text-xs font-semibold text-primary hover:underline">
                       Copiar chave PIX
                     </button>
@@ -621,7 +624,7 @@ export default function Lojinha() {
                 <QrCode className="h-16 w-16 text-muted-foreground/50" />
               </button>
               <p className="text-sm text-muted-foreground">
-                {showPix ? "Copie a chave PIX abaixo" : "Clique no QR Code para ver a chave PIX"}
+                {showPix ? "Copie a chave PIX abaixo" : "Clique no ícone para ver a chave PIX"}
               </p>
               
               {showPix && (
@@ -637,6 +640,7 @@ export default function Lojinha() {
                       Copiar
                     </Button>
                   </div>
+                  <p className="mt-2 text-sm">Beneficiário: {PIX_RECIPIENT}</p>
                 </div>
               )}
               

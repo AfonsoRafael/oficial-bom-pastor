@@ -24,6 +24,7 @@ import { PreMatriculasModule } from './modules/pre-matriculas/pre-matriculas.mod
 import { ItensLojaModule } from './modules/loja/loja.module';
 import { ComunicacaoModule } from './modules/comunicacao/comunicacao.module';
 import { NotificacoesModule } from './modules/notificacoes/notificacoes.module';
+import { RenovacoesModule } from './modules/renovacoes/renovacoes.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { NotificacoesModule } from './modules/notificacoes/notificacoes.module';
     PreMatriculasModule,
     ComunicacaoModule,
     NotificacoesModule,
+    RenovacoesModule,
   ],
   providers: [
     {

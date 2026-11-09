@@ -164,7 +164,31 @@ export class S3StorageService {
 
   async getFileUrl(key: string): Promise<string> {
     this.ensureS3Config();
-    return this.buildFileUrl(key);
+    return getSignedUrl(
+      this.publicClient || this.client,
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      { expiresIn: 60 * 15 },
+    );
+  }
+
+  async getStoredFileUrl(location: string): Promise<string> {
+    let key = location;
+    if (location.startsWith('s3://')) {
+      const prefix = `s3://${this.bucket}/`;
+      if (!location.startsWith(prefix)) throw new InternalServerErrorException('Bucket do documento inválido');
+      key = location.slice(prefix.length);
+    } else if (/^https?:\/\//i.test(location)) {
+      const url = new URL(location);
+      const configuredEndpoints = [this.endpoint, this.publicEndpoint].filter(Boolean);
+      if (!configuredEndpoints.some((endpoint) => new URL(endpoint).origin === url.origin)) {
+        throw new InternalServerErrorException('Endereço do documento não corresponde ao storage configurado');
+      }
+      const marker = `/${this.bucket}/`;
+      const index = url.pathname.indexOf(marker);
+      if (index < 0) throw new InternalServerErrorException('Endereço do documento inválido');
+      key = decodeURIComponent(url.pathname.slice(index + marker.length));
+    }
+    return this.getFileUrl(key);
   }
 
   private async buildFileUrl(key: string): Promise<string> {

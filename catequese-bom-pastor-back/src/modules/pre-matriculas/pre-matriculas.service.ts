@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -10,6 +10,7 @@ import { PasswordSetupProfile } from '@prisma/client';
 
 @Injectable()
 export class PreMatriculasService {
+  private readonly logger = new Logger(PreMatriculasService.name);
   constructor(
     private prisma: PrismaService,
     private mailerService: MailerService,
@@ -38,12 +39,13 @@ export class PreMatriculasService {
     ]);
 
     const preMatriculasWithAccess = await Promise.all(preMatriculas.map(async (preMatricula) => {
-      if (preMatricula.status !== 'APPROVED') return { ...preMatricula, needsPasswordSetup: false };
+      const documents = await this.signDocuments(preMatricula);
+      if (preMatricula.status !== 'APPROVED') return { ...documents, needsPasswordSetup: false };
       const responsavel = await this.prisma.responsavel.findUnique({
         where: { email: preMatricula.email },
         select: { primeiroAcesso: true },
       });
-      return { ...preMatricula, needsPasswordSetup: Boolean(responsavel?.primeiroAcesso) };
+      return { ...documents, needsPasswordSetup: Boolean(responsavel?.primeiroAcesso) };
     }));
 
     return { total, preMatriculas: preMatriculasWithAccess };
@@ -61,7 +63,7 @@ export class PreMatriculasService {
       throw new NotFoundException('Pre-matricula not found');
     }
 
-    return preMatricula;
+    return this.signDocuments(preMatricula);
   }
 
   private normalizeSacramentos(value?: string) {
@@ -84,6 +86,12 @@ export class PreMatriculasService {
 
     if (!nomePai && !nomeMae) {
       throw new BadRequestException('nomePai: informe o nome do pai ou da mae.');
+    }
+    if (!dto.nomeCatequizando.trim() || !dto.telefone.trim()) {
+      throw new BadRequestException('Informe o nome do catequizando e o telefone.');
+    }
+    if (!dto.certificadoBatismoBase64 || !dto.comprovanteEnderecoBase64 || !dto.certidaoDeNascimentoBase64) {
+      throw new BadRequestException('Os três documentos são obrigatórios.');
     }
 
     const sacramentosPai = nomePai ? this.normalizeSacramentos(dto.sacramentosPai) : null;
@@ -119,6 +127,7 @@ export class PreMatriculasService {
         CertificadoBatismo: certificadoBatismoUrl,
         ComprovanteEndereco: comprovanteEnderecoUrl,
         CertidaoDeNascimento: certidaoDeNascimentoUrl,
+        aceiteTermosEm: new Date(),
         status: 'PENDING',
       },
       include: {
@@ -126,7 +135,11 @@ export class PreMatriculasService {
       },
     });
 
-    await this.notifyAdmins(preMatricula.id, preMatricula.nomeCatequizando);
+    try {
+      await this.notifyAdmins(preMatricula.id, preMatricula.nomeCatequizando);
+    } catch (error) {
+      this.logger.error('Pré-matrícula salva, mas a notificação à coordenação falhou.', error);
+    }
 
     return preMatricula;
   }
@@ -173,8 +186,7 @@ export class PreMatriculasService {
         },
       });
 
-      if (!existingCatequizando) {
-        await tx.catequizando.create({
+      const catequizando = existingCatequizando ?? await tx.catequizando.create({
           data: {
             nome: preMatricula.nomeCatequizando,
             dataNascimento: preMatricula.dataNascimento,
@@ -184,6 +196,19 @@ export class PreMatriculasService {
             observacoes: preMatricula.alergiasProblemasSaude,
           },
         });
+
+      for (const [tipo, fileUrl] of [
+        ['CERTIFICADO_BATISMO', preMatricula.CertificadoBatismo],
+        ['COMPROVANTE_ENDERECO', preMatricula.ComprovanteEndereco],
+        ['CERTIDAO_NASCIMENTO', preMatricula.CertidaoDeNascimento],
+      ] as const) {
+        if (fileUrl) {
+          await tx.catequizandoDocumento.upsert({
+            where: { catequizandoId_tipo: { catequizandoId: catequizando.id, tipo } },
+            create: { catequizandoId: catequizando.id, tipo, fileUrl, uploadDate: preMatricula.criadoEm },
+            update: {},
+          });
+        }
       }
 
       return tx.preMatricula.update({
@@ -216,7 +241,7 @@ export class PreMatriculasService {
       }
     }
 
-    return { ...approved, emailSent };
+    return { ...approved, emailSent, needsPasswordSetup: Boolean(responsavel?.primeiroAcesso) };
   }
 
   async resendPasswordSetupInvite(id: string) {
@@ -309,7 +334,22 @@ export class PreMatriculasService {
       throw new BadRequestException('Formato de documento invalido. Envie PDF ou imagem (JPG, PNG, WEBP).');
     }
 
-    return this.s3StorageService.uploadBase64Document(value, 'pre-matriculas', documentLabel);
+    const data = value.split(',')[1];
+    const buffer = Buffer.from(data, 'base64');
+    if (!buffer.length || buffer.length > 5 * 1024 * 1024) {
+      throw new BadRequestException('Cada documento deve ter até 5 MB.');
+    }
+    return (await this.s3StorageService.uploadBufferDocument(buffer, mimeType, 'pre-matriculas', documentLabel)).key;
+  }
+
+  private async signDocuments<T extends { CertificadoBatismo: string | null; ComprovanteEndereco: string | null; CertidaoDeNascimento: string | null }>(record: T): Promise<T> {
+    const sign = (value: string | null) => value ? this.s3StorageService.getStoredFileUrl(value) : null;
+    return {
+      ...record,
+      CertificadoBatismo: await sign(record.CertificadoBatismo),
+      ComprovanteEndereco: await sign(record.ComprovanteEndereco),
+      CertidaoDeNascimento: await sign(record.CertidaoDeNascimento),
+    };
   }
 
   private extractMimeTypeFromDataUrl(value: string): string {

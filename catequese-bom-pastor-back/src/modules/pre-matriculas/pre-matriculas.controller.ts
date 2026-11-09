@@ -22,6 +22,7 @@ export class PreMatriculasController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(USER_ROLES.ADMINISTRADOR)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar pre-matriculas' })
   @ApiQuery({ name: 'status', required: false })
@@ -46,8 +47,9 @@ export class PreMatriculasController {
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['nomeCatequizando', 'dataNascimento', 'email', 'telefone'],
+      required: ['nomeCatequizando', 'dataNascimento', 'email', 'telefone', 'aceiteTermos', 'certificadoBatismo', 'comprovanteEndereco', 'certidaoDeNascimento'],
       properties: {
+        aceiteTermos: { type: 'string', example: 'true' },
         nomeCatequizando: { type: 'string', example: 'Joao da Silva' },
         alergiasProblemasSaude: { type: 'string', example: 'Alergia a amendoim' },
         dataNascimento: { type: 'string', format: 'date', example: '2015-05-12' },
@@ -80,7 +82,7 @@ export class PreMatriculasController {
       { name: 'certificadoBatismo', maxCount: 1 },
       { name: 'comprovanteEndereco', maxCount: 1 },
       { name: 'certidaoDeNascimento', maxCount: 1 },
-    ]),
+    ], { limits: { fileSize: 5 * 1024 * 1024 } }),
   )
   create(
     @Body() dto: CreatePreMatriculaDto,
@@ -121,6 +123,7 @@ export class PreMatriculasController {
 
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(USER_ROLES.ADMINISTRADOR)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Buscar pre-matricula por ID' })
   findOne(@Param('id') id: string) {
