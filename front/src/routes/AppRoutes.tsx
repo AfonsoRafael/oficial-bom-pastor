@@ -30,6 +30,8 @@ import AdminOverview from "@/pages/legacy/AdminOverview";
 import CatechistOverview from "@/pages/catequista/CatechistOverview";
 import MatriculaPage from "@/pages/public/MatriculaPage";
 import MatriculaSucessoPage from "@/pages/public/MatriculaSucessoPage";
+import SecretariaMatriculasPage from "@/pages/secretaria/SecretariaMatriculasPage";
+import CoordenadorMatriculasPage from "@/pages/coordenador/CoordenadorMatriculasPage";
 
 const AppRoutes = () => (
             <Routes>
@@ -45,6 +47,12 @@ const AppRoutes = () => (
               <Route path="/pre-matricula" element={<PreMatriculaCrianca />} />
               <Route element={<ProtectedRoute />} >
                 <Route path="/perfil" element={<MeuPerfil />} />
+
+                {/* Rotas Secretaria (sem autorização por perfil ainda) */}
+                <Route path="/secretaria/matriculas" element={<SecretariaMatriculasPage />} />
+
+                {/* Rotas Coordenador (sem autorização por perfil ainda) */}
+                <Route path="/coordenador/matriculas" element={<CoordenadorMatriculasPage />} />
 
                 {/* Rotas Pais */}
                 <Route path="/pais" element={<ParentDashboard />} />

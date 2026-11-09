@@ -23,7 +23,13 @@ O aplicativo ainda **não está pronto para produção**:
   arquivos. Outros fluxos também precisam ser validados.
 - O formulário em `/matricula` e a página `/inscricao/sucesso` são apenas uma
   demonstração: dados e documentos não são enviados nem persistidos.
-- As telas e permissões próprias da secretaria e do coordenador e a integração
+- `/secretaria/matriculas` (`pages/secretaria/SecretariaMatriculasPage.tsx`) lista
+  matrículas fictícias e simula o salvamento do parecer. Não há backend e a rota
+  não é restrita ao perfil Secretaria (o `ProtectedRoute` só verifica login local).
+- `/coordenador/matriculas` (`pages/coordenador/CoordenadorMatriculasPage.tsx`)
+  simula aprovar, rejeitar e definir turma com dados fictícios, sem persistência
+  e sem restrição ao perfil Coordenador.
+- As demais telas e permissões da secretaria e do coordenador e a integração
   do fluxo de aprovação e criação de usuário com o novo backend ainda não estão
   implementadas.
 - As páginas legadas continuam acessíveis nas rotas antigas por compatibilidade;
