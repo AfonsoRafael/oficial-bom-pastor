@@ -18,34 +18,29 @@ USE `catequese_db`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `mensagem`
+-- Table structure for table `catequizando_reposicao`
 --
 
-DROP TABLE IF EXISTS `mensagem`;
+DROP TABLE IF EXISTS `catequizando_reposicao`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `mensagem` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `remetente_id` bigint NOT NULL,
-  `destinatario_id` bigint NOT NULL,
-  `texto` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `lida` tinyint(1) DEFAULT '0',
-  `data_envio` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `fk_msg_remetente` (`remetente_id`),
-  KEY `fk_msg_destinatario` (`destinatario_id`),
-  CONSTRAINT `fk_msg_destinatario` FOREIGN KEY (`destinatario_id`) REFERENCES `usuario` (`id`),
-  CONSTRAINT `fk_msg_remetente` FOREIGN KEY (`remetente_id`) REFERENCES `usuario` (`id`)
+CREATE TABLE `catequizando_reposicao` (
+  `catequizando_id` bigint NOT NULL,
+  `reposicao_id` bigint NOT NULL,
+  PRIMARY KEY (`catequizando_id`,`reposicao_id`),
+  KEY `fk_cr_reposicao` (`reposicao_id`),
+  CONSTRAINT `fk_cr_catequizando` FOREIGN KEY (`catequizando_id`) REFERENCES `catequizando` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_cr_reposicao` FOREIGN KEY (`reposicao_id`) REFERENCES `reposicao` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `mensagem`
+-- Dumping data for table `catequizando_reposicao`
 --
 
-LOCK TABLES `mensagem` WRITE;
-/*!40000 ALTER TABLE `mensagem` DISABLE KEYS */;
-/*!40000 ALTER TABLE `mensagem` ENABLE KEYS */;
+LOCK TABLES `catequizando_reposicao` WRITE;
+/*!40000 ALTER TABLE `catequizando_reposicao` DISABLE KEYS */;
+/*!40000 ALTER TABLE `catequizando_reposicao` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -57,4 +52,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:45
+-- Dump completed on 2026-11-09 15:28:39

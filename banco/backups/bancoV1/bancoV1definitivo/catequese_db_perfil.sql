@@ -18,29 +18,29 @@ USE `catequese_db`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `turma_catequista`
+-- Table structure for table `perfil`
 --
 
-DROP TABLE IF EXISTS `turma_catequista`;
+DROP TABLE IF EXISTS `perfil`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `turma_catequista` (
-  `turma_id` bigint NOT NULL,
-  `catequista_id` bigint NOT NULL,
-  PRIMARY KEY (`turma_id`,`catequista_id`),
-  KEY `fk_tc_catequista` (`catequista_id`),
-  CONSTRAINT `fk_tc_catequista` FOREIGN KEY (`catequista_id`) REFERENCES `catequista` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_tc_turma` FOREIGN KEY (`turma_id`) REFERENCES `turma` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `perfil` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `nome` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `descricao` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `nome` (`nome`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `turma_catequista`
+-- Dumping data for table `perfil`
 --
 
-LOCK TABLES `turma_catequista` WRITE;
-/*!40000 ALTER TABLE `turma_catequista` DISABLE KEYS */;
-/*!40000 ALTER TABLE `turma_catequista` ENABLE KEYS */;
+LOCK TABLES `perfil` WRITE;
+/*!40000 ALTER TABLE `perfil` DISABLE KEYS */;
+INSERT INTO `perfil` VALUES (1,'RESPONSAVEL','Responsável pelo catequizando'),(2,'CATEQUISTA','Catequista da turma'),(3,'COORDENADOR','Coordenador da catequese'),(4,'SECRETARIA','Equipe administrativa');
+/*!40000 ALTER TABLE `perfil` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -52,4 +52,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:47
+-- Dump completed on 2026-11-09 15:28:34

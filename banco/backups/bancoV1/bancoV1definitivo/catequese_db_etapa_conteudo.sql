@@ -18,31 +18,29 @@ USE `catequese_db`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `material_apoio`
+-- Table structure for table `etapa_conteudo`
 --
 
-DROP TABLE IF EXISTS `material_apoio`;
+DROP TABLE IF EXISTS `etapa_conteudo`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `material_apoio` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
+CREATE TABLE `etapa_conteudo` (
+  `etapa_id` bigint NOT NULL,
   `conteudo_id` bigint NOT NULL,
-  `titulo` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `categoria` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `arquivo` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `fk_material_conteudo` (`conteudo_id`),
-  CONSTRAINT `fk_material_conteudo` FOREIGN KEY (`conteudo_id`) REFERENCES `conteudo_catequetico` (`id`) ON DELETE CASCADE
+  PRIMARY KEY (`etapa_id`,`conteudo_id`),
+  KEY `fk_ec_conteudo` (`conteudo_id`),
+  CONSTRAINT `fk_ec_conteudo` FOREIGN KEY (`conteudo_id`) REFERENCES `conteudo_catequetico` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ec_etapa` FOREIGN KEY (`etapa_id`) REFERENCES `etapa_catequetica` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `material_apoio`
+-- Dumping data for table `etapa_conteudo`
 --
 
-LOCK TABLES `material_apoio` WRITE;
-/*!40000 ALTER TABLE `material_apoio` DISABLE KEYS */;
-/*!40000 ALTER TABLE `material_apoio` ENABLE KEYS */;
+LOCK TABLES `etapa_conteudo` WRITE;
+/*!40000 ALTER TABLE `etapa_conteudo` DISABLE KEYS */;
+/*!40000 ALTER TABLE `etapa_conteudo` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -54,4 +52,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:49
+-- Dump completed on 2026-11-09 15:28:36

@@ -18,33 +18,33 @@ USE `catequese_db`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `turma`
+-- Table structure for table `justificativa`
 --
 
-DROP TABLE IF EXISTS `turma`;
+DROP TABLE IF EXISTS `justificativa`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `turma` (
+CREATE TABLE `justificativa` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `etapa_id` bigint NOT NULL,
-  `nome` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `ano` int NOT NULL,
-  `horario` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `local` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `ativa` tinyint(1) DEFAULT '1',
+  `frequencia_id` bigint NOT NULL,
+  `motivo` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `arquivo_comprovante` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `analise` text COLLATE utf8mb4_unicode_ci,
+  `status` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT 'PENDENTE',
+  `data_envio` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `fk_turma_etapa` (`etapa_id`),
-  CONSTRAINT `fk_turma_etapa` FOREIGN KEY (`etapa_id`) REFERENCES `etapa_catequetica` (`id`)
+  KEY `fk_justificativa_frequencia` (`frequencia_id`),
+  CONSTRAINT `fk_justificativa_frequencia` FOREIGN KEY (`frequencia_id`) REFERENCES `frequencia` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `turma`
+-- Dumping data for table `justificativa`
 --
 
-LOCK TABLES `turma` WRITE;
-/*!40000 ALTER TABLE `turma` DISABLE KEYS */;
-/*!40000 ALTER TABLE `turma` ENABLE KEYS */;
+LOCK TABLES `justificativa` WRITE;
+/*!40000 ALTER TABLE `justificativa` DISABLE KEYS */;
+/*!40000 ALTER TABLE `justificativa` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -56,4 +56,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:49
+-- Dump completed on 2026-11-09 15:28:36

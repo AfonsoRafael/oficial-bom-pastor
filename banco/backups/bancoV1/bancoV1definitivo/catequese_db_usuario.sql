@@ -33,6 +33,7 @@ CREATE TABLE `usuario` (
   `ativo` tinyint(1) DEFAULT '1',
   `data_cadastro` datetime DEFAULT CURRENT_TIMESTAMP,
   `ultimo_acesso` datetime DEFAULT NULL,
+  `primeiro_acesso` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -56,4 +57,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:49
+-- Dump completed on 2026-11-09 15:28:36

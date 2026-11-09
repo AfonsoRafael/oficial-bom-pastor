@@ -18,33 +18,33 @@ USE `catequese_db`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `evento`
+-- Table structure for table `documento`
 --
 
-DROP TABLE IF EXISTS `evento`;
+DROP TABLE IF EXISTS `documento`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `evento` (
+CREATE TABLE `documento` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `turma_id` bigint DEFAULT NULL,
-  `titulo` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `descricao` text COLLATE utf8mb4_unicode_ci,
-  `data_evento` datetime NOT NULL,
-  `local` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `obrigatorio` tinyint(1) DEFAULT '1',
+  `matricula_id` bigint NOT NULL,
+  `nome_arquivo` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tipo_documento` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `parecer` text COLLATE utf8mb4_unicode_ci,
+  `data_envio` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `fk_evento_turma` (`turma_id`),
-  CONSTRAINT `fk_evento_turma` FOREIGN KEY (`turma_id`) REFERENCES `turma` (`id`)
+  KEY `fk_documento_matricula` (`matricula_id`),
+  CONSTRAINT `fk_documento_matricula` FOREIGN KEY (`matricula_id`) REFERENCES `matricula` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `evento`
+-- Dumping data for table `documento`
 --
 
-LOCK TABLES `evento` WRITE;
-/*!40000 ALTER TABLE `evento` DISABLE KEYS */;
-/*!40000 ALTER TABLE `evento` ENABLE KEYS */;
+LOCK TABLES `documento` WRITE;
+/*!40000 ALTER TABLE `documento` DISABLE KEYS */;
+/*!40000 ALTER TABLE `documento` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -56,4 +56,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:45
+-- Dump completed on 2026-11-09 15:28:37

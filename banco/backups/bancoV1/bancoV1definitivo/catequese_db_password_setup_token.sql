@@ -18,33 +18,34 @@ USE `catequese_db`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `justificativa`
+-- Table structure for table `password_setup_token`
 --
 
-DROP TABLE IF EXISTS `justificativa`;
+DROP TABLE IF EXISTS `password_setup_token`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `justificativa` (
+CREATE TABLE `password_setup_token` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `frequencia_id` bigint NOT NULL,
-  `motivo` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `arquivo_comprovante` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `analise` text COLLATE utf8mb4_unicode_ci,
-  `status` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT 'PENDENTE',
-  `data_envio` datetime DEFAULT CURRENT_TIMESTAMP,
+  `usuario_id` bigint NOT NULL,
+  `token_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `expira_em` datetime NOT NULL,
+  `usado_em` datetime DEFAULT NULL,
+  `criado_em` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `tipo` enum('PRIMEIRO_ACESSO','RESET_SENHA') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `fk_justificativa_frequencia` (`frequencia_id`),
-  CONSTRAINT `fk_justificativa_frequencia` FOREIGN KEY (`frequencia_id`) REFERENCES `frequencia` (`id`) ON DELETE CASCADE
+  UNIQUE KEY `uk_password_setup_token_hash` (`token_hash`),
+  KEY `idx_password_setup_token_usuario_expira` (`usuario_id`,`expira_em`),
+  CONSTRAINT `fk_password_setup_token_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuario` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `justificativa`
+-- Dumping data for table `password_setup_token`
 --
 
-LOCK TABLES `justificativa` WRITE;
-/*!40000 ALTER TABLE `justificativa` DISABLE KEYS */;
-/*!40000 ALTER TABLE `justificativa` ENABLE KEYS */;
+LOCK TABLES `password_setup_token` WRITE;
+/*!40000 ALTER TABLE `password_setup_token` DISABLE KEYS */;
+/*!40000 ALTER TABLE `password_setup_token` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -56,4 +57,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:48
+-- Dump completed on 2026-11-09 15:28:34

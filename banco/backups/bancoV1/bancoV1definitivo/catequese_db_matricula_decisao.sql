@@ -18,29 +18,35 @@ USE `catequese_db`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `perfil`
+-- Table structure for table `matricula_decisao`
 --
 
-DROP TABLE IF EXISTS `perfil`;
+DROP TABLE IF EXISTS `matricula_decisao`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `perfil` (
+CREATE TABLE `matricula_decisao` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `nome` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `descricao` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `matricula_id` bigint NOT NULL,
+  `usuario_id` bigint NOT NULL,
+  `etapa` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `resultado` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `parecer` text COLLATE utf8mb4_unicode_ci,
+  `decidido_em` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `nome` (`nome`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `idx_matricula_decisao_matricula_data` (`matricula_id`,`decidido_em`),
+  KEY `idx_matricula_decisao_usuario` (`usuario_id`),
+  CONSTRAINT `fk_matricula_decisao_matricula` FOREIGN KEY (`matricula_id`) REFERENCES `matricula` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_matricula_decisao_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuario` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `perfil`
+-- Dumping data for table `matricula_decisao`
 --
 
-LOCK TABLES `perfil` WRITE;
-/*!40000 ALTER TABLE `perfil` DISABLE KEYS */;
-INSERT INTO `perfil` VALUES (1,'RESPONSAVEL','Responsável pelo catequizando'),(2,'CATEQUISTA','Catequista da turma'),(3,'COORDENADOR','Coordenador da catequese'),(4,'SECRETARIA','Equipe administrativa');
-/*!40000 ALTER TABLE `perfil` ENABLE KEYS */;
+LOCK TABLES `matricula_decisao` WRITE;
+/*!40000 ALTER TABLE `matricula_decisao` DISABLE KEYS */;
+/*!40000 ALTER TABLE `matricula_decisao` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -52,4 +58,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:47
+-- Dump completed on 2026-11-09 15:28:37

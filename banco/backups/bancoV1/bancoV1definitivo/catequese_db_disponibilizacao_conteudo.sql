@@ -18,29 +18,37 @@ USE `catequese_db`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `matricula`
+-- Table structure for table `disponibilizacao_conteudo`
 --
 
-DROP TABLE IF EXISTS `matricula`;
+DROP TABLE IF EXISTS `disponibilizacao_conteudo`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `matricula` (
+CREATE TABLE `disponibilizacao_conteudo` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `data_solicitacao` datetime DEFAULT CURRENT_TIMESTAMP,
-  `status` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `conteudo_id` bigint NOT NULL,
+  `catequista_id` bigint NOT NULL,
+  `usuario_liberador_id` bigint NOT NULL,
+  `data_disponibilizacao` datetime DEFAULT CURRENT_TIMESTAMP,
+  `ativo` tinyint(1) DEFAULT '1',
   `observacao` text COLLATE utf8mb4_unicode_ci,
-  `data_aprovacao` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `fk_disp_conteudo` (`conteudo_id`),
+  KEY `fk_disp_catequista` (`catequista_id`),
+  KEY `fk_disp_usuario` (`usuario_liberador_id`),
+  CONSTRAINT `fk_disp_catequista` FOREIGN KEY (`catequista_id`) REFERENCES `catequista` (`id`),
+  CONSTRAINT `fk_disp_conteudo` FOREIGN KEY (`conteudo_id`) REFERENCES `conteudo_catequetico` (`id`),
+  CONSTRAINT `fk_disp_usuario` FOREIGN KEY (`usuario_liberador_id`) REFERENCES `usuario` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `matricula`
+-- Dumping data for table `disponibilizacao_conteudo`
 --
 
-LOCK TABLES `matricula` WRITE;
-/*!40000 ALTER TABLE `matricula` DISABLE KEYS */;
-/*!40000 ALTER TABLE `matricula` ENABLE KEYS */;
+LOCK TABLES `disponibilizacao_conteudo` WRITE;
+/*!40000 ALTER TABLE `disponibilizacao_conteudo` DISABLE KEYS */;
+/*!40000 ALTER TABLE `disponibilizacao_conteudo` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -52,4 +60,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:49
+-- Dump completed on 2026-11-09 15:28:37

@@ -18,30 +18,41 @@ USE `catequese_db`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `participacao_evento`
+-- Table structure for table `catequizando`
 --
 
-DROP TABLE IF EXISTS `participacao_evento`;
+DROP TABLE IF EXISTS `catequizando`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `participacao_evento` (
-  `evento_id` bigint NOT NULL,
-  `catequizando_id` bigint NOT NULL,
-  `presente` tinyint(1) DEFAULT '0',
-  PRIMARY KEY (`evento_id`,`catequizando_id`),
-  KEY `fk_pe_catequizando` (`catequizando_id`),
-  CONSTRAINT `fk_pe_catequizando` FOREIGN KEY (`catequizando_id`) REFERENCES `catequizando` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_pe_evento` FOREIGN KEY (`evento_id`) REFERENCES `evento` (`id`) ON DELETE CASCADE
+CREATE TABLE `catequizando` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `matricula_id` bigint DEFAULT NULL,
+  `responsavel_id` bigint NOT NULL,
+  `turma_id` bigint DEFAULT NULL,
+  `nome` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `data_nascimento` date NOT NULL,
+  `sexo` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `endereco` text COLLATE utf8mb4_unicode_ci,
+  `telefone_emergencia` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `situacao` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `data_ingresso` date DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `matricula_id` (`matricula_id`),
+  KEY `fk_catequizando_responsavel` (`responsavel_id`),
+  KEY `fk_catequizando_turma` (`turma_id`),
+  CONSTRAINT `fk_catequizando_matricula` FOREIGN KEY (`matricula_id`) REFERENCES `matricula` (`id`),
+  CONSTRAINT `fk_catequizando_responsavel` FOREIGN KEY (`responsavel_id`) REFERENCES `responsavel` (`id`),
+  CONSTRAINT `fk_catequizando_turma` FOREIGN KEY (`turma_id`) REFERENCES `turma` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `participacao_evento`
+-- Dumping data for table `catequizando`
 --
 
-LOCK TABLES `participacao_evento` WRITE;
-/*!40000 ALTER TABLE `participacao_evento` DISABLE KEYS */;
-/*!40000 ALTER TABLE `participacao_evento` ENABLE KEYS */;
+LOCK TABLES `catequizando` WRITE;
+/*!40000 ALTER TABLE `catequizando` DISABLE KEYS */;
+/*!40000 ALTER TABLE `catequizando` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -53,4 +64,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:48
+-- Dump completed on 2026-11-09 15:28:38

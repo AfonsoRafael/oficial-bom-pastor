@@ -18,29 +18,33 @@ USE `catequese_db`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `etapa_conteudo`
+-- Table structure for table `turma`
 --
 
-DROP TABLE IF EXISTS `etapa_conteudo`;
+DROP TABLE IF EXISTS `turma`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `etapa_conteudo` (
+CREATE TABLE `turma` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
   `etapa_id` bigint NOT NULL,
-  `conteudo_id` bigint NOT NULL,
-  PRIMARY KEY (`etapa_id`,`conteudo_id`),
-  KEY `fk_ec_conteudo` (`conteudo_id`),
-  CONSTRAINT `fk_ec_conteudo` FOREIGN KEY (`conteudo_id`) REFERENCES `conteudo_catequetico` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_ec_etapa` FOREIGN KEY (`etapa_id`) REFERENCES `etapa_catequetica` (`id`) ON DELETE CASCADE
+  `nome` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ano` int NOT NULL,
+  `horario` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `local` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ativa` tinyint(1) DEFAULT '1',
+  PRIMARY KEY (`id`),
+  KEY `fk_turma_etapa` (`etapa_id`),
+  CONSTRAINT `fk_turma_etapa` FOREIGN KEY (`etapa_id`) REFERENCES `etapa_catequetica` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `etapa_conteudo`
+-- Dumping data for table `turma`
 --
 
-LOCK TABLES `etapa_conteudo` WRITE;
-/*!40000 ALTER TABLE `etapa_conteudo` DISABLE KEYS */;
-/*!40000 ALTER TABLE `etapa_conteudo` ENABLE KEYS */;
+LOCK TABLES `turma` WRITE;
+/*!40000 ALTER TABLE `turma` DISABLE KEYS */;
+/*!40000 ALTER TABLE `turma` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -52,4 +56,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:47
+-- Dump completed on 2026-11-09 15:28:39

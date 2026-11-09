@@ -18,34 +18,29 @@ USE `catequese_db`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `encontro_catequetico`
+-- Table structure for table `turma_catequista`
 --
 
-DROP TABLE IF EXISTS `encontro_catequetico`;
+DROP TABLE IF EXISTS `turma_catequista`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `encontro_catequetico` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
+CREATE TABLE `turma_catequista` (
   `turma_id` bigint NOT NULL,
-  `conteudo_id` bigint NOT NULL,
-  `data` date NOT NULL,
-  `tema` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `observacoes` text COLLATE utf8mb4_unicode_ci,
-  PRIMARY KEY (`id`),
-  KEY `fk_encontro_turma` (`turma_id`),
-  KEY `fk_encontro_conteudo` (`conteudo_id`),
-  CONSTRAINT `fk_encontro_conteudo` FOREIGN KEY (`conteudo_id`) REFERENCES `conteudo_catequetico` (`id`),
-  CONSTRAINT `fk_encontro_turma` FOREIGN KEY (`turma_id`) REFERENCES `turma` (`id`)
+  `catequista_id` bigint NOT NULL,
+  PRIMARY KEY (`turma_id`,`catequista_id`),
+  KEY `fk_tc_catequista` (`catequista_id`),
+  CONSTRAINT `fk_tc_catequista` FOREIGN KEY (`catequista_id`) REFERENCES `catequista` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_tc_turma` FOREIGN KEY (`turma_id`) REFERENCES `turma` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `encontro_catequetico`
+-- Dumping data for table `turma_catequista`
 --
 
-LOCK TABLES `encontro_catequetico` WRITE;
-/*!40000 ALTER TABLE `encontro_catequetico` DISABLE KEYS */;
-/*!40000 ALTER TABLE `encontro_catequetico` ENABLE KEYS */;
+LOCK TABLES `turma_catequista` WRITE;
+/*!40000 ALTER TABLE `turma_catequista` DISABLE KEYS */;
+/*!40000 ALTER TABLE `turma_catequista` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -57,4 +52,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:46
+-- Dump completed on 2026-11-09 15:28:38

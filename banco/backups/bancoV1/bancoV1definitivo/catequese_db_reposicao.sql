@@ -18,33 +18,28 @@ USE `catequese_db`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `frequencia`
+-- Table structure for table `reposicao`
 --
 
-DROP TABLE IF EXISTS `frequencia`;
+DROP TABLE IF EXISTS `reposicao`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `frequencia` (
+CREATE TABLE `reposicao` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `catequizando_id` bigint NOT NULL,
-  `encontro_id` bigint NOT NULL,
-  `status` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `data_registro` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_frequencia` (`catequizando_id`,`encontro_id`),
-  KEY `fk_freq_encontro` (`encontro_id`),
-  CONSTRAINT `fk_freq_catequizando` FOREIGN KEY (`catequizando_id`) REFERENCES `catequizando` (`id`),
-  CONSTRAINT `fk_freq_encontro` FOREIGN KEY (`encontro_id`) REFERENCES `encontro_catequetico` (`id`)
+  `data` date NOT NULL,
+  `local` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `observacao` text COLLATE utf8mb4_unicode_ci,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `frequencia`
+-- Dumping data for table `reposicao`
 --
 
-LOCK TABLES `frequencia` WRITE;
-/*!40000 ALTER TABLE `frequencia` DISABLE KEYS */;
-/*!40000 ALTER TABLE `frequencia` ENABLE KEYS */;
+LOCK TABLES `reposicao` WRITE;
+/*!40000 ALTER TABLE `reposicao` DISABLE KEYS */;
+/*!40000 ALTER TABLE `reposicao` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -56,4 +51,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:47
+-- Dump completed on 2026-11-09 15:28:38

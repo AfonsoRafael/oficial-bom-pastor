@@ -18,32 +18,28 @@ USE `catequese_db`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `sacramento`
+-- Table structure for table `conteudo_catequetico`
 --
 
-DROP TABLE IF EXISTS `sacramento`;
+DROP TABLE IF EXISTS `conteudo_catequetico`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `sacramento` (
+CREATE TABLE `conteudo_catequetico` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `catequizando_id` bigint NOT NULL,
-  `tipo` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `data_recebimento` date DEFAULT NULL,
-  `paroquia` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `comprovante` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `fk_sacramento_catequizando` (`catequizando_id`),
-  CONSTRAINT `fk_sacramento_catequizando` FOREIGN KEY (`catequizando_id`) REFERENCES `catequizando` (`id`) ON DELETE CASCADE
+  `titulo` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `descricao` text COLLATE utf8mb4_unicode_ci,
+  `data_criacao` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `sacramento`
+-- Dumping data for table `conteudo_catequetico`
 --
 
-LOCK TABLES `sacramento` WRITE;
-/*!40000 ALTER TABLE `sacramento` DISABLE KEYS */;
-/*!40000 ALTER TABLE `sacramento` ENABLE KEYS */;
+LOCK TABLES `conteudo_catequetico` WRITE;
+/*!40000 ALTER TABLE `conteudo_catequetico` DISABLE KEYS */;
+/*!40000 ALTER TABLE `conteudo_catequetico` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -55,4 +51,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:46
+-- Dump completed on 2026-11-09 15:28:34

@@ -18,30 +18,33 @@ USE `catequese_db`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `catequista`
+-- Table structure for table `frequencia`
 --
 
-DROP TABLE IF EXISTS `catequista`;
+DROP TABLE IF EXISTS `frequencia`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `catequista` (
+CREATE TABLE `frequencia` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `usuario_id` bigint NOT NULL,
-  `formacao` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `data_ingresso` date DEFAULT NULL,
+  `catequizando_id` bigint NOT NULL,
+  `encontro_id` bigint NOT NULL,
+  `status` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `data_registro` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `usuario_id` (`usuario_id`),
-  CONSTRAINT `fk_catequista_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuario` (`id`) ON DELETE CASCADE
+  UNIQUE KEY `uk_frequencia` (`catequizando_id`,`encontro_id`),
+  KEY `fk_freq_encontro` (`encontro_id`),
+  CONSTRAINT `fk_freq_catequizando` FOREIGN KEY (`catequizando_id`) REFERENCES `catequizando` (`id`),
+  CONSTRAINT `fk_freq_encontro` FOREIGN KEY (`encontro_id`) REFERENCES `encontro_catequetico` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `catequista`
+-- Dumping data for table `frequencia`
 --
 
-LOCK TABLES `catequista` WRITE;
-/*!40000 ALTER TABLE `catequista` DISABLE KEYS */;
-/*!40000 ALTER TABLE `catequista` ENABLE KEYS */;
+LOCK TABLES `frequencia` WRITE;
+/*!40000 ALTER TABLE `frequencia` DISABLE KEYS */;
+/*!40000 ALTER TABLE `frequencia` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -53,4 +56,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:48
+-- Dump completed on 2026-11-09 15:28:35

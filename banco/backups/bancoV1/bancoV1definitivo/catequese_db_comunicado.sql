@@ -18,29 +18,36 @@ USE `catequese_db`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `etapa_catequetica`
+-- Table structure for table `comunicado`
 --
 
-DROP TABLE IF EXISTS `etapa_catequetica`;
+DROP TABLE IF EXISTS `comunicado`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `etapa_catequetica` (
+CREATE TABLE `comunicado` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `nome` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `descricao` text COLLATE utf8mb4_unicode_ci,
-  `ordem` int NOT NULL,
-  `ativa` tinyint(1) DEFAULT '1',
-  PRIMARY KEY (`id`)
+  `usuario_id` bigint NOT NULL,
+  `turma_id` bigint DEFAULT NULL,
+  `tipo_comunicado` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `titulo` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `conteudo` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `data_publicacao` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_comunicado_usuario` (`usuario_id`),
+  KEY `fk_comunicado_turma` (`turma_id`),
+  CONSTRAINT `fk_comunicado_turma` FOREIGN KEY (`turma_id`) REFERENCES `turma` (`id`),
+  CONSTRAINT `fk_comunicado_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuario` (`id`),
+  CONSTRAINT `chk_tipo_comunicado` CHECK ((`tipo_comunicado` in (_utf8mb4'GERAL',_utf8mb4'TURMA')))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `etapa_catequetica`
+-- Dumping data for table `comunicado`
 --
 
-LOCK TABLES `etapa_catequetica` WRITE;
-/*!40000 ALTER TABLE `etapa_catequetica` DISABLE KEYS */;
-/*!40000 ALTER TABLE `etapa_catequetica` ENABLE KEYS */;
+LOCK TABLES `comunicado` WRITE;
+/*!40000 ALTER TABLE `comunicado` DISABLE KEYS */;
+/*!40000 ALTER TABLE `comunicado` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -52,4 +59,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 10:42:46
+-- Dump completed on 2026-11-09 15:28:36
