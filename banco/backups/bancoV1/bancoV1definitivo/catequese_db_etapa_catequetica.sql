@@ -31,7 +31,7 @@ CREATE TABLE `etapa_catequetica` (
   `ordem` int NOT NULL,
   `ativa` tinyint(1) DEFAULT '1',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -40,6 +40,7 @@ CREATE TABLE `etapa_catequetica` (
 
 LOCK TABLES `etapa_catequetica` WRITE;
 /*!40000 ALTER TABLE `etapa_catequetica` DISABLE KEYS */;
+INSERT INTO `etapa_catequetica` VALUES (1,'Nível I','Catequese nível I',1,1),(2,'Nível II','Catequese nível II',2,1),(3,'Nível III','Catequese nível III',3,1);
 /*!40000 ALTER TABLE `etapa_catequetica` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -52,4 +53,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-09 17:10:52
+-- Dump completed on 2026-11-09 19:03:44

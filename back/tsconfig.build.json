@@ -3,8 +3,19 @@
   "compilerOptions": {
     "outDir": "./dist",
     "module": "commonjs",
-    "types": ["jest", "node"]
+    "types": ["node"]
   },
-  "include": ["src/**/*", "test/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/main.ts",
+    "src/app.module.ts",
+    "src/common/**/*.ts",
+    "src/modules/auth/**/*.ts",
+    "src/modules/matricula/**/*.ts",
+    "src/modules/documento/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.spec.ts"
+  ]
 }

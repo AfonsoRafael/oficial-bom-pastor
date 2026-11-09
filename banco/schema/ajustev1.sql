@@ -79,3 +79,12 @@ VALUES
 ('ADMINISTRADOR', 'Administrador do sistema');
 
 select * from perfil;
+
+SELECT * FROM etapa_catequetica;
+
+INSERT INTO etapa_catequetica
+(nome, descricao, ordem, ativa)
+VALUES
+('Nível I', 'Catequese nível I', 1, true),
+('Nível II', 'Catequese nível II', 2, true),
+('Nível III', 'Catequese nível III', 3, true);
