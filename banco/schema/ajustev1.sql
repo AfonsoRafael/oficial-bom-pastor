@@ -73,3 +73,9 @@ CREATE TABLE matricula_decisao (
     INDEX idx_matricula_decisao_matricula_data (matricula_id, decidido_em),
     INDEX idx_matricula_decisao_usuario (usuario_id)
 ) ENGINE=InnoDB;
+
+INSERT INTO perfil (nome, descricao)
+VALUES
+('ADMINISTRADOR', 'Administrador do sistema');
+
+select * from perfil;
