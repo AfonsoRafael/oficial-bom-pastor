@@ -140,6 +140,50 @@ Authorization: Bearer {accessToken}
 - Primeiro acesso e recuperação de senha
 - Perfil do usuário
 
+### Matrículas — MVP
+
+As rotas públicas usam o prefixo `/api`:
+
+- `GET /api/etapas`: lista as etapas ativas. O `id` é uma string decimal.
+- `POST /api/matriculas`: recebe JSON e cria uma matrícula com status `PENDENTE`.
+
+Exemplo de corpo:
+
+```json
+{
+  "responsavelNome": "Maria Silva",
+  "responsavelCpf": "123.456.789-00",
+  "responsavelParentesco": "Mãe",
+  "responsavelDataNascimento": "1980-05-10",
+  "responsavelTelefone": "11999999999",
+  "responsavelWhatsapp": "11999999999",
+  "responsavelEmail": "maria@example.com",
+  "catequizandoNome": "Ana Silva",
+  "catequizandoDataNascimento": "2015-03-20",
+  "catequizandoEndereco": "Rua Exemplo, 10",
+  "catequizandoTelefoneEmergencia": "11988888888",
+  "etapaId": "1",
+  "observacao": "Opcional",
+  "documentos": [
+    { "nomeArquivo": "certidao.pdf", "tipoDocumento": "CERTIDAO_NASCIMENTO" },
+    { "nomeArquivo": "endereco.pdf", "tipoDocumento": "COMPROVANTE_ENDERECO" },
+    { "nomeArquivo": "batismo.pdf", "tipoDocumento": "CERTIFICADO_BATISMO" }
+  ]
+}
+```
+
+Escolha `etapaId` a partir da lista de etapas ativas; IDs devem ser enviados como strings para preservar a precisão. As datas usam o formato `AAAA-MM-DD`. Todos os campos acima são obrigatórios, exceto `observacao`. CPF é obrigatório e limitado a 14 caracteres, sem validação de dígitos verificadores neste MVP.
+
+A resposta contém `id` como string, `status` e `dataSolicitacao`. Os três tipos de documentos são obrigatórios e devem aparecer uma vez cada. Matrícula e metadados são gravados juntos; documentos começam com status `PENDENTE` e parecer `null`. Apenas metadados são recebidos: **não há upload ou armazenamento físico de arquivos neste MVP**. O endpoint não cria usuário, responsável ou catequizando, nem aprova a matrícula.
+
+### Documentos da matrícula
+
+- `POST /api/matriculas/:id/documentos`: registra metadados adicionais; exclusivo para `SECRETARIA`, `COORDENADOR` ou `ADMINISTRADOR`.
+- `GET /api/matriculas/:id/documentos` e `GET /api/matriculas/:id/documentos/:documentoId`: equipe ou responsável autenticado vinculado a uma matrícula aprovada.
+- `GET /api/matriculas/minhas`: lista as matrículas aprovadas vinculadas ao responsável autenticado.
+
+As rotas acima exigem JWT. Não existe consulta pública de documentos nem envio físico posterior. A criação de matrículas agora exige o array `documentos`, portanto clientes do contrato anterior precisam ser atualizados.
+
 ### Turmas
 - CRUD de turmas
 - Listar catequizandos

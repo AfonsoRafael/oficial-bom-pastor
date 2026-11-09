@@ -1,4 +1,6 @@
 export const API_ROUTES = {
+  etapas: "/api/etapas",
+  matriculas: "/api/matriculas",
   preMatriculas: "/api/pre-matriculas",
   preMatriculasApprove: (id: number | string) => `/api/pre-matriculas/${id}/approve`,
   preMatriculasReject: (id: number | string) => `/api/pre-matriculas/${id}/reject`,

@@ -24,6 +24,8 @@ import { PreMatriculasModule } from './modules/pre-matriculas/pre-matriculas.mod
 import { ItensLojaModule } from './modules/loja/loja.module';
 import { ComunicacaoModule } from './modules/comunicacao/comunicacao.module';
 import { NotificacoesModule } from './modules/notificacoes/notificacoes.module';
+import { MatriculaModule } from './modules/matricula/matricula.module';
+import { DocumentoModule } from './modules/documento/documento.module';
 
 @Module({
   imports: [
@@ -45,6 +47,8 @@ import { NotificacoesModule } from './modules/notificacoes/notificacoes.module';
 
     // Modules
     AuthModule,
+    MatriculaModule,
+    DocumentoModule,
     TurmasModule,
     CatequizandosModule,
     ResponsaveisModule,
