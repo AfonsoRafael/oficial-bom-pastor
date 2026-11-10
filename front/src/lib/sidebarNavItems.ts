@@ -1,0 +1,58 @@
+import {
+  BookOpen,
+  Calendar,
+  Camera,
+  ClipboardList,
+  DollarSign,
+  FileText,
+  MessageSquare,
+  Music,
+  Users,
+} from "lucide-react";
+import type { SidebarNavItem } from "@/components/layout/SidebarNav";
+
+export const ADMIN_NAV_ITEMS: SidebarNavItem[] = [
+  { label: "Dashboard", to: "/admin", icon: Users },
+  { label: "Turmas", to: "/admin/turmas", icon: Users },
+  { label: "Catequizandos", to: "/admin/add-catequizando", icon: Users },
+<<<<<<< HEAD:catequese-bom-pastor-front/src/lib/sidebarNavItems.ts
+  { label: "Renovações", to: "/admin/renovacoes", icon: ClipboardList },
+=======
+>>>>>>> origin/correcoes-afonso:front/src/lib/sidebarNavItems.ts
+  { label: "Catequistas", to: "/admin/inscricoes-catequistas", icon: ClipboardList },
+  { label: "Chamada", to: "/admin/chamada", icon: ClipboardList },
+  { label: "Minhas Turmas", to: "/admin/minhas-turmas", icon: Users },
+  { label: "Cronograma", to: "/admin/cronograma", icon: Calendar },
+  // { label: "Material", to: "/admin/material", icon: BookOpen },
+  // { label: "Músicas", to: "/admin/musicas", icon: Music },
+  { label: "Fotos", to: "/admin/fotos", icon: Camera },
+  { label: "Contabilidade", to: "/admin/contabilidade", icon: DollarSign },
+  { label: "Histórico", to: "/admin/historico", icon: Calendar },
+  { label: "Comunicação", to: "/comunicacao", icon: MessageSquare },
+];
+
+export const CATECHIST_NAV_ITEMS: SidebarNavItem[] = [
+  { label: "Dashboard", to: "/catequista", icon: Users },
+  { label: "Chamada", to: "/catequista/chamada", icon: ClipboardList },
+  { label: "Minhas Turmas", to: "/catequista/minhas-turmas", icon: Users },
+  { label: "Cronograma", to: "/catequista/cronograma", icon: Calendar },
+  // { label: "Material", to: "/catequista/material", icon: BookOpen },
+  // { label: "Músicas", to: "/catequista/musicas", icon: Music },
+  { label: "Comunicação", to: "/comunicacao", icon: MessageSquare },
+];
+
+export const PARENT_NAV_ITEMS: SidebarNavItem[] = [
+  { label: "Meus Filhos", to: "/pais", icon: Users },
+  { label: "Renovação", to: "/pais/renovacao", icon: ClipboardList },
+  { label: "Cronograma", to: "/pais/cronograma", icon: Calendar },
+<<<<<<< HEAD:catequese-bom-pastor-front/src/lib/sidebarNavItems.ts
+  { label: "Galeria", to: "/pais/galeria", icon: Camera },
+=======
+  // { label: "Galeria", to: "/pais/galeria", icon: Camera },
+>>>>>>> origin/correcoes-afonso:front/src/lib/sidebarNavItems.ts
+  { label: "Comunicação", to: "/comunicacao", icon: MessageSquare },
+];
+
+export function getDashboardNavItems(isAdminRoute: boolean): SidebarNavItem[] {
+  return isAdminRoute ? ADMIN_NAV_ITEMS : CATECHIST_NAV_ITEMS;
+}
