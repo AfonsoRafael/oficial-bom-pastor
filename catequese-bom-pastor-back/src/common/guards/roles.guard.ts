@@ -18,11 +18,7 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-<<<<<<< HEAD:catequese-bom-pastor-back/src/common/guards/roles.guard.ts
-    const authDisabled = process.env.DISABLE_AUTH === 'true';
-=======
     const authDisabled = process.env.DISABLE_AUTH === 'true' && process.env.NODE_ENV !== 'production';
->>>>>>> origin/correcoes-afonso:back/src/common/guards/roles.guard.ts
 
     if (authDisabled) {
       return true;
