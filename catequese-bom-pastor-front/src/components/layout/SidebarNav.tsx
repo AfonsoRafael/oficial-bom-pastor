@@ -16,7 +16,7 @@ interface SidebarNavProps {
 
 export function SidebarNav({ items, pathname, collapsible = false }: SidebarNavProps) {
   return (
-    <nav className={collapsible ? "min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-4" : "min-h-0 flex-1 space-y-1 overflow-y-auto p-4"}>
+    <nav className={collapsible ? "flex-1 space-y-1 px-2 py-4" : "flex-1 space-y-1 p-4"}>
       {items.map(({ label, to, icon: Icon }) => (
         <Button
           key={to}

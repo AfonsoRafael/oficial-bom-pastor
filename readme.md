@@ -1,155 +1,316 @@
-# Catequese Bom Pastor
+# Sistema de Gestão Catequética - Bom Pastor
 
-Sistema web para gestão da catequese, com áreas para **admin**, **catequista** e **responsável**.
+Sistema web moderno para gerenciamento de catequese paroquial, permitindo o controle de matrículas, catequizandos, frequência, conteúdos catequéticos, comunicação e eventos.
 
-O projeto está dividido em duas partes:
+---
 
-- [catequese-bom-pastor-front](catequese-bom-pastor-front) - frontend em React + Vite.
-- [catequese-bom-pastor-back](catequese-bom-pastor-back) - backend em NestJS + Prisma.
+## Objetivo
 
-## O que o sistema faz
+O projeto tem como objetivo modernizar a gestão da catequese, substituindo processos manuais realizados por meio de fichas, planilhas e aplicativos de mensagens, oferecendo uma plataforma centralizada para responsáveis, catequistas, secretaria e coordenação.
 
-- gerencia turmas, catequizandos e inscrições;
-- organiza cronograma, calendário e histórico;
-- controla documentos, pagamentos e materiais;
-- oferece galeria de fotos e áreas específicas por perfil de usuário.
+---
 
-## Requisitos
+# Principais Funcionalidades
 
-- Node.js 18 ou superior;
-- npm;
-- PostgreSQL 14 ou superior para o backend;
-- Docker opcional, se quiser subir o banco com `docker-compose`.
+## Matrículas
 
-## Como executar o projeto
+- Solicitação online de matrícula.
+- Envio de documentos obrigatórios.
+- Análise documental pela secretaria.
+- Aprovação ou rejeição pelo coordenador.
+- Criação automática de acesso para responsáveis após aprovação.
 
-### 1. Backend
+## Gestão de Catequizandos
 
-Entre na pasta do backend:
+- Cadastro de catequizandos.
+- Histórico catequético.
+- Promoção entre etapas.
+- Controle de situação do catequizando.
+- Registro de sacramentos.
+- Renovação de inscrição anual.
+
+## Gestão de Turmas
+
+- Cadastro de turmas.
+- Associação de catequistas.
+- Controle de etapas catequéticas.
+- Transferência de catequizandos entre turmas.
+
+## Frequência
+
+- Realização de chamadas.
+- Controle de presença.
+- Justificativas de faltas.
+- Controle de reposições.
+- Cálculo de frequência.
+
+## Conteúdo Catequético
+
+- Cadastro de conteúdos catequéticos.
+- Disponibilização para catequistas.
+- Associação de conteúdos aos encontros.
+- Biblioteca de materiais de apoio.
+
+## Comunicação
+
+- Mensagens entre usuários.
+- Comunicados gerais.
+- Comunicados por turma.
+- Notificações.
+
+## Eventos
+
+- Cadastro de eventos.
+- Controle de participação.
+- Registro de presença.
+
+---
+
+# Perfis de Usuário
+
+## Responsável
+
+- Solicitar matrícula.
+- Acompanhar catequizandos.
+- Consultar frequência.
+- Consultar conteúdos.
+- Consultar eventos.
+- Enviar documentos.
+- Justificar faltas.
+- Enviar mensagens.
+
+## Catequista
+
+- Visualizar turmas.
+- Registrar conteúdos.
+- Realizar chamadas.
+- Gerenciar reposições.
+- Consultar materiais.
+- Responder mensagens.
+
+## Secretaria
+
+- Conferir documentos.
+- Analisar matrículas.
+- Emitir pareceres.
+- Atualizar cadastros.
+- Gerar relatórios administrativos.
+
+## Administrador
+
+- Aprovação de matrículas.
+- Gestão de turmas e catequistas.
+- Gestão de etapas catequéticas.
+- Publicação de comunicados.
+- Disponibilização de conteúdos.
+- Geração de relatórios gerenciais.
+
+---
+
+# Tecnologias
+
+## Frontend
+
+- React 18+
+- TypeScript
+- Vite
+- Tailwind CSS
+- Shadcn/UI
+- React Router
+
+## Backend
+
+- Node.js
+- NestJS
+- TypeScript
+- Prisma ORM
+- JWT Authentication
+- AWS S3 (Armazenamento de documentos)
+- Nodemailer (Envio de e-mails)
+
+## Banco de Dados
+
+- PostgreSQL
+
+## Ferramentas
+
+- Git & GitHub
+- Prisma Studio
+- Postman
+- Docker (para deploy)
+
+---
+
+# Estrutura do Projeto
+
+```text
+oficial-bom-pastor/
+│
+├── catequese-bom-pastor-back/    # Backend NestJS
+│   ├── prisma/
+│   │   ├── schema.prisma
+│   │   ├── seed.ts
+│   │   └── migrations/
+│   ├── src/
+│   │   ├── common/              # Guards, decorators, filters, storage
+│   │   ├── modules/             # Módulos de negócio
+│   │   │   ├── alunos/
+│   │   │   ├── auth/
+│   │   │   ├── pre-matriculas/
+│   │   │   ├── renovacoes/
+│   │   │   ├── comunicacao/
+│   │   │   ├── notificacoes/
+│   │   │   └── ...
+│   │   ├── app.module.ts
+│   │   └── main.ts
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── .env.example
+│
+├── catequese-bom-pastor-front/   # Frontend React
+│   ├── src/
+│   │   ├── components/          # Componentes reutilizáveis
+│   │   ├── pages/               # Páginas por role
+│   │   ├── hooks/               # Custom hooks
+│   │   ├── contexts/            # Context API
+│   │   ├── lib/                 # Utilitários e API
+│   │   ├── services/            # Chamadas de API
+│   │   ├── types/               # Tipos TypeScript
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── tailwind.config.ts
+│
+├── README.md                      # Este arquivo
+├── README_BACKEND.md              # Documentação do backend
+├── README_FRONTEND.md             # Documentação do frontend
+│
+└── .gitignore
+```
+
+---
+
+# Setup Inicial
+
+## Pré-requisitos
+
+- Node.js 18+
+- npm ou yarn
+- PostgreSQL 14+
+- Git
+
+## Backend
 
 ```bash
 cd catequese-bom-pastor-back
-```
 
-Instale as dependências:
-
-```bash
+# Instalar dependências
 npm install
-```
 
-Configure as variáveis de ambiente conforme a documentação do backend, especialmente `DATABASE_URL`, `JWT_SECRET` e `JWT_REFRESH_SECRET`.
+# Configurar variáveis de ambiente
+cp .env.example .env
 
-Se quiser subir o banco via Docker:
-
-```bash
-docker-compose up -d
-```
-
-Depois rode as migrations:
-
-```bash
+# Executar migrations
 npx prisma migrate dev
-```
 
-Opcionalmente, execute o seed:
+# Executar seed
+npx prisma db seed
 
-```bash
-npm run prisma:seed
-```
-
-Por fim, inicie a API:
-
-```bash
+# Iniciar servidor
 npm run start:dev
 ```
 
-Endereços úteis do backend:
-
-- API: `http://localhost:3000/api`
-- Swagger: `http://localhost:3000/api/docs`
-- Health check: `http://localhost:3000/api/health`
-
-### 2. Frontend
-
-Em outro terminal, entre na pasta do frontend:
+## Frontend
 
 ```bash
 cd catequese-bom-pastor-front
-```
 
-Instale as dependências:
-
-```bash
+# Instalar dependências
 npm install
-```
 
-Inicie o ambiente de desenvolvimento:
+# Configurar variáveis de ambiente
+cp .env.example .env
 
-```bash
+# Iniciar servidor de desenvolvimento
 npm run dev
 ```
 
-O frontend normalmente ficará disponível em:
+---
 
-- `http://localhost:5173`
+# Modelo de Dados
 
-## Scripts úteis
+Entidades principais:
 
-### Frontend
+```
+administrador
+responsavel
+catequista
 
-- `npm run dev` - inicia o Vite em modo desenvolvimento.
-- `npm run build` - gera build de produção.
-- `npm run preview` - visualiza o build gerado.
-- `npm run lint` - executa o ESLint.
+turma
+turmaCatequista
 
-### Backend
+catequizando
+catequizandoDocumento
 
-- `npm run start:dev` - inicia a API em modo desenvolvimento.
-- `npm run build` - compila o projeto.
-- `npm run prisma:migrate` - cria novas migrations.
-- `npm run prisma:deploy` - aplica migrations em produção.
-- `npm run prisma:studio` - abre o Prisma Studio.
-- `npm run prisma:seed` - executa a carga inicial de dados.
+preMatricula
+documento
+renovacao
 
-## Como subir no GitHub
+inscricao
+pagamento
 
-Se o repositório ainda não estiver vinculado ao GitHub:
+evento
+musica
 
-```bash
-git init
-git add .
-git commit -m "docs: adiciona README do projeto"
-git branch -M main
-git remote add origin https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git
-git push -u origin main
+lojaItem
+
+mensagem
+notificacao
 ```
 
-Se o repositório já existir e você só quiser enviar atualizações:
+---
 
-```bash
-git add .
-git commit -m "docs: atualiza README"
-git push
-```
+# Autenticação
 
-## Documentação complementar
+O sistema utiliza JWT (JSON Web Tokens) para autenticação:
 
-- [catequese-bom-pastor-back/README.md](catequese-bom-pastor-back/README.md)
-- [catequese-bom-pastor-back/INSTALL.md](catequese-bom-pastor-back/INSTALL.md)
-- [catequese-bom-pastor-back/START.md](catequese-bom-pastor-back/START.md)
-- [catequese-bom-pastor-front/README.md](catequese-bom-pastor-front/README.md)
+- Login com email e senha
+- Geração de token JWT
+- Refresh tokens para renovação de sessão
+- Guards de autenticação e autorização baseados em perfis
 
-## Observação
+---
 
-Algumas integrações podem depender de variáveis adicionais no backend, como envio de e-mail, armazenamento de arquivos e autenticação. Consulte a documentação específica de cada pasta antes de publicar em produção.
+# Status do Projeto
 
-## Pré-matrícula e renovação
+✅ Estrutura base finalizada
 
-- Na pré-matrícula são exigidos os três documentos e as confirmações do formulário. A coordenação consulta os dados e anexos em **Catequizandos**, aprova ou recusa e, ao aprovar, cria o acesso do responsável quando necessário.
-- O responsável acessa **Renovação**, seleciona o catequizando e o ano atual ou seguinte e anexa o comprovante do Pix de R$ 50. Documentos já cadastrados não são exigidos novamente; documentos faltantes são obrigatórios e os existentes podem ser substituídos. A solicitação só é confirmada após análise em **Renovações** pela coordenação. Se recusada, o motivo aparece para o responsável, que pode reenviar.
-- A aprovação da renovação registra a decisão; ela não movimenta o catequizando de turma automaticamente nem verifica o Pix com o banco.
-- Antes da publicação, execute `npm run prisma:deploy` e `npm run prisma:generate` no backend e reinicie a API. Configure PostgreSQL, S3/R2 e SMTP; o endpoint público do S3 deve ser acessível pelo navegador, pois os links dos documentos são temporários. Sem SMTP, a coordenação precisa reenviar o convite depois da configuração.
-- Configure `VITE_API_URL` com a URL pública da API ao compilar o frontend se ela estiver em outro domínio, e inclua o endereço público do site em `FRONTEND_URLS` no backend. Sem `VITE_API_URL`, a versão de produção usa a mesma origem do site, que deve encaminhar `/api` ao backend.
-- A página de histórico e o controle de presença de reuniões ainda não estão integrados aos dados reais; use o cronograma para cadastrar reuniões.
+✅ Autenticação implementada
 
-Os testes de integração podem ser executados contra um **banco de teste isolado**, após aplicar as migrations nele, definindo `TEST_DATABASE_URL` e executando `npm run test:e2e` no backend. Os testes simulam o armazenamento de arquivos e não devem apontar para o banco de produção.
+✅ Módulo de pré-matrículas implementado
+
+✅ Módulo de renovações implementado
+
+✅ Seed com dados de login (4 perfis)
+
+⏳ Testes automatizados
+
+⏳ Documentação de API
+
+---
+
+# Contribuindo
+
+1. Clone o repositório
+2. Crie uma branch para sua feature (`git checkout -b feature/minha-feature`)
+3. Commit suas mudanças (`git commit -am 'Add feature'`)
+4. Push para a branch (`git push origin feature/minha-feature`)
+5. Abra um Pull Request
+
+---
+
+# Licença
+
+MIT

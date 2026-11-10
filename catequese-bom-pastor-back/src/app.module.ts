@@ -6,25 +6,26 @@ import { PrismaModule } from './common/prisma/prisma.module';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
-import { TurmasModule } from './modules/turmas/turmas.module';
-import { CatequizandosModule } from './modules/alunos/alunos.module';
-import { ResponsaveisModule } from './modules/responsaveis/responsaveis.module';
-import { InscricoesModule } from './modules/inscricoes/inscricoes.module';
-import { PagamentosModule } from './modules/pagamentos/pagamentos.module';
-import { MateriaisModule } from './modules/materiais/materiais.module';
-import { CronogramaModule } from './modules/cronograma/cronograma.module';
-import { CalendarioModule } from './modules/calendario/calendario.module';
-import { GaleriaModule } from './modules/galeria/galeria.module';
-import { MusicasModule } from './modules/musicas/musicas.module';
-import { UploadsModule } from './modules/uploads/uploads.module';
-import { DashboardModule } from './modules/dashboard/dashboard.module';
-import { CatequistasModule } from './modules/catequistas/catequistas.module';
-import { PhotosModule } from './modules/photos/photos.module';
-import { PreMatriculasModule } from './modules/pre-matriculas/pre-matriculas.module';
-import { ItensLojaModule } from './modules/loja/loja.module';
-import { ComunicacaoModule } from './modules/comunicacao/comunicacao.module';
-import { NotificacoesModule } from './modules/notificacoes/notificacoes.module';
-import { RenovacoesModule } from './modules/renovacoes/renovacoes.module';
+// import { TurmasModule } from './modules/turmas/turmas.module';
+// import { CatequizandosModule } from './modules/alunos/alunos.module';
+// import { ResponsaveisModule } from './modules/responsaveis/responsaveis.module';
+// import { InscricoesModule } from './modules/inscricoes/inscricoes.module';
+// import { PagamentosModule } from './modules/pagamentos/pagamentos.module';
+// import { MateriaisModule } from './modules/materiais/materiais.module';
+// import { CronogramaModule } from './modules/cronograma/cronograma.module';
+// import { CalendarioModule } from './modules/calendario/calendario.module';
+// import { GaleriaModule } from './modules/galeria/galeria.module';
+// import { MusicasModule } from './modules/musicas/musicas.module';
+// import { UploadsModule } from './modules/uploads/uploads.module';
+// import { DashboardModule } from './modules/dashboard/dashboard.module';
+// import { CatequistasModule } from './modules/catequistas/catequistas.module';
+// import { PhotosModule } from './modules/photos/photos.module';
+// import { PreMatriculasModule } from './modules/pre-matriculas/pre-matriculas.module';
+// import { ItensLojaModule } from './modules/loja/loja.module';
+// import { ComunicacaoModule } from './modules/comunicacao/comunicacao.module';
+// import { NotificacoesModule } from './modules/notificacoes/notificacoes.module';
+import { MatriculaModule } from './modules/matricula/matricula.module';
+import { DocumentoModule } from './modules/documento/documento.module';
 
 @Module({
   imports: [
@@ -46,25 +47,26 @@ import { RenovacoesModule } from './modules/renovacoes/renovacoes.module';
 
     // Modules
     AuthModule,
-    TurmasModule,
-    CatequizandosModule,
-    ResponsaveisModule,
-    InscricoesModule,
-    PagamentosModule,
-    MateriaisModule,
-    CronogramaModule,
-    CalendarioModule,
-    GaleriaModule,
-    MusicasModule,
-    ItensLojaModule,
-    UploadsModule,
-    DashboardModule,
-    CatequistasModule,
-    PhotosModule,
-    PreMatriculasModule,
-    ComunicacaoModule,
-    NotificacoesModule,
-    RenovacoesModule,
+    MatriculaModule,
+    DocumentoModule,
+    // TurmasModule,
+    // CatequizandosModule,
+    // ResponsaveisModule,
+    // InscricoesModule,
+    // PagamentosModule,
+    // MateriaisModule,
+    // CronogramaModule,
+    // CalendarioModule,
+    // GaleriaModule,
+    // MusicasModule,
+    // ItensLojaModule,
+    // UploadsModule,
+    // DashboardModule,
+    // CatequistasModule,
+    // PhotosModule,
+    // PreMatriculasModule,
+    // ComunicacaoModule,
+    // NotificacoesModule,
   ],
   providers: [
     {

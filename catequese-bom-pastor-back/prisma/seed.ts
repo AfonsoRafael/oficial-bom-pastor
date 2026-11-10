@@ -85,137 +85,22 @@ async function main() {
   });
   console.log('✅ Catequista criada:', catequista2.email);
 
-<<<<<<< HEAD:catequese-bom-pastor-back/prisma/seed.ts
-=======
-  // Criar turmas
-  const turma2024 = await prisma.turma.upsert({
-    where: { id: 'seed-turma-2024' },
-    update: {},
-    create: {
-      id: 'seed-turma-2024',
-      nome: 'Primeira Comunhão 2024',
-      ano: 2024,
-      horario: 'Sábado 14:00',
-      sala: 'Sala 1',
-      administradorId: admin.id,
-    },
-  });
-  console.log('✅ Turma criada:', turma2024.nome);
+  console.log('\n🎉 Seed concluído!');
+  console.log('\n📝 Credenciais de acesso:');
+  console.log('   Admin: admin@catequese.com / admin123');
+  console.log('   Responsável: pai@catequese.com / parent123');
+  console.log('   Catequista Ana: ana.catequista@catequese.com / ana123');
+  console.log('   Catequista Carlos: carlos.catequista@catequese.com / carlos123');
+}
 
-  const turma2025 = await prisma.turma.upsert({
-    where: { id: 'seed-turma-2025' },
-    update: {},
-    create: {
-      id: 'seed-turma-2025',
-      nome: 'Crisma 2025',
-      ano: 2025,
-      horario: 'Domingo 16:00',
-      sala: 'Sala 2',
-      administradorId: admin.id,
-    },
+main()
+  .catch((e) => {
+    console.error('❌ Erro ao fazer seed:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
   });
-  console.log('✅ Turma criada:', turma2025.nome);
-
-  // Vincular catequistas às turmas
-  await prisma.turmaCatequista.upsert({
-    where: { turmaId_catequistaId: { turmaId: turma2024.id, catequistaId: catequista1.id } },
-    update: {},
-    create: {
-      turmaId: turma2024.id,
-      catequistaId: catequista1.id,
-      categoria: 'Principal', // Ou outra categoria padrão
-    },
-  });
-  console.log('✅ Catequista 1 vinculada à Turma 2024');
-
-  await prisma.turmaCatequista.upsert({
-    where: { turmaId_catequistaId: { turmaId: turma2025.id, catequistaId: catequista2.id } },
-    update: {},
-    create: {
-      turmaId: turma2025.id,
-      catequistaId: catequista2.id,
-      categoria: 'Principal', // Ou outra categoria padrão
-    },
-  });
-  console.log('✅ Catequista 2 vinculada à Turma 2025');
-
-  // Criar catequizandos
-  const catequizando1 = await prisma.catequizando.upsert({
-    where: { id: 'seed-catequizando-1' },
-    update: {},
-    create: {
-      id: 'seed-catequizando-1',
-      nome: 'Pedro Silva',
-      dataNascimento: new Date('2014-05-10'),
-      dataBatismo: new Date('2014-12-20'),
-      cpf: '123.456.789-00',
-      email: 'pedro.silva@email.com',
-      telefone: '11955555555',
-      endereco: 'Rua das Flores, 123 - São Paulo, SP',
-      turmaId: turma2024.id,
-      responsavelId: responsavel.id,
-      observacoes: 'Primeira comunhão',
-    },
-  });
-  console.log('✅ Catequizando criado:', catequizando1.nome);
-
-  const catequizando2 = await prisma.catequizando.upsert({
-    where: { id: 'seed-catequizando-2' },
-    update: {},
-    create: {
-      id: 'seed-catequizando-2',
-      nome: 'Ana Silva',
-      dataNascimento: new Date('2010-08-20'),
-      dataBatismo: new Date('2011-01-10'),
-      cpf: '234.567.890-11',
-      email: 'ana.silva@email.com',
-      telefone: '11944444444',
-      endereco: 'Avenida Paulista, 456 - São Paulo, SP',
-      turmaId: turma2025.id,
-      responsavelId: responsavel.id,
-      observacoes: 'Crisma',
-    },
-  });
-  console.log('✅ Catequizando criado:', catequizando2.nome);
-
-  // Criar documentos dos catequizandos
-  await prisma.catequizandoDocumento.upsert({
-    where: {
-      catequizandoId_tipo: {
-        catequizandoId: catequizando1.id,
-        tipo: 'CERTIDAO_NASCIMENTO',
-      },
-    },
-    update: {},
-    create: {
-      catequizandoId: catequizando1.id,
-      tipo: 'CERTIDAO_NASCIMENTO',
-      status: true,
-      uploadDate: new Date('2024-10-15'),
-    },
-  });
-
-  await prisma.catequizandoDocumento.upsert({
-    where: {
-      catequizandoId_tipo: {
-        catequizandoId: catequizando1.id,
-        tipo: 'CPF',
-      },
-    },
-    update: {},
-    create: {
-      catequizandoId: catequizando1.id,
-      tipo: 'CPF',
-      status: true,
-      uploadDate: new Date('2024-10-15'),
-    },
-  });
-
-  await prisma.catequizandoDocumento.upsert({
-    where: {
-      catequizandoId_tipo: {
-        catequizandoId: catequizando1.id,
-        tipo: 'CARTEIRA_VACINA',
       },
     },
     update: {},
