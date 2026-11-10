@@ -1,11 +1,7 @@
 import logoParoquia from "@/assets/logo-paroquia.jpg";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-<<<<<<< HEAD:catequese-bom-pastor-front/src/components/layout/Header.tsx
 import { BookOpen, ClipboardList, Heart, Home, LogIn, Menu, X } from "lucide-react";
-=======
-import { BookOpen, Heart, Home, LogIn, Menu, X } from "lucide-react";
->>>>>>> origin/correcoes-afonso:front/src/components/layout/Header.tsx
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -17,7 +13,7 @@ export function Header() {
     { label: "Início", href: "/", icon: Home },
     { label: "Sobre", href: "/sobre", icon: BookOpen },
     { label: "Lojinha", href: "/lojinha", icon: Heart },
-    { label: "Pré-matrícula", href: "/pre-matricula", icon: ClipboardList },
+    { label: "Matrícula", href: "/matricula", icon: ClipboardList },
   ];
 
   const isActive = (href: string) => {

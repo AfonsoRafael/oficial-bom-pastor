@@ -17,11 +17,7 @@ export function DashboardShell({ items, title, description, children }: Dashboar
   const location = useLocation();
   const { user, logout } = useAuth();
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = usePersistentSidebar();
-<<<<<<< HEAD:catequese-bom-pastor-front/src/components/layout/DashboardShell.tsx
   const roleName = user?.role === "admin" ? "Área do Admin" : user?.role === "responsavel" ? "Área do Responsável" : "Área do Catequista";
-=======
-  const roleName = user?.role === "admin" ? "Área do Admin" : "Área do Catequista";
->>>>>>> origin/correcoes-afonso:front/src/components/layout/DashboardShell.tsx
 
   return (
     <div className={`flex min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>

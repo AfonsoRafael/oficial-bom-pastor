@@ -15,10 +15,6 @@ export const ADMIN_NAV_ITEMS: SidebarNavItem[] = [
   { label: "Dashboard", to: "/admin", icon: Users },
   { label: "Turmas", to: "/admin/turmas", icon: Users },
   { label: "Catequizandos", to: "/admin/add-catequizando", icon: Users },
-<<<<<<< HEAD:catequese-bom-pastor-front/src/lib/sidebarNavItems.ts
-  { label: "Renovações", to: "/admin/renovacoes", icon: ClipboardList },
-=======
->>>>>>> origin/correcoes-afonso:front/src/lib/sidebarNavItems.ts
   { label: "Catequistas", to: "/admin/inscricoes-catequistas", icon: ClipboardList },
   { label: "Chamada", to: "/admin/chamada", icon: ClipboardList },
   { label: "Minhas Turmas", to: "/admin/minhas-turmas", icon: Users },
@@ -45,11 +41,7 @@ export const PARENT_NAV_ITEMS: SidebarNavItem[] = [
   { label: "Meus Filhos", to: "/pais", icon: Users },
   { label: "Renovação", to: "/pais/renovacao", icon: ClipboardList },
   { label: "Cronograma", to: "/pais/cronograma", icon: Calendar },
-<<<<<<< HEAD:catequese-bom-pastor-front/src/lib/sidebarNavItems.ts
-  { label: "Galeria", to: "/pais/galeria", icon: Camera },
-=======
-  // { label: "Galeria", to: "/pais/galeria", icon: Camera },
->>>>>>> origin/correcoes-afonso:front/src/lib/sidebarNavItems.ts
+  { label: "Documentos", to: "/pais/documentos", icon: FileText,},
   { label: "Comunicação", to: "/comunicacao", icon: MessageSquare },
 ];
 

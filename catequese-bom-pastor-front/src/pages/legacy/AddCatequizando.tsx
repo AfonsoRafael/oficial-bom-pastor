@@ -73,13 +73,10 @@ interface PreMatricula {
   sacramentosMae?: string | null;
   nomePai?: string | null;
   nomeMae?: string | null;
-<<<<<<< HEAD:catequese-bom-pastor-front/src/pages/AddCatequizando.tsx
   alergiasProblemasSaude?: string | null;
   CertificadoBatismo?: string | null;
   ComprovanteEndereco?: string | null;
   CertidaoDeNascimento?: string | null;
-=======
->>>>>>> origin/correcoes-afonso:front/src/pages/legacy/AddCatequizando.tsx
   email: string;
   telefone: string;
   status: PreMatriculaStatus;
@@ -261,19 +258,12 @@ export default function AddCatequizando() {
       const result = await response.json().catch(() => ({}));
       toast({
         title: "Pré-matrícula aprovada",
-<<<<<<< HEAD:catequese-bom-pastor-front/src/pages/AddCatequizando.tsx
         description: result.needsPasswordSetup === false
           ? "Pré-matrícula aprovada. O responsável já possui acesso."
           : result.emailSent
           ? `Convite para criar a senha enviado para ${preMatricula.email}.`
           : "A aprovação foi registrada, mas o convite não foi enviado. Verifique o SMTP e reenvie pela lista de aprovadas.",
         variant: result.emailSent || result.needsPasswordSetup === false ? "default" : "destructive",
-=======
-        description: result.emailSent
-          ? `Convite para criar a senha enviado para ${preMatricula.email}.`
-          : "A aprovação foi registrada, mas o convite não foi enviado. Verifique o SMTP e reenvie pela lista de aprovadas.",
-        variant: result.emailSent ? "default" : "destructive",
->>>>>>> origin/correcoes-afonso:front/src/pages/legacy/AddCatequizando.tsx
       });
 
       await carregarDados();

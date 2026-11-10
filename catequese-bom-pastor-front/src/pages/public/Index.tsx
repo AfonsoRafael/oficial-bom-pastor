@@ -123,11 +123,6 @@ export default function Index() {
   const [expandedLevel, setExpandedLevel] = useState<number | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [loadingUpcomingEvents, setLoadingUpcomingEvents] = useState(true);
-<<<<<<< HEAD:catequese-bom-pastor-front/src/pages/Index.tsx
-  const { toast } = useToast();
-  const pixKey = PIX_KEY;
-=======
->>>>>>> origin/correcoes-afonso:front/src/pages/public/Index.tsx
 
   useEffect(() => {
     const loadUpcomingEvents = async () => {
@@ -176,18 +171,6 @@ export default function Index() {
     loadUpcomingEvents();
   }, []);
 
-<<<<<<< HEAD:catequese-bom-pastor-front/src/pages/Index.tsx
-  const copyPixKey = async () => {
-    try {
-      await navigator.clipboard.writeText(pixKey);
-      toast({ title: "Chave PIX copiada!", description: "A chave foi copiada para a área de transferência." });
-    } catch {
-      toast({ title: "Não foi possível copiar", description: "Selecione e copie a chave exibida manualmente.", variant: "destructive" });
-    }
-  };
-
-=======
->>>>>>> origin/correcoes-afonso:front/src/pages/public/Index.tsx
   return (
     <MainLayout>
       {/* Hero Section */}
@@ -224,13 +207,8 @@ export default function Index() {
                 </Link>
               </Button>
               <Button variant="heroOutline" size="lg" asChild>
-<<<<<<< HEAD:catequese-bom-pastor-front/src/pages/Index.tsx
-                <Link to="/inscricao">
-                  Seja Catequista
-=======
                 <Link to="/login">
                   Área do Catequista
->>>>>>> origin/correcoes-afonso:front/src/pages/public/Index.tsx
                   <ChevronRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
@@ -405,68 +383,6 @@ export default function Index() {
         </div>
       </section>
 
-<<<<<<< HEAD:catequese-bom-pastor-front/src/pages/Index.tsx
-      {/* Donation Section */}
-      <section className="bg-gradient-to-br from-gold-light/30 to-sage-light/30 py-16 md:py-24 dark:from-gold/10 dark:to-sage/10">
-        <div className="container px-4 md:px-6">
-          <Card
-            variant="elevated"
-            className="mx-auto max-w-2xl overflow-hidden"
-          >
-            <CardContent className="flex flex-col items-center gap-6 p-8 text-center md:p-12">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gold/20">
-                <Heart className="h-8 w-8 text-gold-dark" />
-              </div>
-              <div>
-                <h2 className="mb-2 font-display text-2xl font-bold text-foreground md:text-3xl">
-                  Contribua com a Catequese
-                </h2>
-                <p className="text-muted-foreground">
-                  Sua doação ajuda a manter os materiais didáticos, eventos e
-                  formação dos catequistas. Qualquer valor faz a diferença!
-                </p>
-              </div>
-              <button
-                onClick={() => setShowPix(!showPix)}
-                className="flex h-32 w-32 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/50 transition-colors hover:bg-muted cursor-pointer"
-              >
-                <QrCode className="h-16 w-16 text-muted-foreground/50" />
-              </button>
-              <p className="text-sm text-muted-foreground">
-                {showPix ? "Copie a chave PIX abaixo" : "Clique no ícone para ver a chave PIX"}
-              </p>
-              
-              {showPix && (
-                <div className="w-full animate-slide-up">
-                  <div className="flex items-center gap-2 rounded-lg bg-muted p-4">
-                    <code className="flex-1 text-sm font-mono">{pixKey}</code>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={copyPixKey}
-                    >
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copiar
-                    </Button>
-                  </div>
-                  <p className="mt-2 text-sm">Beneficiário: {PIX_RECIPIENT}</p>
-                </div>
-              )}
-              
-              <Button 
-                variant="gold" 
-                size="lg"
-                onClick={() => setShowPix(!showPix)}
-              >
-                {showPix ? "Ocultar Chave PIX" : "Fazer Doação via PIX"}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-=======
->>>>>>> origin/correcoes-afonso:front/src/pages/public/Index.tsx
       {/* CTA Section */}
       <section className="bg-primary py-16 md:py-24 dark:bg-navy-dark">
         <div className="container px-4 md:px-6">

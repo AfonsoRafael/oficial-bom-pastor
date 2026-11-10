@@ -197,7 +197,7 @@ async getStoredFileUrl(location: string): Promise<string> {
   }
 
   return this.getFileUrl(key);
-}
+}// Remover a seção de doação.
 
   private async buildFileUrl(key: string): Promise<string> {
     const endpoint = this.publicEndpoint || this.endpoint;

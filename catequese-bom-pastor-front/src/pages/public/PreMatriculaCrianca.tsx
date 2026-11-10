@@ -343,10 +343,7 @@ export default function PreMatriculaCrianca() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-<<<<<<< HEAD:catequese-bom-pastor-front/src/pages/PreMatriculaCrianca.tsx
     const formElement = e.currentTarget as HTMLFormElement;
-=======
->>>>>>> origin/correcoes-afonso:front/src/pages/public/PreMatriculaCrianca.tsx
     setFormError("");
 
     const isFormValid = validateForm();
