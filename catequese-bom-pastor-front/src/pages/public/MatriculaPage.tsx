@@ -42,10 +42,10 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 type DocumentKey = "nascimento" | "batismo" | "residencia";
-const documentos: { key: DocumentKey; label: string; tipoDocumento: string }[] = [
-  { key: "nascimento", label: "Certidão de Nascimento", tipoDocumento: "CERTIDAO_NASCIMENTO" },
-  { key: "batismo", label: "Certificado de Batismo", tipoDocumento: "CERTIFICADO_BATISMO" },
-  { key: "residencia", label: "Comprovante de Residência", tipoDocumento: "COMPROVANTE_ENDERECO" },
+const documentos: { key: DocumentKey; label: string; tipoDocumento: string; obrigatorio: boolean }[] = [
+  { key: "nascimento", label: "Certidão de Nascimento", tipoDocumento: "CERTIDAO_NASCIMENTO", obrigatorio: true },
+  { key: "batismo", label: "Certificado de Batismo", tipoDocumento: "CERTIFICADO_BATISMO", obrigatorio: false },
+  { key: "residencia", label: "Comprovante de Residência", tipoDocumento: "COMPROVANTE_ENDERECO", obrigatorio: true },
 ];
 const etapas = ["Responsável", "Catequizando", "Documentos", "Revisão"];
 const camposPorEtapa: FieldPath<FormValues>[][] = [
@@ -136,8 +136,8 @@ export default function MatriculaPage() {
   }, [setValue, telefoneResponsavel, usarMesmoTelefone]);
 
   async function proximaEtapa() {
-    if (etapa === 2 && documentos.some(({ key }) => !arquivos[key])) {
-      setErroDocumentos("Informe os três documentos obrigatórios.");
+    if (etapa === 2 && documentos.some(({ key, obrigatorio }) => obrigatorio && !arquivos[key])) {
+      setErroDocumentos("Certidão de Nascimento e Comprovante de Residência são obrigatórios. O Certificado de Batismo é opcional.");
       return;
     }
     if (etapa === 2 && documentos.some(({ key }) => arquivos[key].length > 255)) {
@@ -153,8 +153,13 @@ export default function MatriculaPage() {
 
   async function enviarMatricula(values: FormValues) {
     if (etapa !== 3 || enviandoRef.current) return;
-    if (documentos.some(({ key }) => !arquivos[key] || arquivos[key].length > 255)) {
-      setErroDocumentos("Informe os três documentos obrigatórios com nomes de até 255 caracteres.");
+    if (documentos.some(({ key, obrigatorio }) => obrigatorio && !arquivos[key])) {
+      setErroDocumentos("Certidão de Nascimento e Comprovante de Residência são obrigatórios. O Certificado de Batismo é opcional.");
+      setEtapa(2);
+      return;
+    }
+    if (documentos.some(({ key }) => arquivos[key].length > 255)) {
+      setErroDocumentos("O nome do arquivo deve ter no máximo 255 caracteres.");
       setEtapa(2);
       return;
     }
@@ -177,7 +182,9 @@ export default function MatriculaPage() {
       catequizandoTelefoneEmergencia: values.telefoneEmergencia,
       etapaId: values.nivelCatequetico,
       observacao: values.observacoes || null,
-      documentos: documentos.map(({ key, tipoDocumento }) => ({ nomeArquivo: arquivos[key], tipoDocumento })),
+      documentos: documentos
+        .filter(({ key }) => arquivos[key])
+        .map(({ key, tipoDocumento }) => ({ nomeArquivo: arquivos[key], tipoDocumento })),
     };
     enviandoRef.current = true;
     setErroEnvio("");
@@ -275,7 +282,7 @@ export default function MatriculaPage() {
               <CardDescription>
                 {etapa === 0 && "Informe os dados do responsável. Campos marcados com * são obrigatórios."}
                 {etapa === 1 && "Informe os dados do catequizando. Campos marcados com * são obrigatórios."}
-                {etapa === 2 && "Selecione os três documentos obrigatórios. Apenas os nomes serão registrados; os arquivos não serão enviados."}
+                {etapa === 2 && "Certidão de Nascimento e Comprovante de Residência são obrigatórios. O Certificado de Batismo é opcional."}
                 {etapa === 3 && "Confira as informações antes de enviar a matrícula."}
               </CardDescription>
             </CardHeader>
@@ -318,10 +325,10 @@ export default function MatriculaPage() {
                   </div>
                 )}
                   <div hidden={etapa !== 2} className={etapa === 2 ? "grid gap-4 sm:grid-cols-2" : undefined}>
-                    {documentos.map(({ key, label }) => (
+                    {documentos.map(({ key, label, obrigatorio }) => (
                       <Card key={key} variant="flat" className="border border-border bg-muted/20">
                         <CardContent className="space-y-3 p-4">
-                          <div className="flex items-center gap-2 font-medium"><FileText className="h-5 w-5 text-primary" /><Label htmlFor={`documento-${key}`}>{label} *</Label></div>
+                          <div className="flex items-center gap-2 font-medium"><FileText className="h-5 w-5 text-primary" /><Label htmlFor={`documento-${key}`}>{label}{obrigatorio ? " *" : " (opcional)"}</Label></div>
                           <Input id={`documento-${key}`} type="file" onChange={(event) => {
                             const nome = event.target.files?.[0]?.name ?? "";
                             setArquivos((atuais) => ({ ...atuais, [key]: nome }));
@@ -346,7 +353,7 @@ export default function MatriculaPage() {
                       { label: "Endereço", value: dados.endereco }, { label: "Telefone de emergência", value: dados.telefoneEmergencia },
                       { label: "Nível catequético", value: niveis.find((nivel) => nivel.id === dados.nivelCatequetico)?.nome ?? "" }, { label: "Observações", value: dados.observacoes },
                     ]} /></section>
-                    <section className="space-y-4 rounded-lg border p-4"><h2 className="font-display text-xl font-semibold">Documentos</h2><Resumo items={documentos.map(({ key, label }) => ({ label, value: arquivos[key] || "Não selecionado" }))} /></section>
+                    <section className="space-y-4 rounded-lg border p-4"><h2 className="font-display text-xl font-semibold">Documentos</h2><Resumo items={documentos.map(({ key, label, obrigatorio }) => ({ label: obrigatorio ? label : `${label} (opcional)`, value: arquivos[key] || "Não selecionado" }))} /></section>
                   </div>
                 )}
                 <div className="flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:justify-between">
